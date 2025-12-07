@@ -1,5 +1,5 @@
 import { compare } from 'bcrypt'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { userLoginSchema } from '~/validations/user'
 import type { AuthLoginResponseData } from '~/types/api/user'
 

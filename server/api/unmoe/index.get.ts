@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUnmoeLogSchema } from '~/validations/unmoe'
 import type { UnmoeLog } from '~/types/api/unmoe'
 

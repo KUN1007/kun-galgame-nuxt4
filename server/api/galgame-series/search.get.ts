@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getSearchResultSchema } from '~/validations/galgame-series'
 import { getPreferredLanguageText } from '~/utils/getPreferredLanguageText'
 import type { GalgameSeriesSearchItem } from '~/types/api/galgame-series'

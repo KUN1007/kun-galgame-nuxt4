@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updatePollSchema } from '~/validations/topic-poll'
 import type { z } from 'zod'
 import type { KUNGalgamePayload } from '~/types/utils/jwt'

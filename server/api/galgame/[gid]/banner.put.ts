@@ -1,5 +1,5 @@
 import env from '~~/server/env/dotenv'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { uploadGalgameBanner } from '../utils/uploadGalgameBanner'
 import { updateGalgameBannerSchema } from '~/validations/galgame'
 

@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import type { ChatMessageAsideItem } from '~/types/api/chat-message'
 
 export default defineEventHandler(async (event) => {

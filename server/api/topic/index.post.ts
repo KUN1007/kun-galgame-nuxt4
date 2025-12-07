@@ -1,5 +1,5 @@
 import { subDays } from 'date-fns'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createTopicSchema } from '~/validations/topic'
 import {
   TOPIC_SECTION_CONSUME_MOEMOEPOINTS,

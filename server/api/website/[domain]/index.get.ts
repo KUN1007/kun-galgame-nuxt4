@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getWebsiteDetailSchema } from '~/validations/website'
 import type { WebsiteDetail } from '~/types/api/website'
 

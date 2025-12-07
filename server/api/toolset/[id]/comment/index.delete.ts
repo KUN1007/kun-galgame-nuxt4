@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteToolsetCommentSchema } from '~/validations/toolset'
 
 export default defineEventHandler(async (event) => {

@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUserInfoSchema } from '~/validations/user'
 import { subDays } from 'date-fns'
 import type { UserInfo } from '~/types/api/user'

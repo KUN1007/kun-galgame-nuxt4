@@ -1,5 +1,5 @@
 import { hash } from 'bcrypt'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { userRegisterSchema } from '~/validations/user'
 import type { AuthLoginResponseData } from '~/types/api/user'
 

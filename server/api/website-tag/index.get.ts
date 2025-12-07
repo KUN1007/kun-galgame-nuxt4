@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getWebsiteTagSchema } from '~/validations/website'
 import type { WebsiteTag } from '~/types/api/website'
 

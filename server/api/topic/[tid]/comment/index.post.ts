@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createCommentSchema } from '~/validations/topic'
 import type { TopicComment } from '~/types/api/topic-comment'
 

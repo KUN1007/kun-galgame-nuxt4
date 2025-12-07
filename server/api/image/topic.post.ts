@@ -7,7 +7,7 @@ import {
   KUN_VISUAL_NOVEL_USER_DAILY_UPLOAD_IMAGE_LIMIT
 } from '~/config/upload'
 import { checkBufferSize } from '~~/server/utils/checkBufferSize'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 
 const compressImage = async (name: string, image: Buffer, uid: number) => {
   const miniImage = await sharp(image)

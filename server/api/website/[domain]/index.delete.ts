@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteWebsiteSchema } from '~/validations/website'
 
 export default defineEventHandler(async (event) => {

@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateWebsiteSchema } from '~/validations/website'
 import { getDomain } from '~/utils/getDomain'
 

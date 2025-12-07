@@ -1,9 +1,9 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import {
   KUN_ADMIN_OVERVIEW_STATS_MODEL_ITEM,
   KUN_ADMIN_OVERVIEW_STATS_MODEL_MAP
 } from '~/constants/admin'
-import type { PrismaPromise } from '@prisma/client'
+import type { PrismaPromise } from '~~/prisma/generated/prisma/internal/prismaNamespace'
 
 type ModelCount = {
   count: () => PrismaPromise<number>

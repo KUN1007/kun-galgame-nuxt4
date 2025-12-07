@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUpdateLogSchema } from '~/validations/update-log'
 import type { UpdateType, UpdateLog } from '~/types/api/update-log'
 

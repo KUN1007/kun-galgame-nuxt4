@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteMessageSchema } from '~/validations/chat'
 
 export default defineEventHandler(async (event) => {

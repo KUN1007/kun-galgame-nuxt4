@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateReplySchema } from '~/validations/topic'
 import { markdownToText } from '~~/server/utils/markdownToText'
 import type { TopicReply } from '~/types/api/topic-reply'

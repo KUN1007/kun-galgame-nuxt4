@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUserFloatingCardSchema } from '~/validations/user'
 import type { UserFloatingCard } from '~/types/api/user'
 

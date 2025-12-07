@@ -1,7 +1,7 @@
 import { subDays } from 'date-fns'
 import env from '~~/server/env/dotenv'
 import { uploadGalgameBanner } from './utils/uploadGalgameBanner'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createGalgameSchema } from '~/validations/galgame'
 import { syncVndbData } from './_syncVndb'
 import type { H3Event } from 'h3'

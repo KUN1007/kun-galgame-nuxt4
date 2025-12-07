@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createSendResetEmailVerificationCodeSchema } from '~/validations/auth'
 
 export default defineEventHandler(async (event) => {

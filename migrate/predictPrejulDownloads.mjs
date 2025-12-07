@@ -1,7 +1,7 @@
 // predicted_preJul = round( β * time_est + (1 - β) * view_est )
 // est = SCALE * (BETA * time_est + (1 - BETA) * view_est)
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../prisma/generated/prisma/client'
 import process from 'process'
 
 const prisma = new PrismaClient()

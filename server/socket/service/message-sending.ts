@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import type { ChatMessage } from '~/types/api/chat-message'
 
 export const sendingMessage = async (

@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getNoticeMessageSchema } from '~/validations/message'
 import type { z } from 'zod'
 import type { MessageStatus, MessageType, Message } from '~/types/api/message'

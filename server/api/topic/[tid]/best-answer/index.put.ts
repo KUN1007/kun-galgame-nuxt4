@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { markdownToText } from '~~/server/utils/markdownToText'
 import { updateTopicBestAnswerSchema } from '~/validations/topic'
 

@@ -1,5 +1,5 @@
 import { TAG_MAP } from '~/lib/tagMap'
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '~~/prisma/generated/prisma/client'
 
 const API_BASE_URL = 'https://api.vndb.org/kana'
 

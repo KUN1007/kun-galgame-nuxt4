@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getToolsetResourceDetailSchema } from '~/validations/toolset'
 import type { ToolsetResourceDetail } from '~/types/api/toolset'
 

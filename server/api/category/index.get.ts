@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getNSFWCookie } from '~~/server/utils/getNSFWCookie'
 import { getTopicCategoryStats } from '~/validations/category'
 import type {

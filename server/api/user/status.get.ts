@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import type { HomeUserStatus } from '~/types/api/home'
 
 export default defineEventHandler(async (event) => {

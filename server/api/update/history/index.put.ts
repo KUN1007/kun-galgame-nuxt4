@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateUpdateLogSchema } from '~/validations/update-log'
 
 export default defineEventHandler(async (event) => {

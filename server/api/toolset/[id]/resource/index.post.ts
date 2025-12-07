@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createToolsetResourceSchema } from '~/validations/toolset'
 import {
   getUploadCache,

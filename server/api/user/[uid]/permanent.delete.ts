@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteUserSchema } from '~/validations/user'
 import { s3 } from '~/lib/s3/client'
 import { DeleteObjectCommand } from '@aws-sdk/client-s3'

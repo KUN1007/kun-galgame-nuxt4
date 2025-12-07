@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createPollSchema } from '~/validations/topic-poll'
 
 export default defineEventHandler(async (event) => {

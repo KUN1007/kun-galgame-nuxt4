@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-import { TAG_MAP } from '~/lib/tagMap'
-
-const prisma = new PrismaClient()
+import { prisma } from '../prisma/prisma'
+import { TAG_MAP } from '../lib/tagMap'
 
 const VNDB_API_BASE = 'https://api.vndb.org/kana'
 const BATCH_SIZE = 100

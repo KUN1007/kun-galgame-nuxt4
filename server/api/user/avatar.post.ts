@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import env from '~~/server/env/dotenv'
 import sharp from 'sharp'
 import { uploadImageToS3 } from '~/lib/s3/uploadImageToS3'

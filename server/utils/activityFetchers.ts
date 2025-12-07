@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getPreferredLanguageText } from '~/utils/getPreferredLanguageText'
 import { markdownToText } from '~~/server/utils/markdownToText'
 import type { ActivityItem, ActivityEventType } from '~/types/api/activity'

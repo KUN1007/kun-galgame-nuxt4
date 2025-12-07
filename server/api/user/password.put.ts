@@ -1,5 +1,5 @@
 import { hash, compare } from 'bcrypt'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { userUpdatePasswordSchema } from '~/validations/user'
 
 export default defineEventHandler(async (event) => {

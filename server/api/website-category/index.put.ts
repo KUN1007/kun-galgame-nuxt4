@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateWebsiteCategorySchema } from '~/validations/website'
 
 export default defineEventHandler(async (event) => {

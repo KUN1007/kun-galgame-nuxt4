@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getGalgameResourceDetailSchema } from '~/validations/galgame'
 import type { GalgameResourceDetails } from '~/types/api/galgame-resource'
 

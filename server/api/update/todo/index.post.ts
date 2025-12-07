@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createTodoSchema } from '~/validations/todo'
 
 export default defineEventHandler(async (event) => {

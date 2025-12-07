@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { s3 } from '~/lib/s3/client'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { generateRandomCode } from '~~/server/utils/generateRandomCode'

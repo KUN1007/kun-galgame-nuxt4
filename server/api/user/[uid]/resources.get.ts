@@ -1,7 +1,7 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUserGalgameResourceSchema } from '~/validations/user'
 import type { UserGalgameResource } from '~/types/api/user'
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '~~/prisma/generated/prisma/client'
 
 export default defineEventHandler(async (event) => {
   const input = kunParseGetQuery(event, getUserGalgameResourceSchema)

@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import type { Prisma } from '~~/prisma/generated/prisma/client'
 
 export const KUN_ADMIN_OVERVIEW_STATS_MODEL_ITEM = [
   'user',

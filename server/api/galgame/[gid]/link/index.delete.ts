@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteGalgameLinkSchema } from '~/validations/galgame'
 
 export default defineEventHandler(async (event) => {

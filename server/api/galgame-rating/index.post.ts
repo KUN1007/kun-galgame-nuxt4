@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createGalgameRatingSchema } from '~/validations/galgame-rating'
 import type { GalgameRatingCardOnGalgamePage } from '~/types/api/galgame-rating'
 

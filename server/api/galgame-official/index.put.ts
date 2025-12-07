@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateGalgameOfficialSchema } from '~/validations/galgame-official'
 
 export default defineEventHandler(async (event) => {

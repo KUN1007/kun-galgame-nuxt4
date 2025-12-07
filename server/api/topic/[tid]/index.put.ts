@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateTopicSchema } from '~/validations/topic'
 import {
   TOPIC_SECTION_CONSUME_MOEMOEPOINTS,

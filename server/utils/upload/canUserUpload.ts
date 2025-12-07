@@ -3,7 +3,7 @@ import {
   MOEMOEPOINT_SINGLE_MB_DIVISOR,
   USER_DAILY_UPLOAD_LIMIT
 } from '~/config/upload'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 
 const MB = 1024 * 1024
 

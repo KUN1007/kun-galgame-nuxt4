@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getAdminUserSchema } from '~/validations/admin'
 import type { AdminUser } from '~/types/api/admin'
 

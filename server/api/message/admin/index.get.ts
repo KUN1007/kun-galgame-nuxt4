@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import type { MessageSystemMessage } from '~/types/api/message'
 
 export default defineEventHandler(async (_) => {

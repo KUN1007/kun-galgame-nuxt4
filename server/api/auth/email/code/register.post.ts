@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { KUN_ALLOW_REGISTER_EMAIL } from '~/config/email-whitelist'
 import {
   ADMIN_DELETE_EMAIL_CACHE_KEY,

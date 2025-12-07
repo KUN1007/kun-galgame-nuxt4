@@ -1,5 +1,5 @@
 import { getPreferredLanguageText } from '~/utils/getPreferredLanguageText'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import type { RSSGalgame } from '~/types/api/rss'
 
 export default defineEventHandler(async () => {

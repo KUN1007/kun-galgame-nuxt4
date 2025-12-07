@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { deleteCommentSchema } from '~/validations/topic'
 
 export default defineEventHandler(async (event) => {

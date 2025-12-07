@@ -1,5 +1,5 @@
 import { hash } from 'bcrypt'
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { createSendResetPasswordByEmailVerificationCodeSchema } from '~/validations/auth'
 
 export default defineEventHandler(async (event) => {

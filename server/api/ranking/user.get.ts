@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { getUserRankingSchema } from '~/validations/ranking'
 import type { RankingUserItem } from '~/types/api/ranking'
 

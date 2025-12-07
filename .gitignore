@@ -31,7 +31,7 @@ backup
 public/*.xml
 
 # prisma generated
-prisma/client
+prisma/generated
 
 # migration
 migrate/lib.ts

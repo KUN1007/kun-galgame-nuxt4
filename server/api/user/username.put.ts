@@ -1,4 +1,4 @@
-import prisma from '~~/prisma/prisma'
+import { prisma } from '~~/prisma/prisma'
 import { updateUsernameSchema } from '~/validations/user'
 
 export default defineEventHandler(async (event) => {
