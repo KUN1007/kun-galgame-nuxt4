@@ -22,7 +22,7 @@ pin: false
 
 ![image.png](https://image.kungal.com/topic/user_2/%E9%B2%B2-1724334952532.webp)
 
-论坛是我们自己开发的，并且被我们自己开源在 https://github.com/KUN1007/kun-galgame-nuxt3，想怎么改就怎么改，我们就是学术组织，嗯
+论坛是我们自己开发的，并且被我们自己开源在 https://github.com/KUN1007/kun-galgame-nuxt4，想怎么改就怎么改，我们就是学术组织，嗯
 
 所以如果您想讨论学术（主要是计算机相关的）内容，欢迎发布话题，我们提供了代码高亮，之后还会支持 KaTex
 

@@ -36,7 +36,7 @@ pin: false
 
 除了以上的方式之外, 如果您对开源事业较为感兴趣, 您可以前往我们 GitHub 开源仓库的 Issue
 
-[https://github.com/KUN1007/kun-galgame-nuxt3/issues](https://github.com/KUN1007/kun-galgame-nuxt3/issues/new?template=31-bug-report_ZH_CN.yml)
+[https://github.com/KUN1007/kun-galgame-nuxt4/issues](https://github.com/KUN1007/kun-galgame-nuxt4/issues/new?template=31-bug-report_ZH_CN.yml)
 
 在这里编写您的 Issue 并提交, 以创建一个新的 Issue, 这是要获得我们优先支持最有效的方式
 

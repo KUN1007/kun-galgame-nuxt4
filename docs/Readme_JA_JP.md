@@ -1,4 +1,4 @@
-![kun-galgame-nuxt3](https://www.kungal.com/kungalgame.webp)
+![kun-galgame-nuxt4](https://www.kungal.com/kungalgame.webp)
 
 ### **[English](/Readme.md)** | **[日本語](./Readme_JA_JP.md)** | **[简体中文](./Readme_ZH_CN.md)** | **[繁體中文](./Readme_ZH_TW.md)**
 
@@ -26,7 +26,7 @@ https://www.kungal.com/ja-jp/kungalgame
 
 - [Telegram グループ](https://t.me/kungalgame)
 - [Twitter / X](https://twitter.com/kungalgame)
-- [GitHub リポジトリ](https://github.com/KUN1007/kun-galgame-nuxt3)
+- [GitHub リポジトリ](https://github.com/KUN1007/kun-galgame-nuxt4)
 - [Discord グループ](https://discord.com/invite/5F4FS2cXhX)
 - [YouTube チャンネル](https://youtube.com/@kungalgame)
 - [Bilibili](https://space.bilibili.com/1748455574)

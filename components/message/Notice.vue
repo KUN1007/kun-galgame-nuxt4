@@ -17,11 +17,11 @@
       star
     </div>
     <KunLink
-      to="https://github.com/KUN1007/kun-galgame-nuxt3"
+      to="https://github.com/KUN1007/kun-galgame-nuxt4"
       target="_blank"
       class="text-primary underline"
     >
-      https://github.com/KUN1007/kun-galgame-nuxt3
+      https://github.com/KUN1007/kun-galgame-nuxt4
     </KunLink>
   </div>
 </template>

@@ -172,7 +172,7 @@ Collaborate 其实可以分为三大步骤, 发起（Request）, 审核（Review
 
 对于鲲 Galgame 补丁, 新增的字符会被标记为绿色, 删减的字符会被标记为红色, 合并后文本不会变化, 拒绝后更新请求将保持原样, 这个过程使用了现成的 package [jsdiff](https://github.com/kpdecker/jsdiff)
 
-对于鲲 Galgame 论坛, 新增的字符会被标记为蓝色, 删减的字符会被编辑为红色, 合并后文本会变为绿色, 拒绝后更新请求将不可被查看这个, 这个过程使用了鲲 Galgame 论坛 [自行编写的 diff 算法](https://github.com/KUN1007/kun-galgame-nuxt3)
+对于鲲 Galgame 论坛, 新增的字符会被标记为蓝色, 删减的字符会被编辑为红色, 合并后文本会变为绿色, 拒绝后更新请求将不可被查看这个, 这个过程使用了鲲 Galgame 论坛 [自行编写的 diff 算法](https://github.com/KUN1007/kun-galgame-nuxt4)
 
 #### 实行 - Execute
 
@@ -188,7 +188,7 @@ Collaborate 其实可以分为三大步骤, 发起（Request）, 审核（Review
 
 目前已经有两个网站实现了 CFMSC 流程
 
-[鲲 Galgame 论坛](https://www.kungal.com/) - Nuxt3 实现
+[鲲 Galgame 论坛](https://www.kungal.com/) - Nuxt4 实现
 
 [鲲 Galgame 补丁](https://www.moyu.moe/) - Next.js 15 实现
 

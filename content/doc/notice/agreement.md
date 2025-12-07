@@ -24,7 +24,7 @@ pin: false
 
 下面是 鲲 Galgame 论坛 的开源项目地址：
 
-https://github.com/KUN1007/kun-galgame-nuxt3
+https://github.com/KUN1007/kun-galgame-nuxt4
 
 ### 鲲 Galgame 论坛的性质是由社区驱动的非盈利学术组织
 

@@ -15,7 +15,7 @@ const KUN_SITE_OSS_DOMAIN = 'https://kun-galgame-forum.iloveren.link'
 const KUN_SITE_DEVELOPMENT_DOCUMENTATION =
   'https://soft.moe/kun-visualnovel-docs/kun-forum.html'
 const KUN_SITE_TELEGRAM_GROUP = 'https://t.me/kungalgame'
-const KUN_SITE_GITHUB = 'https://github.com/KUN1007/kun-galgame-nuxt3'
+const KUN_SITE_GITHUB = 'https://github.com/KUN1007/kun-galgame-nuxt4'
 const KUN_SITE_AUTHOR_GITHUB = 'https://github.com/KUN1007'
 const KUN_SITE_LIST = [
   { name: '鲲 Galgame 导航', url: KUN_SITE_NAV },

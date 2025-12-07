@@ -22,7 +22,7 @@ YouTube: https://youtu.be/IlBDhMiDYp0
 
 本论坛开源项目地址为
 
-https://github.com/KUN1007/kun-galgame-nuxt3
+https://github.com/KUN1007/kun-galgame-nuxt4
 
 开发文档地址为
 
@@ -63,7 +63,7 @@ redis-server --version
 找一个文件夹，使用
 
 ```shell
-git clone https://github.com/KUN1007/kun-galgame-nuxt3
+git clone https://github.com/KUN1007/kun-galgame-nuxt4
 ```
 
 来 clone 我们的项目
@@ -130,7 +130,7 @@ pnpm dev
 启动我们的项目，预期的输出应该为
 
 ```shell
-> kun-galgame-nuxt3@2.19.2 dev E:\MySite\kun-galgame-nuxt3
+> kun-galgame-nuxt4@2.19.2 dev E:\MySite\kun-galgame-nuxt4
 > nuxt dev
 
 Nuxt 3.13.2 with Nitro 2.9.7
