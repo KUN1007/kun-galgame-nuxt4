@@ -1,14 +1,17 @@
 {
-  "compilerOptions": {
-    "module": "esnext",
-    "plugins": [{ "name": "@dxup/unimport" }]
-  },
-  // https://nuxt.com/docs/guide/concepts/typescript
-  "exclude": [
-    "**/backup/**",
-    "**/dist/**",
-    "**/node_modules/**",
-    "**/prisma/**"
+  "references": [
+    {
+      "path": "./.nuxt/tsconfig.app.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.node.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.server.json"
+    },
+    {
+      "path": "./.nuxt/tsconfig.shared.json"
+    }
   ],
-  "extends": "./.nuxt/tsconfig.json"
+  "files": []
 }

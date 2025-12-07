@@ -34,8 +34,6 @@
     "schema": "./prisma/schema"
   },
   "devDependencies": {
-    "@dxup/nuxt": "^0.2.2",
-    "@dxup/unimport": "^0.1.2",
     "@iconify-json/ant-design": "^1.2.5",
     "@iconify-json/carbon": "^1.2.15",
     "@iconify-json/ci": "^1.2.2",

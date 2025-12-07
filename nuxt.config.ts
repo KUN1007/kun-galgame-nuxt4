@@ -1,11 +1,21 @@
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
 import path from 'path'
+import type { TSConfig } from 'pkg-types';
 
 const packageJson = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')
 )
 const appVersion = packageJson.version
+
+const sharedTsConfig: TSConfig = {
+  exclude: [
+    '**/backup/**',
+    '**/dist/**',
+    '**/node_modules/**',
+    '**/prisma/**'
+  ]
+};
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -17,7 +27,8 @@ export default defineNuxtConfig({
   },
 
   experimental: {
-    scanPageMeta: true
+    scanPageMeta: true,
+    typescriptPlugin: true
   },
 
   compatibilityDate: '2025-07-15',
@@ -95,6 +106,18 @@ export default defineNuxtConfig({
           searchDepth: 3
         }
       }
+    }
+  },
+
+  typescript: {
+    tsConfig: {
+      ...sharedTsConfig,
+    },
+    nodeTsConfig: {
+      ...sharedTsConfig,
+    },
+    sharedTsConfig: {
+      ...sharedTsConfig,
     }
   },
 
@@ -197,6 +220,11 @@ export default defineNuxtConfig({
       '0 0 * * *': ['reset-daily'],
       '0 * * * *': ['cleanup-toolset-resource']
       // '* * * * *': ['cleanup-toolset-resource']
-    }
+    },
+    typescript: {
+      tsConfig: {
+        ...sharedTsConfig,
+      }
+    },
   }
 })
