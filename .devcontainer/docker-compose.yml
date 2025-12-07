@@ -59,7 +59,15 @@ services:
     networks:
       - devcontainer
     healthcheck:
-      test: ['CMD', 'mongosh', '--quiet', '127.0.0.1/test', '--eval', 'db.runCommand({ ping: 1 })']
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--quiet',
+          '127.0.0.1/test',
+          '--eval',
+          'db.runCommand({ ping: 1 })'
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

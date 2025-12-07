@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
 import path from 'path'
-import type { TSConfig } from 'pkg-types';
+import type { TSConfig } from 'pkg-types'
 
 const packageJson = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')
@@ -9,13 +9,8 @@ const packageJson = JSON.parse(
 const appVersion = packageJson.version
 
 const sharedTsConfig: TSConfig = {
-  exclude: [
-    '**/backup/**',
-    '**/dist/**',
-    '**/node_modules/**',
-    '**/prisma/**'
-  ]
-};
+  exclude: ['**/backup/**', '**/dist/**', '**/node_modules/**', '**/prisma/**']
+}
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -111,13 +106,13 @@ export default defineNuxtConfig({
 
   typescript: {
     tsConfig: {
-      ...sharedTsConfig,
+      ...sharedTsConfig
     },
     nodeTsConfig: {
-      ...sharedTsConfig,
+      ...sharedTsConfig
     },
     sharedTsConfig: {
-      ...sharedTsConfig,
+      ...sharedTsConfig
     }
   },
 
@@ -223,8 +218,8 @@ export default defineNuxtConfig({
     },
     typescript: {
       tsConfig: {
-        ...sharedTsConfig,
+        ...sharedTsConfig
       }
-    },
+    }
   }
 })

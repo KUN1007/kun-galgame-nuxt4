@@ -4,4 +4,3 @@ export interface GalgameAdvancedFilterPersist {
   includeProviders: ProviderKey[]
   excludeOnlyProviders: ProviderKey[]
 }
-

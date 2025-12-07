@@ -1,6 +1,6 @@
 {
   "name": "kun-galgame-nuxt4",
-  "version": "5.0.14",
+  "version": "5.0.15",
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "private": true,
@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "up": "pnpm update --latest",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
+    "prisma:push": "prisma db push && prisma generate",
     "prisma:sync": "pnpm prisma:push && pnpm prisma:generate",
     "prisma:pull": "prisma db pull",
     "prisma:studio": "prisma studio",
