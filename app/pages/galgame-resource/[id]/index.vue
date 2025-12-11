@@ -60,12 +60,10 @@ if (data.value && data.value !== 'not found') {
           />
         </div>
 
-        <GalgameResourceDetailMeta :galgame="data.galgame" />
+        <GalgameResourceDetailRecommendations
+          :recommendations="data.recommendations"
+        />
       </div>
-
-      <GalgameResourceDetailRecommendations
-        :recommendations="data.recommendations"
-      />
     </template>
 
     <KunNull

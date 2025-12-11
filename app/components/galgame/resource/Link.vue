@@ -23,37 +23,6 @@ const { id } = usePersistUserStore()
 const { rewriteResourceId } = storeToRefs(useTempGalgameResourceStore())
 const isFetching = ref(false)
 
-const handleGetDetail = async (galgameResourceId: number) => {
-  if (details.value) {
-    return
-  }
-  isFetching.value = true
-  const result = await $fetch(
-    `/api/galgame/${props.resource.galgameId}/resource`,
-    {
-      query: { galgameResourceId },
-      method: 'GET',
-      ...kungalgameResponseHandler
-    }
-  )
-  isFetching.value = false
-
-  if (result) {
-    details.value = result
-  }
-}
-
-const handleOpenDetails = async () => {
-  if (details.value) {
-    isModalOpen.value = true
-    return
-  }
-  await handleGetDetail(props.resource.id)
-  if (details.value) {
-    isModalOpen.value = true
-  }
-}
-
 const handleMarkValid = async (
   galgameId: number,
   galgameResourceId: number
@@ -176,10 +145,10 @@ onMounted(async () => {
           size="sm"
           variant="flat"
           v-if="resource.id !== rewriteResourceId"
-          @click="handleOpenDetails()"
+          :href="`/galgame-resource/${resource.id}`"
           :loading="isFetching"
         >
-          获取链接
+          下载资源
         </KunButton>
 
         <KunTooltip text="举报违规">
@@ -209,19 +178,6 @@ onMounted(async () => {
         </KunTooltip>
       </div>
     </div>
-
-    <KunModal
-      :modal-value="isModalOpen"
-      @update:modal-value="(value) => (isModalOpen = value)"
-      inner-class-name="max-w-xl"
-    >
-      <GalgameResourceDetails
-        v-if="details"
-        :details="details"
-        :refresh="refresh"
-      />
-      <KunLoading v-else />
-    </KunModal>
 
     <KunDivider margin="0 0 17px 0" />
   </div>

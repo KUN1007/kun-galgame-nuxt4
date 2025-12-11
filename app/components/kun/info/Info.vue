@@ -25,7 +25,7 @@ const variantClasses = computed(() => {
     case 'solid':
       return ' text-white'
     case 'bordered':
-      return 'border-2 bg-transparent'
+      return 'border-[1.5px]'
     case 'light':
       return 'bg-opacity-20 border-transparent'
     case 'flat':
@@ -52,13 +52,13 @@ const colorVariants: Record<KunUIVariant, Record<KunInfoColor, string>> = {
     info: 'bg-info-600'
   },
   bordered: {
-    default: 'bg-transparent border-default',
-    primary: 'bg-transparent border-primary text-primary',
-    secondary: 'bg-transparent border-secondary text-secondary',
-    success: 'bg-transparent border-success text-success',
-    warning: 'bg-transparent border-warning text-warning',
-    danger: 'bg-transparent border-danger text-danger',
-    info: 'bg-transparent border-info text-info'
+    default: 'bg-transparent bg-default/15 border-default',
+    primary: 'bg-transparent bg-primary/15 border-primary text-primary',
+    secondary: 'bg-transparent bg-secondary/15 border-secondary text-secondary',
+    success: 'bg-transparent bg-success/15 border-success-600 text-success',
+    warning: 'bg-transparent bg-warning/15 border-warning-600 text-warning',
+    danger: 'bg-transparent bg-danger/15 border-danger text-danger',
+    info: 'bg-transparent bg-info/15 border-info text-info'
   },
   light: {
     default: 'bg-transparent hover:bg-default/40',

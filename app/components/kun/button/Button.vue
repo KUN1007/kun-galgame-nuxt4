@@ -92,7 +92,7 @@ const colorVariants: Record<KunUIVariant, Record<KunUIColor, string>> = {
     default: 'bg-default',
     primary: 'bg-primary',
     secondary: 'bg-secondary',
-    success: 'bg-success-600',
+    success: 'bg-success-600 dark:bg-success-300',
     warning: 'bg-warning',
     danger: 'bg-danger'
   },

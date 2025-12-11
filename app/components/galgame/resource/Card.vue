@@ -5,7 +5,8 @@ import {
 } from '~/constants/galgameResource'
 import {
   KUN_GALGAME_RESOURCE_TYPE_MAP,
-  KUN_GALGAME_RESOURCE_LANGUAGE_MAP
+  KUN_GALGAME_RESOURCE_LANGUAGE_MAP,
+  KUN_GALGAME_RESOURCE_PLATFORM_MAP
 } from '~/constants/galgame'
 
 defineProps<{
@@ -20,16 +21,20 @@ defineProps<{
     :is-pressable="true"
     :to="`/galgame-resource/${resource.galgameId}`"
     :dark-border="true"
+    content-class="space-y-2"
   >
     <div class="flex items-center gap-2">
-      <div
-        class="bg-primary/10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-      >
+      <KunBadge size="sm" variant="flat" color="primary">
         <KunIcon
           :name="GALGAME_RESOURCE_PLATFORM_ICON_MAP[resource.platform]"
           class="text-primary h-4 w-4"
         />
-      </div>
+        {{ KUN_GALGAME_RESOURCE_PLATFORM_MAP[resource.platform] }}
+      </KunBadge>
+
+      <KunBadge color="warning">
+        {{ `资源大小 ${resource.size}` }}
+      </KunBadge>
 
       <span class="text-default-500 text-sm">
         {{ formatTimeDifference(resource.created) }}
@@ -54,14 +59,9 @@ defineProps<{
           {{ KUN_GALGAME_RESOURCE_LANGUAGE_MAP[resource.language] }}
         </div>
 
-        <div class="flex items-center gap-2">
-          <KunBadge color="warning">
-            {{ `资源大小 ${resource.size}` }}
-          </KunBadge>
-
-          <KunBadge color="secondary">
-            {{ `下载数 ${resource.download}` }}
-          </KunBadge>
+        <div class="text-default-500 flex items-center gap-1 text-sm">
+          <KunIcon name="lucide:download" class="h-4 w-4" />
+          {{ resource.download }}
         </div>
       </div>
     </div>

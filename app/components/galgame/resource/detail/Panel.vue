@@ -36,11 +36,11 @@ const isResourceExpired = computed(() => props.resource.status === 1)
   <KunCard
     :is-hoverable="false"
     :is-transparent="false"
-    content-class="space-y-4"
+    content-class="space-y-4 h-full"
   >
     <KunHeader
-      name="资源详情"
-      description="查看该 Galgame 的下载信息，若失效请及时反馈或贡献新地址。"
+      name="Galgame 资源详情"
+      description="查看该 Galgame 的下载信息, 若失效请及时向资源发布者反馈或贡献新的下载资源。"
       scale="h3"
     />
 
@@ -74,6 +74,6 @@ const isResourceExpired = computed(() => props.resource.status === 1)
 
     <KunDivider />
 
-    <GalgameResourceDetails :details="resource" :refresh="refresh" />
+    <GalgameResourceDetailInfo :details="resource" :refresh="refresh" />
   </KunCard>
 </template>
