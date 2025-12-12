@@ -19,11 +19,11 @@ defineProps<{
     :is-transparent="true"
     :is-hoverable="true"
     :is-pressable="true"
-    :to="`/galgame-resource/${resource.galgameId}`"
+    :to="`/galgame-resource/${resource.id}`"
     :dark-border="true"
     content-class="space-y-2"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <KunBadge size="sm" variant="flat" color="primary">
         <KunIcon
           :name="GALGAME_RESOURCE_PLATFORM_ICON_MAP[resource.platform]"
@@ -33,7 +33,8 @@ defineProps<{
       </KunBadge>
 
       <KunBadge color="warning">
-        {{ `资源大小 ${resource.size}` }}
+        <KunIcon name="lucide:database" />
+        {{ resource.size }}
       </KunBadge>
 
       <span class="text-default-500 text-sm">

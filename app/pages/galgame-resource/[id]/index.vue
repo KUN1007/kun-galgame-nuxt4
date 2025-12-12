@@ -53,12 +53,11 @@ if (data.value && data.value !== 'not found') {
       <GalgameResourceDetailHero :galgame="data.galgame" />
 
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <div class="lg:col-span-2">
-          <GalgameResourceDetailPanel
-            :resource="data.resource"
-            :refresh="refresh"
-          />
-        </div>
+        <GalgameResourceDetailPanel
+          class="lg:col-span-2"
+          :resource="data.resource"
+          :refresh="refresh"
+        />
 
         <GalgameResourceDetailRecommendations
           :recommendations="data.recommendations"

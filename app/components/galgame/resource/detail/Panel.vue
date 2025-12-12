@@ -28,15 +28,13 @@ const resourcePlatformLabel = computed(
     KUN_GALGAME_RESOURCE_PLATFORM_MAP[props.resource.platform] ||
     props.resource.platform
 )
-
-const isResourceExpired = computed(() => props.resource.status === 1)
 </script>
 
 <template>
   <KunCard
     :is-hoverable="false"
     :is-transparent="false"
-    content-class="space-y-4 h-full"
+    content-class="space-y-4 h-full justify-start"
   >
     <KunHeader
       name="Galgame 资源详情"
@@ -67,12 +65,7 @@ const isResourceExpired = computed(() => props.resource.status === 1)
         <KunIcon name="lucide:download" />
         {{ `${resource.download} 次下载` }}
       </KunBadge>
-      <KunBadge :color="isResourceExpired ? 'danger' : 'success'">
-        {{ isResourceExpired ? '待修复' : '可用' }}
-      </KunBadge>
     </div>
-
-    <KunDivider />
 
     <GalgameResourceDetailInfo :details="resource" :refresh="refresh" />
   </KunCard>

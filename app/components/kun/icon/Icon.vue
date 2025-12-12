@@ -26,6 +26,10 @@ const props = withDefaults(
   color: inherit;
 }
 
+:deep(ellipse) {
+  color: inherit;
+}
+
 :deep(g) {
   color: inherit;
 }

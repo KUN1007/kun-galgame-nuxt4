@@ -7,7 +7,9 @@ const props = defineProps<{
   details: GalgameResourceDetails
   refresh: () => void
 }>()
+
 const isFetching = ref(false)
+const isResourceExpired = computed(() => props.details.status === 1)
 
 const handleDeleteResource = async (
   galgameId: number,
@@ -72,7 +74,7 @@ const handleRewriteResource = (details: GalgameResourceDetails) => {
 </script>
 
 <template>
-  <div class="space-y-3" v-if="details">
+  <div class="flex h-full flex-col gap-3" v-if="details">
     <div class="flex items-center gap-2">
       <KunAvatar :user="details.user" />
       <span>{{ details.user.name }}</span>
@@ -93,9 +95,10 @@ const handleRewriteResource = (details: GalgameResourceDetails) => {
     </KunInfo>
 
     <KunInfo
-      color="success"
+      :color="isResourceExpired ? 'warning' : 'success'"
       variant="bordered"
       title="下载链接 - 点击下面的链接以下载"
+      class-name="relative"
     >
       <KunLink
         v-for="(kun, index) in details.link"
@@ -111,34 +114,58 @@ const handleRewriteResource = (details: GalgameResourceDetails) => {
       <div class="mt-3 flex items-center justify-end gap-2">
         <KunCopy
           variant="solid"
-          color="success"
+          :color="isResourceExpired ? 'warning' : 'success'"
           v-if="details.code"
           :name="`提取码 ${details.code}`"
           :text="details.code"
         />
         <KunCopy
           variant="solid"
-          color="success"
+          :color="isResourceExpired ? 'warning' : 'success'"
           v-if="details.password"
           :name="`解压码 ${details.password}`"
           :text="details.password"
         />
       </div>
+
+      <KunBadge
+        class="absolute -top-3 -right-3"
+        :color="isResourceExpired ? 'danger' : 'success'"
+        variant="solid"
+      >
+        {{
+          isResourceExpired
+            ? '该资源链接被其它用户标记为失效'
+            : '该资源链接可用'
+        }}
+      </KunBadge>
     </KunInfo>
 
-    <KunInfo
-      title="补票提示信息"
-      description="须知 Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭, 可见经济并不宽裕。如果条件允许, 请尽可能前往本页面的 Galgame 制作商部分进行正版 Galgame 补票, 感谢您对 Galgame 业界做出的贡献"
-      color="danger"
-    />
+    <KunInfo title="补票提示信息" color="danger">
+      <p>
+        须知 Galgame 厂商制作游戏不易, 很多厂商如今都在炒冷饭,
+        可见经济并不宽裕。如果条件允许, 请尽可能前往
+        <KunLink size="sm" :to="`/galgame/${details.galgameId}`">
+          Galgame 详情
+        </KunLink>
+        中的 Galgame 制作商部分 进行正版 Galgame 补票, 感谢您对 Galgame
+        业界做出的贡献
+      </p>
+    </KunInfo>
 
-    <KunInfo
-      title="鲲的小请求"
-      description="在您下载这部 Galgame 并游玩之后, 可否请您在本网站为这部 Galgame 提交一个评分, 这将有助于我们把优秀的 Galgame 推荐给更多人, 谢谢您的支持"
-    />
+    <KunInfo title="鲲的小请求">
+      <p>
+        在您下载这部 Galgame 并游玩之后, 可否请您在本网站的
+        <KunLink size="sm" :to="`/galgame/${details.galgameId}`">
+          Galgame 评分页面
+        </KunLink>
+        为这部 Galgame 提交一个评分, 这将有助于我们把优秀的 Galgame
+        推荐给更多人, 谢谢您的支持
+      </p>
+    </KunInfo>
 
     <div
-      class="flex items-center justify-end gap-1"
+      class="mt-auto flex items-center justify-end gap-1"
       v-if="details.user.id === id || role > 1"
     >
       <KunButton
@@ -169,6 +196,10 @@ const handleRewriteResource = (details: GalgameResourceDetails) => {
           报告链接过期
         </KunButton>
       </div>
+
+      <KunButton variant="flat" :href="`/galgame/${details.galgameId}`">
+        反馈资源问题
+      </KunButton>
     </div>
   </div>
 </template>

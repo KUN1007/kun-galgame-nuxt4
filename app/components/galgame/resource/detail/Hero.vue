@@ -35,11 +35,11 @@ const platformLabels = computed(() => {
 
 <template>
   <KunCard :is-hoverable="false" :is-transparent="false">
-    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-      <div class="relative">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-4 lg:grid-cols-5">
+      <div class="relative md:col-span-2">
         <KunImage
           data-kun-lazy-image="true"
-          class="rounded-lg object-cover"
+          class="max-h-70 rounded-lg object-cover"
           :style="{ aspectRatio: '16/9' }"
           :src="galgame.banner"
           loading="lazy"
@@ -55,12 +55,12 @@ const platformLabels = computed(() => {
         </KunBadge>
       </div>
 
-      <div class="flex w-full flex-col gap-3">
+      <div class="flex w-full flex-col gap-3 md:col-span-2 lg:col-span-3">
         <div>
           <h1 class="text-2xl font-bold">
             {{ galgameName }}
             <KunBadge
-              class-name="ml-2"
+              class-name="ml-2 -translate-y-1"
               :color="galgame.contentLimit === 'all' ? 'success' : 'danger'"
             >
               {{ galgame.contentLimit === 'all' ? '全年龄' : 'R18' }}
@@ -73,7 +73,7 @@ const platformLabels = computed(() => {
           </p>
         </div>
 
-        <div class="space-y-3">
+        <div class="flex flex-wrap gap-3">
           <div>
             <p class="text-default-500 text-xs tracking-wide uppercase">
               支持下载的类型
@@ -119,7 +119,7 @@ const platformLabels = computed(() => {
         <div class="mt-auto flex flex-wrap items-center justify-end gap-2">
           <KunButton variant="flat" href="/galgame"> 浏览更多资源 </KunButton>
           <KunButton :href="`/galgame/${galgame.id}`">
-            访问 Galgame 页面
+            查看这个 Galgame 的更多资源
           </KunButton>
         </div>
       </div>
