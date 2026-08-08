@@ -52,17 +52,26 @@ func (r *UpdateRepository) DeleteHistory(id int) {
 
 // ── Todo ────────────────────────────────
 
-// CountTodos returns total todo count.
-func (r *UpdateRepository) CountTodos() int64 {
+// CountTodos returns total todo count, optionally filtered by status.
+func (r *UpdateRepository) CountTodos(status *int) int64 {
 	var total int64
-	r.db.Model(&adminModel.Todo{}).Count(&total)
+	q := r.db.Model(&adminModel.Todo{})
+	if status != nil {
+		q = q.Where("status = ?", *status)
+	}
+	q.Count(&total)
 	return total
 }
 
-// FindTodosPaginated returns paginated todos ordered by created DESC.
-func (r *UpdateRepository) FindTodosPaginated(page, limit int) []adminModel.Todo {
+// FindTodosPaginated returns paginated todos ordered by created DESC,
+// optionally filtered by status.
+func (r *UpdateRepository) FindTodosPaginated(page, limit int, status *int) []adminModel.Todo {
 	var todos []adminModel.Todo
-	r.db.Order("created DESC").
+	q := r.db.Order("created DESC")
+	if status != nil {
+		q = q.Where("status = ?", *status)
+	}
+	q.
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&todos)
 	return todos

@@ -9,6 +9,12 @@ type ListQuery struct {
 	Limit int `query:"limit" validate:"min=1,max=50"`
 }
 
+type TodoListQuery struct {
+	Page   int  `query:"page" validate:"min=1"`
+	Limit  int  `query:"limit" validate:"min=1,max=50"`
+	Status *int `query:"status" validate:"omitempty,min=0,max=3"`
+}
+
 // Caps mirror apps/web/app/validations/update-log.ts + todo.ts. The FE
 // schemas enforced these (version max=20, content_* max=1000, todo
 // status 0..10) but the BE was silently accepting anything — so a

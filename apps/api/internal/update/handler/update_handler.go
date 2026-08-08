@@ -115,13 +115,13 @@ func (h *UpdateHandler) DeleteHistory(c fiber.Ctx) error {
 // GetTodos returns paginated todo list.
 // GET /api/update/todo
 func (h *UpdateHandler) GetTodos(c fiber.Ctx) error {
-	var req dto.ListQuery
+	var req dto.TodoListQuery
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 
-	todos := h.repo.FindTodosPaginated(req.Page, req.Limit)
-	total := h.repo.CountTodos()
+	todos := h.repo.FindTodosPaginated(req.Page, req.Limit, req.Status)
+	total := h.repo.CountTodos(req.Status)
 
 	return response.OK(c, fiber.Map{
 		"todos": todos,

@@ -55,3 +55,11 @@ export const KUN_UPDATE_LOG_STATUS_MAP: Record<string, string> = {
   2: '已完成',
   3: '已废弃'
 }
+
+export const kunTodoStatusFilterOptions = [
+  { value: 'all', label: '全部', icon: 'lucide:list-filter' },
+  { value: 0, label: KUN_UPDATE_LOG_STATUS_MAP[0], icon: 'lucide:circle-divide' },
+  { value: 1, label: KUN_UPDATE_LOG_STATUS_MAP[1], icon: 'lucide:loader' },
+  { value: 2, label: KUN_UPDATE_LOG_STATUS_MAP[2], icon: 'lucide:check' },
+  { value: 3, label: KUN_UPDATE_LOG_STATUS_MAP[3], icon: 'lucide:x' }
+] as const

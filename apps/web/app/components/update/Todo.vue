@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {
   KUN_TODO_TYPE_MAP,
-  KUN_UPDATE_LOG_STATUS_MAP
+  KUN_UPDATE_LOG_STATUS_MAP,
+  kunTodoStatusFilterOptions
 } from '~/constants/update'
 import type { UpdateTodoPayload } from './types'
 
@@ -25,8 +26,17 @@ const textMap: Record<number, string> = {
 const pageData = ref({
   page: 1,
   limit: 30,
-  language: 'zh-cn'
+  language: 'zh-cn',
+  status: undefined as number | undefined
 })
+
+const selectedStatus = ref<'all' | number>('all')
+
+const setStatusFilter = (status: 'all' | number) => {
+  selectedStatus.value = status
+  pageData.value.page = 1
+  pageData.value.status = status === 'all' ? undefined : status
+}
 
 const { data, status, refresh } = await useKunFetch<UpdateTodoList>(
   '/update/todo',
@@ -88,6 +98,44 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
       </template>
     </KunHeader>
 
+    <KunCard :is-hoverable="false" :is-transparent="false">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-default-600 text-sm">筛选状态</span>
+
+          <KunButton
+            v-for="option in kunTodoStatusFilterOptions"
+            :key="option.value"
+            size="sm"
+            :variant="selectedStatus === option.value ? 'solid' : 'flat'"
+            :color="selectedStatus === option.value ? 'primary' : 'default'"
+            @click="setStatusFilter(option.value)"
+          >
+            <KunIcon
+              :name="option.icon"
+              :class="
+                cn(
+                  'h-4 w-4',
+                  selectedStatus !== option.value &&
+                    option.value === 1 &&
+                    'text-primary',
+                  selectedStatus !== option.value &&
+                    option.value === 2 &&
+                    'text-success',
+                  selectedStatus !== option.value &&
+                    option.value === 3 &&
+                    'text-danger'
+                )
+              "
+            />
+            {{ option.label }}
+          </KunButton>
+        </div>
+
+        <span class="text-default-500 text-sm"> 共 {{ data.total }} 项 </span>
+      </div>
+    </KunCard>
+
     <KunCard
       :is-hoverable="false"
       :is-transparent="false"
@@ -131,6 +179,16 @@ const handleTodoAction = async (data: UpdateTodoPayload) => {
         >
           编辑
         </KunButton>
+      </div>
+    </KunCard>
+
+    <KunCard
+      v-if="!data.todos.length"
+      :is-hoverable="false"
+      :is-transparent="false"
+    >
+      <div class="text-default-500 py-8 text-center text-sm">
+        当前筛选条件下没有待办。
       </div>
     </KunCard>
 

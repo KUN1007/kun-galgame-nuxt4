@@ -3,7 +3,8 @@ import { KUN_TODO_TYPE_CONST } from '~/constants/update'
 
 export const getTodoSchema = z.object({
   page: z.coerce.number<number>().min(1).max(9999999),
-  limit: z.coerce.number<number>().min(1).max(30)
+  limit: z.coerce.number<number>().min(1).max(30),
+  status: z.coerce.number<number>().min(0).max(3).optional()
 })
 
 export const createTodoSchema = z.object({
