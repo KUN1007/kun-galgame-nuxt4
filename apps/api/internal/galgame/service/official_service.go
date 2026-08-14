@@ -11,14 +11,14 @@ import (
 
 type OfficialService struct {
 	galgameClient *client.GalgameClient
-	galgameSvc    *GalgameService
+	enricher      *GalgameEnricher
 	index         *officialIndexCache
 }
 
-func NewOfficialService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *OfficialService {
+func NewOfficialService(galgameClient *client.GalgameClient, enricher *GalgameEnricher) *OfficialService {
 	return &OfficialService{
 		galgameClient: galgameClient,
-		galgameSvc:    galgameSvc,
+		enricher:      enricher,
 		index:         newOfficialIndexCache(),
 	}
 }
@@ -72,34 +72,20 @@ func (s *OfficialService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该会社")
 	}
 
-	members, appErr := s.galgameClient.CatalogLabelRollupMembers(ctx, id, isSFW, taxonomyMemberPageCap)
+	items, appErr := s.galgameClient.CatalogLabelMemberItems(ctx, id, isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
-	}
-	memberIDs := make([]int, 0, len(members))
-	viaIDs := []int{}
-	viaByGID := make(map[int]*dto.OfficialBrief, len(members))
-	for _, m := range members {
-		memberIDs = append(memberIDs, m.GID)
-		if m.Via == nil {
-			continue
-		}
-		viaIDs = append(viaIDs, m.GID)
-		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name}
 	}
 
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
-	if appErr != nil {
-		return nil, appErr
-	}
+	cards := s.enricher.ToCards(ctx, catalogItemsToNextMoe(items))
+	total := int64(len(cards))
 	var imprintCount int64
-	if len(viaIDs) > 0 {
-		imprintCount = s.galgameSvc.countLocalMembers(buildEntityFilter(rawQuery, viaIDs))
-	}
-	cards := listCardsToEntityCards(page.Galgames)
 	for i := range cards {
-		cards[i].ViaOfficial = viaByGID[cards[i].ID]
+		if cards[i].ViaOfficial != nil {
+			imprintCount++
+		}
 	}
+	cards = paginateEntityCards(cards, rawQuery)
 
 	return &dto.OfficialDetail{
 		ID:                  int(o.ID),
@@ -112,8 +98,8 @@ func (s *OfficialService) GetDetail(
 		Description:         preferredIntro(o.Intros),
 		Alias:               emptyStrSliceIfNil(o.Aliases),
 		Galgame:             cards,
-		GalgameCount:        page.Total,
-		OwnGalgameCount:     page.Total - imprintCount,
+		GalgameCount:        total,
+		OwnGalgameCount:     total - imprintCount,
 		ImprintGalgameCount: imprintCount,
 	}, nil
 }

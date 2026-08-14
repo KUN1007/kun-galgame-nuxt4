@@ -63,6 +63,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 			Platform:                 emptyStrSliceIfNil(platformMap[g.ID]),
 			Language:                 emptyStrSliceIfNil(languageMap[g.ID]),
 			IsOnForum:                onForum,
+			ViaOfficial:              g.ViaOfficial,
 		}
 	}
 	return cards

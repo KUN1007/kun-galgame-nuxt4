@@ -20,9 +20,10 @@ type NextMoeGalgameItem struct {
 	EffectiveBannerWidth     int     `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int     `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string  `json:"effective_banner_thumbhash,omitempty"`
-	UserID                   int     `json:"user_id"`
-	ReleasePrecision         string  `json:"release_precision"`
-	Status                   int     `json:"status"`
+	UserID                   int            `json:"user_id"`
+	ReleasePrecision         string         `json:"release_precision"`
+	Status                   int            `json:"status"`
+	ViaOfficial              *OfficialBrief `json:"via_official,omitempty"`
 }
 
 type NextMoeGalgameCover struct {

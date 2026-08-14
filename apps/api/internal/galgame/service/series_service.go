@@ -165,12 +165,9 @@ func (s *SeriesService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该系列")
 	}
 
-	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"series_id": {id}}, isSFW, taxonomyMemberPageCap)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	cards, total, appErr := fetchCatalogMemberCards(ctx,
+		s.galgameClient, s.enricher,
+		url.Values{"series_id": {id}}, rawQuery, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -179,8 +176,8 @@ func (s *SeriesService) GetDetail(
 		ID:                 int(rec.ID),
 		Name:               rec.DisplayName,
 		Description:        seriesIntro(rec),
-		Galgame:            listCardsToEntityCards(page.Galgames),
-		GalgameCount:       page.Total,
+		Galgame:            cards,
+		GalgameCount:       total,
 		UnpublishedGalgame: s.unpublishedMembers(ctx, id, isSFW),
 	}, nil
 }

@@ -376,6 +376,9 @@ func CatalogItemToNextMoeItem(it *CatalogWorkListItem) dto.NextMoeGalgameItem {
 	} else {
 		m.Status = galgameStatusVndbDraft
 	}
+	if it.ViaLabel != nil {
+		m.ViaOfficial = &dto.OfficialBrief{ID: int(it.ViaLabel.ID), Name: it.ViaLabel.Name}
+	}
 	m.EffectiveBannerHash, m.EffectiveBannerURL,
 		m.EffectiveBannerWidth, m.EffectiveBannerHeight,
 		m.EffectiveBannerThumbhash = coverFields(it.Covers, it.Cover)

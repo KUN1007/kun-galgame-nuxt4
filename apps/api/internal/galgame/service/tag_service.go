@@ -162,12 +162,9 @@ func (s *TagService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该标签")
 	}
 
-	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"tag_id": {id}}, isSFW, taxonomyMemberPageCap)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	cards, total, appErr := fetchCatalogMemberCards(ctx,
+		s.galgameClient, s.enricher,
+		url.Values{"tag_id": {id}}, rawQuery, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -179,8 +176,8 @@ func (s *TagService) GetDetail(
 		Hidden:       t.Tier == client.TagTierHidden,
 		Description:  preferredIntro(t.Intros),
 		Alias:        []string{},
-		Galgame:      listCardsToEntityCards(page.Galgames),
-		GalgameCount: page.Total,
+		Galgame:      cards,
+		GalgameCount: total,
 	}, nil
 }
 

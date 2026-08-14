@@ -12,10 +12,11 @@ import (
 type EngineService struct {
 	galgameClient *client.GalgameClient
 	galgameSvc    *GalgameService
+	enricher      *GalgameEnricher
 }
 
-func NewEngineService(galgameClient *client.GalgameClient, galgameSvc *GalgameService) *EngineService {
-	return &EngineService{galgameClient: galgameClient, galgameSvc: galgameSvc}
+func NewEngineService(galgameClient *client.GalgameClient, enricher *GalgameEnricher, galgameSvc *GalgameService) *EngineService {
+	return &EngineService{galgameClient: galgameClient, enricher: enricher, galgameSvc: galgameSvc}
 }
 
 const engineIndexPageCap = 20
@@ -63,12 +64,9 @@ func (s *EngineService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该引擎")
 	}
 
-	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"engine_id": {id}}, isSFW, taxonomyMemberPageCap)
-	if appErr != nil {
-		return nil, appErr
-	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	cards, total, appErr := fetchCatalogMemberCards(ctx,
+		s.galgameClient, s.enricher,
+		url.Values{"engine_id": {id}}, rawQuery, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -78,8 +76,8 @@ func (s *EngineService) GetDetail(
 		Name:         e.Name,
 		Description:  e.Description,
 		Alias:        emptyStrSliceIfNil(e.Aliases),
-		Galgame:      listCardsToEntityCards(page.Galgames),
-		GalgameCount: page.Total,
+		Galgame:      cards,
+		GalgameCount: total,
 	}, nil
 }
 

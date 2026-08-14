@@ -463,8 +463,18 @@ func (c *GalgameClient) CatalogLabelRollupMembers(ctx context.Context, labelID s
 		url.Values{"label_id": {labelID}, "label_rollup": {"1"}}, isSFW, pageCap)
 }
 
-func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
-	members := []CatalogRollupMember{}
+// CatalogLabelMemberItems returns the label's LIVE members (direct + imprint
+// rollup) as full catalog items. Unlike CatalogLabelRollupMembers it keeps
+// works the forum hasn't claimed — they carry is_on_forum=false downstream —
+// because the official detail page lists the catalog, not the forum's own
+// galgame table.
+func (c *GalgameClient) CatalogLabelMemberItems(ctx context.Context, labelID string, isSFW bool, pageCap int) ([]CatalogWorkListItem, *errors.AppError) {
+	return c.catalogMemberItems(ctx,
+		url.Values{"label_id": {labelID}, "label_rollup": {"1"}}, isSFW, pageCap)
+}
+
+func (c *GalgameClient) catalogMemberItems(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]CatalogWorkListItem, *errors.AppError) {
+	items := []CatalogWorkListItem{}
 	cursor := ""
 	for page := 0; page < pageCap; page++ {
 		q := url.Values{}
@@ -486,17 +496,29 @@ func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, i
 			if !res.Items[i].isRenderable() {
 				continue
 			}
-			if gid := res.Items[i].gid(); gid > 0 {
-				members = append(members, CatalogRollupMember{
-					GID: gid,
-					Via: res.Items[i].ViaLabel,
-				})
-			}
+			items = append(items, res.Items[i])
 		}
 		if res.NextCursor == "" {
 			break
 		}
 		cursor = res.NextCursor
+	}
+	return items, nil
+}
+
+func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
+	items, appErr := c.catalogMemberItems(ctx, filter, isSFW, pageCap)
+	if appErr != nil {
+		return nil, appErr
+	}
+	members := make([]CatalogRollupMember, 0, len(items))
+	for i := range items {
+		if gid := items[i].gid(); gid > 0 {
+			members = append(members, CatalogRollupMember{
+				GID: gid,
+				Via: items[i].ViaLabel,
+			})
+		}
 	}
 	return members, nil
 }
