@@ -148,6 +148,9 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	if got := rec.claimsQ.Get("claim_state"); got != "pending,declined" {
 		t.Errorf("claim_state = %q, want pending,declined", got)
 	}
+	if got := rec.claimsQ.Get("kind"); got != "submitted" {
+		t.Errorf("kind = %q, want submitted — the wizard must list only the caller's own claims, not their reviews", got)
+	}
 	if len(page.Pending) != 1 || page.Pending[0].WorkID != 64689 {
 		t.Fatalf("pending = %+v, want the caller's own pending claim", page.Pending)
 	}

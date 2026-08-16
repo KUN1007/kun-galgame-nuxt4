@@ -315,6 +315,7 @@ func (s *SubmissionService) wizardPending(
 	page, err := s.catalog.MyClaims(ctx, accessToken, catalogclient.UserClaimFilter{
 		ClaimStates: []string{catalogclient.ClaimStatePending, catalogclient.ClaimStateDeclined},
 		Limit:       wizardDefaultLimit,
+		Kind:        catalogclient.ClaimKindSubmitted,
 	})
 	if err != nil {
 		return nil, claimActionError(err)
