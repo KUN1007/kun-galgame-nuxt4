@@ -174,6 +174,13 @@ func isApproval(ev *catalogclient.ClaimEventFeedItem) bool {
 		ev.FromState != nil && *ev.FromState == catalogclient.ClaimStatePending
 }
 
+// isDirectBirth is the trusted-submit path: the registry mints the claim
+// straight to live, so the birth event has no from_state. It is not an
+// approval (a reviewer never touched it), but it still earns the create award.
+func isDirectBirth(ev *catalogclient.ClaimEventFeedItem) bool {
+	return ev.ToState == catalogclient.ClaimStateLive && ev.FromState == nil
+}
+
 func (s *GalgameClaimEventSync) claimantOf(ctx context.Context, ev *catalogclient.ClaimEventFeedItem, gid int) int {
 	if isApproval(ev) {
 		return s.submitterOf(ctx, ev.WorkID, gid)
@@ -204,8 +211,8 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 			slog.Warn("claim live: 发布本地行失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
 			return true
 		}
-		if isApproval(ev) {
-			return s.awardApproval(ctx, ev, gid)
+		if isApproval(ev) || isDirectBirth(ev) {
+			return s.awardLive(ctx, ev, gid)
 		}
 	case claimEffectUnpublish:
 		if err := s.galgameRepo.UnpublishLocal(int(*ev.ProductWorkID)); err != nil {
@@ -221,10 +228,10 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 	return false
 }
 
-func (s *GalgameClaimEventSync) awardApproval(ctx context.Context, ev *catalogclient.ClaimEventFeedItem, gid int) (retry bool) {
-	uid := s.submitterOf(ctx, ev.WorkID, gid)
+func (s *GalgameClaimEventSync) awardLive(ctx context.Context, ev *catalogclient.ClaimEventFeedItem, gid int) (retry bool) {
+	uid := s.claimantOf(ctx, ev, gid)
 	if uid <= 0 {
-		slog.Error("claim approve: 无法归属投稿人, 跳过发奖",
+		slog.Error("claim live: 无法归属投稿人, 跳过发奖",
 			"event", ev.ID, "work", ev.WorkID, "gid", gid)
 		return false
 	}
@@ -232,11 +239,11 @@ func (s *GalgameClaimEventSync) awardApproval(ctx context.Context, ev *catalogcl
 		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
 		moemoepoint.Key("claim_approved", strconv.FormatInt(ev.ID, 10))); err != nil {
 		if moemoepoint.IsPermanentAwardError(err) {
-			slog.Error("claim approve: 发奖被 OAuth 永久拒绝, 跳过该事件",
+			slog.Error("claim live: 发奖被 OAuth 永久拒绝, 跳过该事件",
 				"event", ev.ID, "target", uid, "error", err)
 			return false
 		}
-		slog.Warn("claim approve: 发奖瞬时失败, 将重试", "event", ev.ID, "target", uid, "error", err)
+		slog.Warn("claim live: 发奖瞬时失败, 将重试", "event", ev.ID, "target", uid, "error", err)
 		return true
 	}
 	return false

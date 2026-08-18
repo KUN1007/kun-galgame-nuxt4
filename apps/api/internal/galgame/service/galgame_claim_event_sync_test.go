@@ -49,19 +49,27 @@ func TestEffectOfTransition(t *testing.T) {
 	}
 }
 
-func TestOnlyApprovalAwardsFromTheFeed(t *testing.T) {
+func TestLiveAwardCondition(t *testing.T) {
 	gid := ptr(int64(11))
-	if !isApproval(event(1, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateLive, gid)) {
+	awards := func(from *string) bool {
+		ev := event(1, from, catalogclient.ClaimStateLive, gid)
+		return isApproval(ev) || isDirectBirth(ev)
+	}
+	if !awards(ptr(catalogclient.ClaimStatePending)) {
 		t.Error("pending → live is the approval route and must award")
 	}
-	if isApproval(event(2, ptr(catalogclient.ClaimStateDraft), catalogclient.ClaimStateLive, gid)) {
+	if !awards(nil) {
+		t.Error("a trusted submit born live must award")
+	}
+	if awards(ptr(catalogclient.ClaimStateDraft)) {
 		t.Error("draft → live is the owner publishing; the request path already awarded it")
 	}
-	if isApproval(event(3, nil, catalogclient.ClaimStateLive, gid)) {
-		t.Error("a claim born live has no submission to reward")
+	if awards(ptr(catalogclient.ClaimStateHidden)) {
+		t.Error("unban must not award — lifting a ban does not make the admin an author")
 	}
-	if isApproval(event(4, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid)) {
-		t.Error("a decline is not an approval")
+	declined := event(2, ptr(catalogclient.ClaimStatePending), catalogclient.ClaimStateDeclined, gid)
+	if isApproval(declined) || isDirectBirth(declined) {
+		t.Error("a decline is not a live transition")
 	}
 }
 
