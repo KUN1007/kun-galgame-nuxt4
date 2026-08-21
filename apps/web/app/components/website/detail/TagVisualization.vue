@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { KUN_TAG_CATEGORY_TITLE } from '~/constants/galgameWebsite'
-
 interface TagDetail extends WebsiteTag {
   description: string
 }
@@ -10,6 +8,8 @@ const props = defineProps<{
 }>()
 
 const isShowDetail = ref(false)
+
+const { data: groups } = useWebsiteTagGroups()
 
 const categoryThemeColors = [
   'primary',
@@ -21,23 +21,21 @@ const categoryThemeColors = [
   'danger'
 ]
 
-const getCategoryPrefix = (tagName: string): string => {
-  const match = tagName.match(/^([a-z_]+)\d*$/)
-  return match ? match[1]! : 'misc'
-}
-
 const totalScore = computed(() => {
-  return props.tags.reduce((sum, tag) => {
-    const score = tag.level || 0
-    return sum + score
-  }, 0)
+  return props.tags.reduce((sum, tag) => sum + (tag.level || 0), 0)
 })
 
+const UNGROUPED_ID = -1
+
 const categoryStats = computed(() => {
+  const labels = new Map<number, string>(
+    (groups.value ?? []).map((group) => [group.id, group.label || group.name])
+  )
+
   const categories: Record<
-    string,
+    number,
     {
-      name: string
+      name: number
       label: string
       score: number
       tags: TagDetail[]
@@ -46,13 +44,13 @@ const categoryStats = computed(() => {
   > = {}
 
   props.tags.forEach((tag) => {
-    const categoryPrefix = getCategoryPrefix(tag.name)
+    const groupId = tag.group_id ?? UNGROUPED_ID
     const score = tag.level || 0
 
-    if (!categories[categoryPrefix]) {
-      categories[categoryPrefix] = {
-        name: categoryPrefix,
-        label: KUN_TAG_CATEGORY_TITLE[categoryPrefix] || '其他指标',
+    if (!categories[groupId]) {
+      categories[groupId] = {
+        name: groupId,
+        label: labels.get(groupId) ?? '其他指标',
         score: 0,
         tags: [],
         color:
@@ -62,13 +60,14 @@ const categoryStats = computed(() => {
       }
     }
 
-    categories[categoryPrefix].score += score
-    categories[categoryPrefix].tags.push({
+    categories[groupId].score += score
+    categories[groupId].tags.push({
       id: tag.id,
       name: tag.name,
       label: tag.label || tag.name,
       description: tag.description || '',
-      level: score
+      level: score,
+      group_id: tag.group_id
     })
   })
 

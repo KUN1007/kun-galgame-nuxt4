@@ -36,6 +36,7 @@ const websiteBaseSchema = z.object({
     .default(''),
   language: z.enum(['en-us', 'ja-jp', 'zh-cn', 'zh-tw']).default('zh-cn'),
   age_limit: z.enum(['all', 'r18']).default('all'),
+  status: z.enum(['normal', 'unreachable', 'closed']).default('normal'),
   category_id: z.coerce.number<number>().min(1).max(9999999),
   tag_ids: z
     .array(z.coerce.number<number>().min(1).max(9999999))
@@ -69,26 +70,59 @@ export const createWebsiteTagSchema = z.object({
   name: z.string().min(1, '标签名称不能为空').max(30, '标签名称最多 30 个字符'),
   label: z
     .string()
-    .min(1, '标签 label 不能为空')
-    .max(30, '标签 label 最多 30 个字符'),
+    .min(1, '标签显示名不能为空')
+    .max(30, '标签显示名最多 30 个字符'),
   level: z.coerce
     .number()
     .int('标签等级必须是整数')
-    .min(0, '网站标签等级最小为 0')
+    .min(-100, '网站标签等级最小为 -100')
     .max(20, '网站标签等级最大为 20'),
-  description: z.string().max(300, '网站标签描述最多 300 个字符').optional()
+  description: z.string().max(300, '网站标签描述最多 300 个字符').optional(),
+  group_id: z.coerce
+    .number<number>()
+    .min(1)
+    .max(9999999)
+    .nullable()
+    .default(null)
 })
 
 export const updateWebsiteTagSchema = createWebsiteTagSchema.extend({
   tag_id: z.coerce.number<number>().min(1).max(9999999)
 })
 
-export const updateWebsiteCategorySchema = z.object({
-  category_id: z.coerce.number<number>().min(1).max(9999999),
-  name: z.string().min(1, '分类名称不能为空').max(30, '分类名称最多 30 个字符'),
+export const createWebsiteCategorySchema = z.object({
+  name: z
+    .string()
+    .min(1, '分类名称不能为空')
+    .max(30, '分类名称最多 30 个字符')
+    .regex(/^[a-z0-9_-]+$/, '分类名称是 URL 的一部分, 只能用小写字母/数字/-/_'),
   label: z
     .string()
-    .min(1, '分类 label 不能为空')
-    .max(30, '分类 label 最多 30 个字符'),
-  description: z.string().max(300, '网站分类描述最多 300 个字符').optional()
+    .min(1, '分类显示名不能为空')
+    .max(30, '分类显示名最多 30 个字符'),
+  description: z.string().max(300, '网站分类描述最多 300 个字符').optional(),
+  sort_order: z.coerce.number<number>().min(0).max(9999).default(0)
+})
+
+export const updateWebsiteCategorySchema = createWebsiteCategorySchema.extend({
+  category_id: z.coerce.number<number>().min(1).max(9999999)
+})
+
+export const createWebsiteTagGroupSchema = z.object({
+  name: z
+    .string()
+    .min(1, '分组名称不能为空')
+    .max(30, '分组名称最多 30 个字符')
+    .regex(/^[a-z0-9_-]+$/, '分组名称只能用小写字母/数字/-/_'),
+  label: z
+    .string()
+    .min(1, '分组显示名不能为空')
+    .max(30, '分组显示名最多 30 个字符'),
+  description: z.string().max(300, '分组描述最多 300 个字符').optional(),
+  sort_order: z.coerce.number<number>().min(0).max(9999).default(0),
+  multi_select: z.boolean().default(false)
+})
+
+export const updateWebsiteTagGroupSchema = createWebsiteTagGroupSchema.extend({
+  group_id: z.coerce.number<number>().min(1).max(9999999)
 })

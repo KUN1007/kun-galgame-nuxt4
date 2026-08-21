@@ -5,7 +5,7 @@ useKunDisableSeo('管理系统')
 
 const route = useRoute()
 const pageType = computed(() => {
-  const routeType = route.fullPath.split('/').pop()
+  const routeType = route.path.split('/').pop()
   return routeType as KUN_ADMIN_PAGE_ROUTE_TYPE
 })
 

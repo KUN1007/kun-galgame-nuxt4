@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { UpdateWebsiteCategoryPayload } from '~/components/website/modal/types'
-
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -8,10 +6,7 @@ const categoryName = computed(() => {
   return (route.params as { name: string }).name
 })
 
-const showCategoryModal = ref(false)
-const editingCategory = ref<UpdateWebsiteCategoryPayload>(
-  {} as UpdateWebsiteCategoryPayload
-)
+const canManageTaxonomy = useCan('website.edit')
 
 const { data } = await useKunFetch<WebsiteCategoryDetail>(
   `/website-category/${categoryName.value}`,
@@ -20,30 +15,6 @@ const { data } = await useKunFetch<WebsiteCategoryDetail>(
     query: { name: categoryName.value }
   }
 )
-
-const openEditCategoryModal = () => {
-  if (!data.value) {
-    return
-  }
-  editingCategory.value = {
-    name: data.value.name,
-    label: data.value.label,
-    category_id: data.value.id,
-    description: data.value.description
-  } satisfies UpdateWebsiteCategoryPayload
-  showCategoryModal.value = true
-}
-
-const handleUpdateCategory = async (data: UpdateWebsiteCategoryPayload) => {
-  const result = await kunFetch(`/website-category`, {
-    method: 'PUT',
-    body: data
-  })
-
-  if (result) {
-    useMessage('重新编辑成功', 'success')
-  }
-}
 
 if (data.value) {
   useKunSeoMeta({
@@ -71,18 +42,14 @@ if (data.value) {
             </KunChip>
           </div>
 
-          <div class="flex justify-end">
-            <KunButton @click="openEditCategoryModal">编辑分类</KunButton>
+          <div v-if="canManageTaxonomy" class="flex justify-end">
+            <KunButton variant="light" href="/admin/website">
+              管理分类
+            </KunButton>
           </div>
         </div>
       </template>
     </KunHeader>
-
-    <WebsiteModalCategory
-      v-model="showCategoryModal"
-      :initial-data="editingCategory"
-      @submit="handleUpdateCategory"
-    />
 
     <div v-if="data.websites.length">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

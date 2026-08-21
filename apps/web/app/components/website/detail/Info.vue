@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import {
   KUN_WEBSITE_LANGUAGE_MAP,
-  KUN_WEBSITE_ACG_LIMIT_MAP
+  KUN_WEBSITE_ACG_LIMIT_MAP,
+  KUN_WEBSITE_STATUS_OPTIONS,
+  KUN_WEBSITE_STATUS_CHIP
 } from '~/constants/galgameWebsite'
 
-defineProps<{
+const props = defineProps<{
   data: WebsiteDetail
 }>()
 
 const utmLink = useUtmLink()
+
+const statusLabel = computed(
+  () =>
+    KUN_WEBSITE_STATUS_OPTIONS.find(
+      (option) => option.value === props.data.status
+    )?.label ?? '正常'
+)
+const statusChip = computed(() => KUN_WEBSITE_STATUS_CHIP[props.data.status])
 </script>
 
 <template>
@@ -25,6 +35,13 @@ const utmLink = useUtmLink()
             {{ data.category.label }}
           </KunChip>
         </KunLink>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-default-500 text-sm">运行状态</span>
+        <KunChip :color="statusChip ? statusChip.color : 'success'">
+          {{ statusLabel }}
+        </KunChip>
       </div>
 
       <div class="flex items-center justify-between">

@@ -1,8 +1,25 @@
+export type WebsiteStatus = 'normal' | 'unreachable' | 'closed'
+
 export interface WebsiteCategory {
   id: number
   name: string
   label: string
   description: string
+}
+
+export interface WebsiteCategoryListItem extends WebsiteCategory {
+  sort_order: number
+  website_count: number
+}
+
+export interface WebsiteTagGroup {
+  id: number
+  name: string
+  label: string
+  description: string
+  sort_order: number
+  multi_select: boolean
+  tag_count: number
 }
 
 export interface WebsiteTag {
@@ -11,6 +28,7 @@ export interface WebsiteTag {
   description: string
   label: string
   level: number
+  group_id: number | null
 }
 
 export interface WebsiteTagDetail {
@@ -19,6 +37,7 @@ export interface WebsiteTagDetail {
   label: string
   level: number
   description: string
+  group_id: number | null
   website_count: number
   websites: WebsiteCard[]
   created: Date | string
@@ -30,6 +49,7 @@ export interface WebsiteCategoryDetail {
   name: string
   label: string
   description: string
+  sort_order: number
   website_count: number
   websites: WebsiteCard[]
   created: Date | string
@@ -42,6 +62,7 @@ export interface WebsiteCard {
   description: string
   domain: string
   age_limit: string
+  status: WebsiteStatus
   level: number
   icon: string
   icon_image_hash: string
@@ -61,6 +82,7 @@ export interface WebsiteDetail {
   view: number
   language: string
   age_limit: 'all' | 'r18'
+  status: WebsiteStatus
   category: WebsiteCategory
   tags: WebsiteTag[]
   like_count: number

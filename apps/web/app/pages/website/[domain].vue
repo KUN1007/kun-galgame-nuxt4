@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { KUN_WEBSITE_CATEGORY_MAP } from '~/constants/galgameWebsite'
 import type {
   Article,
   WebSite,
@@ -78,7 +77,7 @@ const jsonLd = computed<WithContext<Article> | null>(() => {
     publisher: publisherSchema,
     about: aboutWebsiteSchema,
     keywords: [
-      KUN_WEBSITE_CATEGORY_MAP[website.category.name],
+      website.category.label,
       ...website.tags.map((t) => t.label)
     ].join(', '),
     ...(reviewsSchema.length > 0 && { review: reviewsSchema })

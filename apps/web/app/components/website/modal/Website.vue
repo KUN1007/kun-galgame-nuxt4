@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { createWebsiteSchema, updateWebsiteSchema } from '~/validations/website'
 import {
-  KUN_WEBSITE_CATEGORY_MAP,
   KUN_WEBSITE_LANGUAGE_MAP,
-  KUN_WEBSITE_ACG_LIMIT_MAP
+  KUN_WEBSITE_ACG_LIMIT_MAP,
+  KUN_WEBSITE_STATUS_OPTIONS
 } from '~/constants/galgameWebsite'
 import type { CreateWebsitePayload, UpdateWebsitePayload } from './types'
 import type { KunSelectOption } from '@kungal/ui-vue'
@@ -16,16 +16,13 @@ type WebsiteData = CreateWebsitePayload & {
 const props = defineProps<{
   modelValue: boolean
   initialData?: WebsiteData
+  loading?: boolean
 }>()
 
 const emits = defineEmits<{
   'update:modelValue': [value: boolean]
   submit: [data: CreateWebsitePayload | UpdateWebsitePayload]
 }>()
-
-const categoryOptions = Object.entries(KUN_WEBSITE_CATEGORY_MAP).map(
-  ([value, label], index) => ({ value: index + 1, label })
-)
 
 const languageOptions = Object.entries(KUN_WEBSITE_LANGUAGE_MAP).map(
   ([value, label]) => ({ value, label })
@@ -35,6 +32,10 @@ const ageLimitOptions = Object.entries(KUN_WEBSITE_ACG_LIMIT_MAP).map(
   ([value, label]) => ({ value, label })
 ) as KunSelectOption<CreateWebsitePayload['age_limit']>[]
 
+const statusOptions = KUN_WEBSITE_STATUS_OPTIONS as KunSelectOption<
+  CreateWebsitePayload['status']
+>[]
+
 const isModalOpen = computed({
   get: () => props.modelValue,
   set: (value) => emits('update:modelValue', value)
@@ -42,6 +43,20 @@ const isModalOpen = computed({
 
 const isEditing = computed(() => !!props.initialData?.website_id)
 const newDomain = ref('')
+
+// The category id came from the position of a hardcoded frontend map
+// (`{ value: index + 1 }`), which had never matched the table: picking
+// 「Galgame 资源网站」 filed the site under telegram and vice versa.
+const { data: categories } = useWebsiteCategories()
+const categoryOptions = computed(() =>
+  (categories.value ?? []).map((category) => ({
+    value: category.id,
+    label: category.label || category.name
+  }))
+)
+
+const { data: tags, status: tagStatus } =
+  useKunFetch<WebsiteTag[]>('/website-tag')
 
 const getInitialFormData = (): WebsiteData => ({
   name: '',
@@ -52,7 +67,8 @@ const getInitialFormData = (): WebsiteData => ({
   icon_url: '',
   language: 'zh-cn',
   age_limit: 'all',
-  category_id: 1,
+  status: 'normal',
+  category_id: categories.value?.[0]?.id ?? 1,
   tag_ids: [],
   domain: [],
   create_time: '',
@@ -62,8 +78,6 @@ const getInitialFormData = (): WebsiteData => ({
 const formData = reactive<WebsiteData>(getInitialFormData())
 
 const initialIconUrl = computed(() => props.initialData?.icon_url ?? '')
-
-const { data, status } = useKunFetch<WebsiteTag[]>('/website-tag')
 
 watch(
   () => isModalOpen.value,
@@ -85,6 +99,9 @@ const removeDomain = (index: number) => {
   formData.domain?.splice(index, 1)
 }
 
+// Closing on submit is the parent's job — it is the only side that knows
+// whether the request came back. Self-closing here threw away a filled-in form
+// every time the API rejected it.
 const handleSubmit = () => {
   const schema = isEditing.value ? updateWebsiteSchema : createWebsiteSchema
   const result = schema.safeParse(formData)
@@ -96,7 +113,6 @@ const handleSubmit = () => {
   }
 
   emits('submit', result.data)
-  isModalOpen.value = false
 }
 </script>
 
@@ -104,6 +120,7 @@ const handleSubmit = () => {
   <KunModal
     :is-dismissable="false"
     v-model="isModalOpen"
+    :aria-label="isEditing ? '编辑网站' : '创建新网站'"
     inner-class-name="max-w-2xl"
   >
     <form @submit.prevent>
@@ -147,6 +164,12 @@ const handleSubmit = () => {
           v-model="formData.category_id"
           label="分类"
           :options="categoryOptions"
+        />
+
+        <KunSelect
+          v-model="formData.status"
+          label="网站状态"
+          :options="statusOptions"
         />
 
         <KunSelect
@@ -200,14 +223,17 @@ const handleSubmit = () => {
           </div>
         </div>
 
-        <div v-if="data" class="md:col-span-2">
+        <div class="md:col-span-2">
           <label class="mb-1 block text-sm font-medium">
-            标签 (可选, 最多10个)
+            标签 (可选, 最多 20 个)
           </label>
-          <div v-if="status === 'pending'">正在加载标签...</div>
+          <div v-if="tagStatus === 'pending'" class="text-default-500 text-sm">
+            正在加载标签...
+          </div>
 
           <WebsiteModalTagSelector
-            :tags="data"
+            v-else-if="tags"
+            :tags="tags"
             :tag-ids="formData.tag_ids"
             @update-ids="(value) => (formData.tag_ids = value)"
           />
@@ -215,10 +241,15 @@ const handleSubmit = () => {
       </div>
 
       <div class="mt-6 flex justify-end gap-3">
-        <KunButton variant="light" color="danger" @click="isModalOpen = false">
+        <KunButton
+          variant="light"
+          color="danger"
+          :disabled="loading"
+          @click="isModalOpen = false"
+        >
           取消
         </KunButton>
-        <KunButton color="primary" @click="handleSubmit">
+        <KunButton color="primary" :loading="loading" @click="handleSubmit">
           {{ isEditing ? '保存更改' : '创建' }}
         </KunButton>
       </div>

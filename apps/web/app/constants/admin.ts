@@ -41,6 +41,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'submissions',
   'moderation',
   'friend-link',
+  'website',
   'doc',
   'update',
   'permission',
@@ -98,6 +99,13 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
       'friend_link.edit',
       'friend_link.delete'
     ]
+  },
+  {
+    name: 'website',
+    label: '网站资料库管理',
+    icon: 'lucide:globe',
+    router: 'website',
+    permissions: ['website.create', 'website.edit', 'website.delete']
   },
   {
     name: 'doc',

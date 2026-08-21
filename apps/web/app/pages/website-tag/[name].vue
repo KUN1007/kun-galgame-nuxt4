@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import type {
-  CreateWebsiteTagPayload,
-  UpdateWebsiteTagPayload
-} from '~/components/website/modal/types'
-
 definePageMeta({ key: (route) => route.path })
 
 const route = useRoute()
@@ -11,8 +6,7 @@ const tagName = computed(() => {
   return (route.params as { name: string }).name
 })
 
-const showTagModal = ref(false)
-const editingTag = ref<UpdateWebsiteTagPayload>({} as UpdateWebsiteTagPayload)
+const canManageTaxonomy = useCan('website.edit')
 
 const { data } = await useKunFetch<WebsiteTagDetail>(
   `/website-tag/${tagName.value}`,
@@ -21,35 +15,6 @@ const { data } = await useKunFetch<WebsiteTagDetail>(
     query: { name: tagName.value }
   }
 )
-
-const openEditTagModal = () => {
-  if (!data.value) {
-    return
-  }
-  editingTag.value = {
-    name: data.value.name,
-    label: data.value.label,
-    level: data.value.level,
-    tag_id: data.value.id,
-    description: data.value.description
-  } satisfies UpdateWebsiteTagPayload
-  showTagModal.value = true
-}
-
-const handleTagSubmit = async (
-  data: CreateWebsiteTagPayload | UpdateWebsiteTagPayload
-) => {
-  if ('tag_id' in data) {
-    const result = await kunFetch(`/website-tag`, {
-      method: 'PUT',
-      body: data
-    })
-
-    if (result) {
-      useMessage('重新编辑成功', 'success')
-    }
-  }
-}
 
 if (data.value) {
   useKunSeoMeta({
@@ -79,18 +44,14 @@ if (data.value) {
             </KunChip>
           </div>
 
-          <div class="flex justify-end">
-            <KunButton @click="openEditTagModal">编辑标签</KunButton>
+          <div v-if="canManageTaxonomy" class="flex justify-end">
+            <KunButton variant="light" href="/admin/website?tab=tag">
+              管理标签
+            </KunButton>
           </div>
         </div>
       </template>
     </KunHeader>
-
-    <WebsiteModalTag
-      v-model="showTagModal"
-      :initial-data="editingTag"
-      @submit="handleTagSubmit"
-    />
 
     <div v-if="data.websites.length">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

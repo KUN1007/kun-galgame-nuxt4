@@ -53,7 +53,7 @@ const showWebsiteModal = ref(false)
 const editingWebsite = ref<WebsiteData>(undefined)
 
 const handleOpenUpdateModal = () => {
-  const { age_limit, category, tags, create_time, language, ...rest } =
+  const { age_limit, category, tags, create_time, language, status, ...rest } =
     props.website
   editingWebsite.value = {
     ...rest,
@@ -61,6 +61,7 @@ const handleOpenUpdateModal = () => {
     tag_ids: tags.map((t) => t.id),
     category_id: category.id,
     age_limit,
+    status,
     create_time,
     website_id: props.website.id
   }
@@ -76,6 +77,7 @@ const handleUpdate = (data: CreateWebsitePayload | UpdateWebsitePayload) =>
 
     if (result) {
       useMessage('重新编辑成功', 'success')
+      showWebsiteModal.value = false
       emits('refresh')
     }
   })
@@ -161,6 +163,7 @@ const handleAction = async (
     <WebsiteModalWebsite
       v-model="showWebsiteModal"
       :initial-data="editingWebsite"
+      :loading="loadingStates.update"
       @submit="handleUpdate"
     />
 

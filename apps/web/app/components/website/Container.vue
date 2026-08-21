@@ -1,83 +1,89 @@
 <script setup lang="ts">
-import { KUN_WEBSITE_CATEGORY_MAP } from '~/constants/galgameWebsite'
 import type {
   CreateWebsitePayload,
   UpdateWebsitePayload
 } from '~/components/website/modal/types'
 
-const { data } = await useKunFetch<WebsiteCard[]>('/website')
+const { data, refresh } = await useKunFetch<WebsiteCard[]>('/website')
+const { data: categories } = await useWebsiteCategories()
 
 const canCreateWebsite = useCan('website.create')
+const canManageTaxonomy = useCan('website.edit')
 const searchQuery = ref('')
 const showWebsiteModal = ref(false)
+const isSubmitting = ref(false)
 const editingWebsite = ref<CreateWebsitePayload | undefined>(undefined)
 
-const filteredAndSortedWebsites = computed(() => {
+const matchedWebsites = computed(() => {
   if (!data.value || !Array.isArray(data.value)) {
     return []
   }
 
-  const lowerCaseQuery = searchQuery.value.toLowerCase()
-  const filteredList =
-    lowerCaseQuery === ''
-      ? data.value
-      : data.value.filter(
-          (site) =>
-            site.name.toLowerCase().includes(lowerCaseQuery) ||
-            site.description.toLowerCase().includes(lowerCaseQuery) ||
-            site.domain.includes(lowerCaseQuery)
-        )
+  const query = searchQuery.value.toLowerCase()
+  if (query === '') {
+    return data.value
+  }
+  return data.value.filter(
+    (site) =>
+      site.name.toLowerCase().includes(query) ||
+      site.description.toLowerCase().includes(query) ||
+      site.domain.includes(query)
+  )
+})
 
-  const categorized = filteredList.reduce(
+const closedWebsites = computed(() =>
+  matchedWebsites.value
+    .filter((site) => site.status === 'closed')
+    .sort((a, b) => b.price - a.price)
+)
+
+const categorizedWebsites = computed(() => {
+  const living = matchedWebsites.value.filter(
+    (site) => site.status !== 'closed'
+  )
+
+  const byCategory = living.reduce(
     (accumulator, site) => {
-      const category = site.category
-      if (!accumulator[category]) {
-        accumulator[category] = []
+      if (!accumulator[site.category]) {
+        accumulator[site.category] = []
       }
-      accumulator[category].push(site)
+      accumulator[site.category]!.push(site)
       return accumulator
     },
     {} as Record<string, WebsiteCard[]>
   )
 
-  for (const category in categorized) {
-    categorized[category]!.sort((a, b) => {
-      return a.price - b.price
-    })
-  }
-
-  return Object.keys(KUN_WEBSITE_CATEGORY_MAP)
-    .map((categoryKey) => {
-      const sites = categorized[categoryKey] || []
-      return {
-        key: categoryKey,
-        name: KUN_WEBSITE_CATEGORY_MAP[categoryKey],
-        sites: sites.reverse()
-      }
-    })
-
-    .filter((categoryGroup) => categoryGroup.sites.length > 0)
+  return (categories.value ?? [])
+    .map((category) => ({
+      key: category.name,
+      name: category.label || category.name,
+      sites: (byCategory[category.name] ?? []).sort((a, b) => b.price - a.price)
+    }))
+    .filter((group) => group.sites.length > 0)
 })
-
-const navigateToWebsite = (domain: string) => {
-  navigateTo(`/website/${domain}`)
-}
 
 const openCreateWebsiteModal = () => {
   editingWebsite.value = undefined
   showWebsiteModal.value = true
 }
 
+// The modal deliberately does not close itself: a rejected submit (a duplicate
+// name, a failed upload) used to wipe the whole form on its way out, so the
+// only way to retry was to fill it in again from scratch.
 const handleCreateWebsite = async (
-  data: CreateWebsitePayload | UpdateWebsitePayload
+  payload: CreateWebsitePayload | UpdateWebsitePayload
 ) => {
+  isSubmitting.value = true
   const result = await kunFetch('/website', {
     method: 'POST',
-    body: data
+    body: payload
   })
+  isSubmitting.value = false
 
   if (result) {
     useMessage('创建网站成功', 'success')
+    showWebsiteModal.value = false
+    await refresh()
   }
 }
 </script>
@@ -108,8 +114,17 @@ const handleCreateWebsite = async (
             placeholder="搜索 Galgame 网站"
           />
 
-          <div v-if="canCreateWebsite" class="flex justify-end">
-            <KunButton @click="openCreateWebsiteModal"> 创建新网站 </KunButton>
+          <div class="flex flex-wrap justify-end gap-3">
+            <KunButton
+              v-if="canManageTaxonomy"
+              variant="light"
+              href="/admin/website"
+            >
+              分类与标签管理
+            </KunButton>
+            <KunButton v-if="canCreateWebsite" @click="openCreateWebsiteModal">
+              创建新网站
+            </KunButton>
           </div>
         </div>
       </template>
@@ -118,13 +133,11 @@ const handleCreateWebsite = async (
     <WebsiteModalWebsite
       v-model="showWebsiteModal"
       :initial-data="editingWebsite"
+      :loading="isSubmitting"
       @submit="handleCreateWebsite"
     />
 
-    <div
-      v-for="categoryGroup in filteredAndSortedWebsites"
-      :key="categoryGroup.key"
-    >
+    <div v-for="categoryGroup in categorizedWebsites" :key="categoryGroup.key">
       <div class="mb-3 flex items-center space-x-3">
         <h2 class="text-default-900 text-2xl">
           {{ categoryGroup.name }}
@@ -139,7 +152,26 @@ const handleCreateWebsite = async (
           v-for="website in categoryGroup.sites"
           :key="website.id"
           :website="website"
-          @click="navigateToWebsite(website.domain)"
+        />
+      </div>
+    </div>
+
+    <div v-if="closedWebsites.length" class="border-default-200 border-t pt-6">
+      <div class="mb-3 flex items-center space-x-3">
+        <h2 class="text-default-500 text-2xl">已关站</h2>
+        <KunChip color="danger"> {{ closedWebsites.length }} 个网站 </KunChip>
+      </div>
+      <p class="text-default-500 mb-3 text-sm">
+        这些网站已经停止运营, 仅作存档保留, 链接大概率已经失效。
+      </p>
+
+      <div
+        class="grid grid-cols-1 gap-3 opacity-75 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        <WebsiteCard
+          v-for="website in closedWebsites"
+          :key="website.id"
+          :website="website"
         />
       </div>
     </div>

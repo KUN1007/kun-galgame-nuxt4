@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import {
-  createWebsiteTagSchema,
-  updateWebsiteTagSchema
+  createWebsiteTagGroupSchema,
+  updateWebsiteTagGroupSchema
 } from '~/validations/website'
-import type { CreateWebsiteTagPayload, UpdateWebsiteTagPayload } from './types'
+import type {
+  CreateWebsiteTagGroupPayload,
+  UpdateWebsiteTagGroupPayload
+} from './types'
 
-type TagData = CreateWebsiteTagPayload & { tag_id?: number }
+type TagGroupData = CreateWebsiteTagGroupPayload & { group_id?: number }
 
 const props = defineProps<{
   modelValue: boolean
-  initialData?: TagData
+  initialData?: TagGroupData
   loading?: boolean
 }>()
 
 const emits = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [data: CreateWebsiteTagPayload | UpdateWebsiteTagPayload]
+  submit: [data: CreateWebsiteTagGroupPayload | UpdateWebsiteTagGroupPayload]
 }>()
 
 const isModalOpen = computed({
@@ -23,26 +26,18 @@ const isModalOpen = computed({
   set: (value) => emits('update:modelValue', value)
 })
 
-const isEditing = computed(() => !!props.initialData?.tag_id)
+const isEditing = computed(() => !!props.initialData?.group_id)
 
-const { data: groups } = useWebsiteTagGroups()
-const groupOptions = computed(() =>
-  (groups.value ?? []).map((group) => ({
-    value: group.id,
-    label: group.label || group.name
-  }))
-)
-
-const getInitialFormData = (): TagData => ({
+const getInitialFormData = (): TagGroupData => ({
   name: '',
   label: '',
-  level: 0,
   description: '',
-  group_id: null,
+  sort_order: 0,
+  multi_select: false,
   ...(props.initialData || {})
 })
 
-const formData = reactive<TagData>(getInitialFormData())
+const formData = reactive<TagGroupData>(getInitialFormData())
 
 watch(
   () => isModalOpen.value,
@@ -55,8 +50,8 @@ watch(
 
 const handleSubmit = () => {
   const schema = isEditing.value
-    ? updateWebsiteTagSchema
-    : createWebsiteTagSchema
+    ? updateWebsiteTagGroupSchema
+    : createWebsiteTagGroupSchema
   const result = schema.safeParse(formData)
 
   if (!result.success) {
@@ -64,7 +59,6 @@ const handleSubmit = () => {
     useMessage(formatKunZodIssue(message), 'warn')
     return
   }
-
   emits('submit', result.data)
 }
 </script>
@@ -73,44 +67,42 @@ const handleSubmit = () => {
   <KunModal
     :is-dismissable="false"
     v-model="isModalOpen"
-    :aria-label="isEditing ? '编辑标签' : '创建新标签'"
+    :aria-label="isEditing ? '编辑标签分组' : '创建标签分组'"
     inner-class-name="max-w-md"
   >
     <form @submit.prevent="handleSubmit">
       <h2 class="mb-6 text-xl font-bold">
-        {{ isEditing ? '编辑标签' : '创建新标签' }}
+        {{ isEditing ? '编辑标签分组' : '创建标签分组' }}
       </h2>
 
       <div class="space-y-4">
         <KunInput
           v-model="formData.name"
-          label="标签标识 (URL 用, 小写英文)"
-          placeholder="performance0"
+          label="分组标识 (小写英文)"
+          placeholder="performance"
           required
         />
         <KunInput
           v-model="formData.label"
-          label="标签显示名"
-          placeholder="网站访问速度极快"
+          label="分组显示名"
+          placeholder="网站性能"
           required
-        />
-        <KunSelect
-          v-model="formData.group_id"
-          label="所属分组"
-          :options="groupOptions"
         />
         <KunInput
-          v-model="formData.level"
-          label="标签价值 (-100 ~ 20)"
+          v-model="formData.sort_order"
+          label="排序 (数字越小越靠前)"
           type="number"
-          required
         />
         <KunTextarea
           v-model="formData.description"
-          label="标签描述 (300 字符之内)"
+          label="分组描述 (可选)"
           auto-grow
           show-char-count
           :maxlength="300"
+        />
+        <KunSwitch
+          v-model="formData.multi_select"
+          label="该分组可多选 (关闭则组内标签互斥, 只能选一个)"
         />
       </div>
 
