@@ -41,7 +41,14 @@ watchEffect(() => {
       />
     </div>
 
-    <div class="sticky top-20 hidden self-start sm:block">
+    <!-- Columns are placed EXPLICITLY (col-start), never auto-placed.
+         Both feeds take a top-level `await`, so switching tabs mounts one
+         inside the page's already-resolved Suspense boundary, where Vue
+         renders an empty comment placeholder instead of the component until
+         the fetch lands. Auto-placement then pulled the aside out of the
+         20rem right column into the 1fr middle one, and on a slow link the
+         home page stayed that way until the feed arrived. -->
+    <div class="sticky top-20 hidden self-start sm:col-start-1 sm:block">
       <KunTab
         v-model="activeTab"
         :items="tabItems"
@@ -52,11 +59,19 @@ watchEffect(() => {
       />
     </div>
 
-    <HomeNewsFeed v-if="isNewsFeedTab(currentTab)" class="min-w-0" />
-    <HomeActivityFeed v-else :tab-id="activeTab" :types="activeTypes" />
+    <HomeNewsFeed
+      v-if="isNewsFeedTab(currentTab)"
+      class="min-w-0 sm:col-start-2"
+    />
+    <HomeActivityFeed
+      v-else
+      :tab-id="activeTab"
+      :types="activeTypes"
+      class="sm:col-start-2"
+    />
 
     <aside
-      class="sticky top-20 hidden h-[calc(100dvh-6rem)] flex-col self-start lg:flex"
+      class="sticky top-20 hidden h-[calc(100dvh-6rem)] flex-col self-start lg:col-start-3 lg:flex"
     >
       <div class="space-y-4">
         <HomeCarousel />

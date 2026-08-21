@@ -98,7 +98,20 @@ const hasContributorCard = computed(
     </div>
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div class="order-1 flex min-w-0 flex-col gap-3 md:order-2 md:col-span-2">
+      <!-- Explicit md placement, NOT auto-placement + md:order-*. The sidebar
+           is last in source order and this page's SSR HTML is ~1MB, so on a
+           slow link the browser lays this column out while the sidebar element
+           does not exist yet: as the only grid item it auto-placed into
+           columns 1-2, and the whole page jumped ~430px right the moment the
+           sidebar finished streaming in.
+           row-start-1 is not decoration. `order` still reverses these two, so
+           auto-placement walks the cursor to column 3 for this item and then
+           has to go BACKWARDS to column 1 for the sidebar — which per the grid
+           spec bumps it to a new row. Without it the sidebar rendered below
+           the whole page instead of beside it. -->
+      <div
+        class="order-1 flex min-w-0 flex-col gap-3 md:col-span-2 md:col-start-2 md:row-start-1"
+      >
         <KunTab
           v-model="activeTab"
           :items="contentTabs"
@@ -173,7 +186,7 @@ const hasContributorCard = computed(
       </div>
 
       <div
-        class="order-2 flex min-w-0 flex-col gap-3 md:sticky md:top-20 md:order-1 md:col-span-1 md:self-start"
+        class="order-2 flex min-w-0 flex-col gap-3 md:sticky md:top-20 md:col-span-1 md:col-start-1 md:row-start-1 md:self-start"
       >
         <div v-if="galgame.tag?.length" class="hidden md:block">
           <GalgameTag :tags="galgame.tag" variant="desktop" />
