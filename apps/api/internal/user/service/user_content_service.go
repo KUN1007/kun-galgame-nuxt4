@@ -222,16 +222,18 @@ func (s *UserContentService) GetUserGalgameComments(
 }
 
 func (s *UserContentService) authoredGalgameComments(ctx context.Context, userID int, after string, limit int) ([]dto.UserGalgameComment, string, *errors.AppError) {
-	resp, err := s.community.AuthorPosts(ctx, int64(userID), after, limit, communityclient.AnchorSiteGame)
+	posts, err := s.collectAuthorGalgamePosts(ctx, userID)
 	if err != nil {
 		if communityDown(err) {
 			return []dto.UserGalgameComment{}, "", nil
 		}
 		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
 	}
+	page, nextCursor := paginateGalgameCommentEntries(authoredGalgameCommentEntries(posts), after, limit)
 	owner := s.userClient.Hydrate(ctx, []int{userID})[userID]
-	items := make([]dto.UserGalgameComment, 0, len(resp.Posts))
-	for _, av := range resp.Posts {
+	items := make([]dto.UserGalgameComment, 0, len(page))
+	for _, entry := range page {
+		av := entry.Post
 		items = append(items, dto.UserGalgameComment{
 			ID:          av.Post.ID,
 			GalgameID:   anchorGalgameID(av.Thread),
@@ -242,48 +244,49 @@ func (s *UserContentService) authoredGalgameComments(ctx context.Context, userID
 			Deleted:     false,
 		})
 	}
-	return items, resp.NextCursor, nil
+	return items, nextCursor, nil
 }
 
 func (s *UserContentService) likedGalgameComments(ctx context.Context, userID int, after string, limit int) ([]dto.UserGalgameComment, string, *errors.AppError) {
-	rows, err := s.userContentRepo.FindUserLikedPostIDs(userID, after, limit)
+	rows, err := s.userContentRepo.FindUserLikedPostIDs(userID)
 	if err != nil {
 		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
-	}
-	nextCursor := ""
-	if len(rows) > limit {
-		nextCursor = strconv.FormatInt(rows[limit-1].ID, 10)
-		rows = rows[:limit]
 	}
 	if len(rows) == 0 {
 		return []dto.UserGalgameComment{}, "", nil
 	}
 
 	postIDs := make([]int64, len(rows))
-	for i, r := range rows {
-		postIDs[i] = r.PostID
+	for i, row := range rows {
+		postIDs[i] = row.PostID
 	}
-	resolved, err := s.community.ResolvePosts(ctx, postIDs)
+	posts, err := s.resolveGalgameCommentPosts(ctx, postIDs)
 	if err != nil {
 		if communityDown(err) {
 			return []dto.UserGalgameComment{}, "", nil
 		}
 		return nil, "", errors.ErrInternal("获取用户 Galgame 评论列表失败")
 	}
-	byID := make(map[int64]communityclient.AuthorPostView, len(resolved.Posts))
-	authorIDs := make([]int, 0, len(resolved.Posts))
-	for _, av := range resolved.Posts {
-		byID[av.Post.ID] = av
-		authorIDs = append(authorIDs, int(av.Post.AuthorID))
+
+	page, nextCursor := paginateGalgameCommentEntries(likedGalgameCommentEntries(postIDs, posts), after, limit)
+	authorIDs := make([]int, 0, len(page))
+	for _, entry := range page {
+		if entry.Post != nil {
+			authorIDs = append(authorIDs, int(entry.Post.Post.AuthorID))
+		}
 	}
 	userMap := s.userClient.Hydrate(ctx, authorIDs)
 
-	items := make([]dto.UserGalgameComment, 0, len(rows))
-	for _, r := range rows {
-		av, ok := byID[r.PostID]
+	items := make([]dto.UserGalgameComment, 0, len(page))
+	for _, entry := range page {
+		if entry.Post == nil {
+			items = append(items, dto.UserGalgameComment{ID: entry.ID, Deleted: true, User: dto.UserBrief{}})
+			continue
+		}
+		av := entry.Post
 		author := userMap[int(av.Post.AuthorID)]
-		if !ok || !userclient.IsRenderable(author) {
-			items = append(items, dto.UserGalgameComment{ID: r.PostID, Deleted: true, User: dto.UserBrief{}})
+		if !userclient.IsRenderable(author) {
+			items = append(items, dto.UserGalgameComment{ID: entry.ID, Deleted: true, User: dto.UserBrief{}})
 			continue
 		}
 		items = append(items, dto.UserGalgameComment{

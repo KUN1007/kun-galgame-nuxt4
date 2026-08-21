@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"strconv"
 	"time"
 
 	"kun-galgame-api/internal/user/dto"
@@ -66,17 +65,13 @@ type LikedPostRow struct {
 	PostID int64 `gorm:"column:post_id"`
 }
 
-func (r *UserContentRepository) FindUserLikedPostIDs(userID int, after string, limit int) ([]LikedPostRow, error) {
-	q := r.db.Table("galgame_post_like").
-		Select("id, post_id").
-		Where("user_id = ?", userID)
-	if after != "" {
-		if cursor, err := strconv.ParseInt(after, 10, 64); err == nil {
-			q = q.Where("id < ?", cursor)
-		}
-	}
+func (r *UserContentRepository) FindUserLikedPostIDs(userID int) ([]LikedPostRow, error) {
 	var rows []LikedPostRow
-	err := q.Order("id DESC").Limit(limit + 1).Scan(&rows).Error
+	err := r.db.Table("galgame_post_like").
+		Select("id, post_id").
+		Where("user_id = ?", userID).
+		Order("id DESC").
+		Scan(&rows).Error
 	return rows, err
 }
 
