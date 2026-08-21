@@ -1,7 +1,7 @@
 /*
  * KunEditor reference stylesheet — COPIED from @kungal/editor's apps/docs
  * (app/assets/css/kun-editor.css), kept in sync with the installed version
- * (currently 0.21.0). `@kungal/editor-vue` ships ZERO CSS; it only renders stable
+ * (currently 0.32.1). `@kungal/editor-vue` ships ZERO CSS; it only renders stable
  * class hooks (`.kun-editor__*`, `.kun-mention-dropdown*`) and `data-*` state.
  * This themes those hooks with KunUI design tokens (`--color-*`), which the forum
  * already loads. The forum-specific overrides live at the very bottom.
@@ -90,13 +90,23 @@
 
 /* Placeholder: the editor sets a `data-placeholder` attr + this class on the
  * empty block (a decoration, not real content). Render the text via ::before so
- * it never affects the doc / caret. */
+ * it never affects the doc / caret. The empty block is the containing block
+ * (editor 0.31.1) — absolute with no positioned ancestor laid the text out
+ * against the VIEWPORT, so a long placeholder ran past the editor's right edge
+ * and could paint over the toolbar. */
+.kun-editor__placeholder {
+  position: relative;
+}
+
 .kun-editor__placeholder::before {
   content: attr(data-placeholder);
   position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow-wrap: break-word;
   color: var(--color-default-400);
   pointer-events: none;
-  height: 0;
 }
 
 /* In-flight "uploading…" placeholder — a decoration widget the editor drops at
@@ -139,6 +149,43 @@
   background: var(--color-default-100);
 }
 
+/* Mount skeleton (editor 0.31.0): `<KunEditor>` renders `.kun-editor__loading`
+ * with three `.kun-editor__skeleton` bars until the ProseMirror view is up. The
+ * reference stylesheet shimmers them with a moving multi-stop background, which
+ * 铁律 #1 forbids; this pulses one solid token instead. Do not "resync" that
+ * shimmer back in. */
+.kun-editor__loading {
+  padding: 0.75rem 0;
+}
+
+.kun-editor__skeleton {
+  height: 0.85rem;
+  margin: 0.6rem 0;
+  border-radius: 4px;
+  background: var(--color-default-200);
+  animation: kun-editor-pulse 1.2s ease-in-out infinite;
+}
+
+.kun-editor__skeleton:nth-child(2) {
+  width: 85%;
+}
+
+.kun-editor__skeleton:nth-child(3) {
+  width: 60%;
+}
+
+@keyframes kun-editor-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kun-editor__skeleton {
+    animation: none;
+  }
+}
+
 /* ── Formatting toolbar ─────────────────────────────────────────────────── */
 .kun-editor__format-toolbar {
   display: flex;
@@ -170,6 +217,23 @@
 
 .kun-editor__tool:hover {
   background: var(--color-default-100);
+}
+
+/* Pressed toggle marks (editor 0.32.0). `<KunEditorToolbar>` paints its own
+ * active look through KunButton props, but the headless `.kun-editor__tool` and
+ * the selection bubble only get `data-active` — with no rule here the bubble's
+ * bold/italic/strike/code render identically pressed and unpressed, which is the
+ * exact bug 0.32.1 set out to fix. Soft primary rather than the reference
+ * stylesheet's solid `--color-primary`, so the bubble matches the toolbar. */
+.kun-editor__tool[data-active='true'],
+.kun-editor__bubble-btn[data-active='true'] {
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+}
+
+.kun-editor__tool[data-active='true']:hover,
+.kun-editor__bubble-btn[data-active='true']:hover {
+  background: var(--color-primary-100);
 }
 
 .kun-editor__icon {
@@ -376,8 +440,8 @@
    with content so the PAGE scrolls (and the sticky toolbar pins), instead of the
    editor being an inner 500px scroller. It also sits INSIDE the shared document
    card, so it drops its own border/padding/radius to blend in. `position:
-   relative` anchors the empty-state placeholder (::before) to the editor's
-   top-left. Higher specificity beats the base rule above. */
+   relative` is a leftover backstop — since editor 0.31.1 the empty block anchors
+   its own placeholder. Higher specificity beats the base rule above. */
 .kun-doc-editor .kun-editor__wysiwyg .ProseMirror {
   max-height: none;
   min-height: 60vh;
