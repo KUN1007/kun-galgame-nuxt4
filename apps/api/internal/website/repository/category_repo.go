@@ -52,3 +52,17 @@ func (r *CategoryRepository) FindNamesByIDs(ids []int) map[int]string {
 func (r *CategoryRepository) UpdateFields(id int, updates map[string]any) error {
 	return r.db.Model(&model.GalgameWebsiteCategory{}).Where("id = ?", id).Updates(updates).Error
 }
+
+func (r *CategoryRepository) FindAll() []model.GalgameWebsiteCategory {
+	var categories []model.GalgameWebsiteCategory
+	r.db.Order("sort_order ASC, id ASC").Find(&categories)
+	return categories
+}
+
+func (r *CategoryRepository) Create(category *model.GalgameWebsiteCategory) error {
+	return r.db.Create(category).Error
+}
+
+func (r *CategoryRepository) DeleteByID(id int) error {
+	return r.db.Delete(&model.GalgameWebsiteCategory{}, id).Error
+}

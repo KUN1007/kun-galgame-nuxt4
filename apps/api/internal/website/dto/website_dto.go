@@ -12,6 +12,7 @@ type CreateWebsiteRequest struct {
 	IconImageHash string   `json:"icon_image_hash" validate:"max=128"`
 	CategoryID    int      `json:"category_id" validate:"required,min=1"`
 	AgeLimit      string   `json:"age_limit" validate:"required,oneof=all r18"`
+	Status        string   `json:"status" validate:"omitempty,oneof=normal unreachable closed"`
 	Language      string   `json:"language" validate:"max=10"`
 	TagIDs        []int    `json:"tag_ids"`
 	Domain        []string `json:"domain" validate:"max=10,dive,max=100"`
@@ -27,6 +28,7 @@ type UpdateWebsiteRequest struct {
 	IconImageHash string   `json:"icon_image_hash" validate:"max=128"`
 	CategoryID    int      `json:"category_id" validate:"required,min=1"`
 	AgeLimit      string   `json:"age_limit" validate:"required,oneof=all r18"`
+	Status        string   `json:"status" validate:"omitempty,oneof=normal unreachable closed"`
 	Language      string   `json:"language" validate:"max=10"`
 	TagIDs        []int    `json:"tag_ids"`
 	Domain        []string `json:"domain" validate:"max=10,dive,max=100"`
@@ -47,6 +49,7 @@ type WebsiteCard struct {
 	Description   string `json:"description"`
 	Domain        string `json:"domain"`
 	AgeLimit      string `json:"age_limit"`
+	Status        string `json:"status"`
 	Level         int    `json:"level"`
 	Icon          string `json:"icon"`
 	IconImageHash string `json:"icon_image_hash"`
@@ -68,6 +71,7 @@ type WebsiteTagBrief struct {
 	Description string `json:"description"`
 	Label       string `json:"label"`
 	Level       int    `json:"level"`
+	GroupID     *int   `json:"group_id"`
 }
 
 type UserBriefCompact struct {
@@ -95,6 +99,7 @@ type WebsiteDetailResponse struct {
 	View          int                    `json:"view"`
 	Language      string                 `json:"language"`
 	AgeLimit      string                 `json:"age_limit"`
+	Status        string                 `json:"status"`
 	Category      WebsiteCategoryBrief   `json:"category"`
 	Tags          []WebsiteTagBrief      `json:"tags"`
 	LikeCount     int                    `json:"like_count"`

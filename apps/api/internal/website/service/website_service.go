@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"net/url"
 	"strconv"
 
 	"kun-galgame-api/internal/infrastructure/markdown"
@@ -64,8 +63,32 @@ func (s *WebsiteService) GetList(isSFW bool) []dto.WebsiteCard {
 	return websiteCardsFromRows(rows, catMap, levelMap, s.cdnBase)
 }
 
+func normalizeStatus(status string) string {
+	if status == "" {
+		return "normal"
+	}
+	return status
+}
+
+// `name` and `url` are both UNIQUE. Without this the duplicate came back as a
+// 500 "创建网站失败" with the real cause — `duplicate key value violates unique
+// constraint "galgame_website_name_key"` — swallowed, so re-submitting an
+// already-listed site looked like a server fault.
+func (s *WebsiteService) conflictError(name, url string, excludeID int) *errors.AppError {
+	existing, err := s.websiteRepo.FindConflict(name, url, excludeID)
+	if err != nil || existing == nil {
+		return nil
+	}
+	if existing.Name == name {
+		return errors.ErrBadRequest("网站名称「" + name + "」已被 " + existing.URL + " 使用")
+	}
+	return errors.ErrBadRequest("主域名 " + url + " 已经收录过了: 「" + existing.Name + "」")
+}
+
 func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *errors.AppError {
-	_, _ = url.Parse(req.URL)
+	if appErr := s.conflictError(req.Name, req.URL, 0); appErr != nil {
+		return appErr
+	}
 
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		website := model.GalgameWebsite{
@@ -76,6 +99,7 @@ func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *erro
 			IconImageHash: req.IconImageHash,
 			Language:      req.Language,
 			AgeLimit:      req.AgeLimit,
+			Status:        normalizeStatus(req.Status),
 			CategoryID:    req.CategoryID,
 			UserID:        userID,
 			CreateTime:    req.CreateTime,
@@ -87,6 +111,7 @@ func (s *WebsiteService) Create(userID int, req *dto.CreateWebsiteRequest) *erro
 		return s.tagRepo.InsertWebsiteTagRelations(tx, website.ID, req.TagIDs)
 	})
 	if txErr != nil {
+		slog.Error("website create failed", "name", req.Name, "url", req.URL, "error", txErr)
 		return errors.ErrInternal("创建网站失败")
 	}
 	return nil
@@ -124,6 +149,7 @@ func (s *WebsiteService) GetDetail(
 			Description: tr.Tag.Description,
 			Label:       tr.Tag.Label,
 			Level:       tr.Tag.Level,
+			GroupID:     tr.Tag.GroupID,
 		}
 	}
 
@@ -146,6 +172,7 @@ func (s *WebsiteService) GetDetail(
 		View:          website.View,
 		Language:      website.Language,
 		AgeLimit:      website.AgeLimit,
+		Status:        website.Status,
 		Category:      catBrief,
 		Tags:          tags,
 		LikeCount:     website.LikeCount,
@@ -207,6 +234,10 @@ func (s *WebsiteService) resolveDetailComments(ctx context.Context, websiteID in
 }
 
 func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError {
+	if appErr := s.conflictError(req.Name, req.URL, req.WebsiteID); appErr != nil {
+		return appErr
+	}
+
 	txErr := s.websiteRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.websiteRepo.UpdateFields(tx, req.WebsiteID, map[string]any{
 			"name":            req.Name,
@@ -216,6 +247,7 @@ func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError 
 			"icon_image_hash": req.IconImageHash,
 			"category_id":     req.CategoryID,
 			"age_limit":       req.AgeLimit,
+			"status":          normalizeStatus(req.Status),
 			"language":        req.Language,
 			"create_time":     req.CreateTime,
 			"domain":          marshalDomain(req.Domain),
@@ -225,6 +257,7 @@ func (s *WebsiteService) Update(req *dto.UpdateWebsiteRequest) *errors.AppError 
 		return s.tagRepo.ReplaceWebsiteTagRelations(tx, req.WebsiteID, req.TagIDs)
 	})
 	if txErr != nil {
+		slog.Error("website update failed", "website_id", req.WebsiteID, "error", txErr)
 		return errors.ErrInternal("更新网站失败")
 	}
 	return nil

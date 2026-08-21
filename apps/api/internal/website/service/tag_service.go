@@ -55,6 +55,7 @@ func (s *TagService) GetDetail(name string, isSFW bool) (*dto.WebsiteTagDetailRe
 		Label:        tag.Label,
 		Level:        tag.Level,
 		Description:  tag.Description,
+		GroupID:      tag.GroupID,
 		WebsiteCount: len(websites),
 		Websites:     cards,
 		Created:      tag.CreatedAt,
@@ -68,9 +69,10 @@ func (s *TagService) Create(req *dto.CreateWebsiteTagRequest) *errors.AppError {
 		Label:       req.Label,
 		Description: req.Description,
 		Level:       req.Level,
+		GroupID:     req.GroupID,
 	}
 	if err := s.tagRepo.Create(tag); err != nil {
-		return errors.ErrInternal("创建标签失败")
+		return errors.ErrBadRequest("创建标签失败, 标签名称可能已存在")
 	}
 	return nil
 }
@@ -81,6 +83,7 @@ func (s *TagService) Update(req *dto.UpdateWebsiteTagRequest) *errors.AppError {
 		"label":       req.Label,
 		"description": req.Description,
 		"level":       req.Level,
+		"group_id":    req.GroupID,
 	}); err != nil {
 		return errors.ErrInternal("更新标签失败")
 	}

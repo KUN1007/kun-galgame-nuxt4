@@ -79,8 +79,10 @@ func (a *App) setupRoutes() {
 	api.Get("/doc/category", a.DocCategoryHandler.GetCategories)
 	api.Get("/doc/tag", a.DocTagHandler.GetTags)
 
+	api.Get("/website-category", a.WebsiteCategoryHandler.GetWebsiteCategories)
 	api.Get("/website-category/:name", a.WebsiteCategoryHandler.GetWebsiteCategory)
 	api.Get("/website-tag", a.WebsiteTagHandler.GetWebsiteTags)
+	api.Get("/website-tag-group", a.WebsiteTagGroupHandler.GetWebsiteTagGroups)
 	api.Get("/website-tag/:name", a.WebsiteTagHandler.GetWebsiteTagDetail)
 
 	api.Get("/update/history", a.UpdateHandler.GetHistory)
@@ -394,10 +396,15 @@ func (a *App) setupRoutes() {
 	wsAdmin.Post("/website", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteHandler.CreateWebsite)
 	wsAdmin.Put("/website/:domain", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteHandler.UpdateWebsite)
 	wsAdmin.Delete("/website/:domain", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteHandler.DeleteWebsite)
+	wsAdmin.Post("/website-category", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteCategoryHandler.CreateWebsiteCategory)
 	wsAdmin.Put("/website-category", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteCategoryHandler.UpdateWebsiteCategory)
+	wsAdmin.Delete("/website-category", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteCategoryHandler.DeleteWebsiteCategory)
 	wsAdmin.Post("/website-tag", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteTagHandler.CreateWebsiteTag)
 	wsAdmin.Put("/website-tag", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteTagHandler.UpdateWebsiteTag)
 	wsAdmin.Delete("/website-tag", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteTagHandler.DeleteWebsiteTag)
+	wsAdmin.Post("/website-tag-group", middleware.RequirePermission(perm.WebsiteCreate), a.WebsiteTagGroupHandler.CreateWebsiteTagGroup)
+	wsAdmin.Put("/website-tag-group", middleware.RequirePermission(perm.WebsiteEdit), a.WebsiteTagGroupHandler.UpdateWebsiteTagGroup)
+	wsAdmin.Delete("/website-tag-group", middleware.RequirePermission(perm.WebsiteDelete), a.WebsiteTagGroupHandler.DeleteWebsiteTagGroup)
 
 	updateAdmin := authed.Group("")
 	updateAdmin.Post("/update/history", middleware.RequirePermission(perm.UpdateLogCreate), a.UpdateHandler.CreateHistory)

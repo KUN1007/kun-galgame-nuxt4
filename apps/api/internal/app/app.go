@@ -119,6 +119,7 @@ type App struct {
 	WebsiteHandler                 *websiteHandler.WebsiteHandler
 	WebsiteCategoryHandler         *websiteHandler.CategoryHandler
 	WebsiteTagHandler              *websiteHandler.TagHandler
+	WebsiteTagGroupHandler         *websiteHandler.TagGroupHandler
 	UpdateHandler                  *updateHandler.UpdateHandler
 	FriendLinkHandler              *friendHandler.FriendLinkHandler
 	TrustHandler                   *trustHandler.TrustHandler
@@ -414,6 +415,7 @@ func New(cfg *config.Config) *App {
 	)
 	websiteCategorySvc := websiteService.NewCategoryService(websiteCategoryRepo, websiteRepository, websiteTagRepo, cfg.NextMoeAPI.ImageCDNBase)
 	websiteTagSvc := websiteService.NewTagService(websiteTagRepo, websiteRepository, websiteCategoryRepo, cfg.NextMoeAPI.ImageCDNBase)
+	websiteTagGroupSvc := websiteService.NewTagGroupService(websiteRepo.NewTagGroupRepository(db))
 
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo)
@@ -520,6 +522,7 @@ func New(cfg *config.Config) *App {
 		WebsiteHandler:                 websiteHandler.NewWebsiteHandler(websiteCoreSvc),
 		WebsiteCategoryHandler:         websiteHandler.NewCategoryHandler(websiteCategorySvc),
 		WebsiteTagHandler:              websiteHandler.NewTagHandler(websiteTagSvc),
+		WebsiteTagGroupHandler:         websiteHandler.NewTagGroupHandler(websiteTagGroupSvc),
 		UpdateHandler:                  updateHandler.NewUpdateHandler(updateRepo.NewUpdateRepository(db), uc, trustCheck, trustScan),
 		FriendLinkHandler:              friendHandler.NewFriendLinkHandler(friendRepo.NewFriendLinkRepository(db), cfg.NextMoeAPI.ImageCDNBase),
 		TrustHandler:                   trustHandler.NewTrustHandler(trustService.NewTrustService(trustCli, cfg.Trust.Site), trustEnforce, cfg.Trust.CallbackSecret),

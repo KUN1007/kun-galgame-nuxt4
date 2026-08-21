@@ -23,7 +23,9 @@ DELETE /api/topic/:tid/reply                          cors.New → middleware.Na
 DELETE /api/topic/draft/:id                           cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicDraftHandler.Delete
 DELETE /api/update/history                            cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.DeleteHistory
 DELETE /api/update/todo                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → UpdateHandler.DeleteTodo
+DELETE /api/website-category                          cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → CategoryHandler.DeleteWebsiteCategory
 DELETE /api/website-tag                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagHandler.DeleteWebsiteTag
+DELETE /api/website-tag-group                         cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagGroupHandler.DeleteWebsiteTagGroup
 DELETE /api/website/:domain                           cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → WebsiteHandler.DeleteWebsite
 DELETE /api/website/:domain/comments/:postId          cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.WebsiteDelete
 GET    /api/activity                                  cors.New → middleware.NamePreference → ActivityHandler.GetActivity
@@ -160,8 +162,10 @@ GET    /api/user/notification-preferences             cors.New → middleware.Na
 GET    /api/user/search                               cors.New → middleware.NamePreference → Auth → UserHandler.SearchMention
 GET    /api/user/status                               cors.New → middleware.NamePreference → Auth → UserHandler.GetStatus
 GET    /api/website                                   cors.New → middleware.NamePreference → OptionalAuth → WebsiteHandler.GetWebsites
+GET    /api/website-category                          cors.New → middleware.NamePreference → CategoryHandler.GetWebsiteCategories
 GET    /api/website-category/:name                    cors.New → middleware.NamePreference → CategoryHandler.GetWebsiteCategory
 GET    /api/website-tag                               cors.New → middleware.NamePreference → TagHandler.GetWebsiteTags
+GET    /api/website-tag-group                         cors.New → middleware.NamePreference → TagGroupHandler.GetWebsiteTagGroups
 GET    /api/website-tag/:name                         cors.New → middleware.NamePreference → TagHandler.GetWebsiteTagDetail
 GET    /api/website/:domain                           cors.New → middleware.NamePreference → OptionalAuth → WebsiteHandler.GetWebsiteDetail
 GET    /api/website/:domain/comments                  cors.New → middleware.NamePreference → OptionalAuth → ResourceCommentHandler.WebsiteList
@@ -226,7 +230,9 @@ POST   /api/user/avatar                               cors.New → middleware.Na
 POST   /api/user/check-in                             cors.New → middleware.NamePreference → Auth → UserHandler.CheckIn
 POST   /api/user/creator/apply                        cors.New → middleware.NamePreference → Auth → CreatorHandler.Apply
 POST   /api/website                                   cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → WebsiteHandler.CreateWebsite
+POST   /api/website-category                          cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → CategoryHandler.CreateWebsiteCategory
 POST   /api/website-tag                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagHandler.CreateWebsiteTag
+POST   /api/website-tag-group                         cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagGroupHandler.CreateWebsiteTagGroup
 POST   /api/website/:domain/comments                  cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.WebsiteCreate
 PUT    /api/admin/friend-link                         cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → FriendLinkHandler.Update
 PUT    /api/admin/friend-link/reorder                 cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → FriendLinkHandler.Reorder
@@ -281,6 +287,7 @@ PUT    /api/user/notification-preferences             cors.New → middleware.Na
 PUT    /api/user/username                             cors.New → middleware.NamePreference → Auth → ProfileHandler.UpdateUsername
 PUT    /api/website-category                          cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → CategoryHandler.UpdateWebsiteCategory
 PUT    /api/website-tag                               cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagHandler.UpdateWebsiteTag
+PUT    /api/website-tag-group                         cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → TagGroupHandler.UpdateWebsiteTagGroup
 PUT    /api/website/:domain                           cors.New → middleware.NamePreference → OptionalAuth → Auth → RequirePermission → WebsiteHandler.UpdateWebsite
 PUT    /api/website/:domain/favorite                  cors.New → middleware.NamePreference → OptionalAuth → Auth → WebsiteHandler.ToggleFavorite
 PUT    /api/website/:domain/like                      cors.New → middleware.NamePreference → OptionalAuth → Auth → WebsiteHandler.ToggleLike

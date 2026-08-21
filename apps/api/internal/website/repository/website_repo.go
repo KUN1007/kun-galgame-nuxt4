@@ -24,8 +24,11 @@ type WebsiteListRow struct {
 	Icon          string `gorm:"column:icon"`
 	IconImageHash string `gorm:"column:icon_image_hash"`
 	AgeLimit      string `gorm:"column:age_limit"`
+	Status        string `gorm:"column:status"`
 	CategoryID    int    `gorm:"column:category_id"`
 }
+
+const websiteListColumns = "id, name, url, description, icon, icon_image_hash, age_limit, status, category_id"
 
 func sfwScope(isSFW bool) func(*gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
@@ -39,7 +42,7 @@ func sfwScope(isSFW bool) func(*gorm.DB) *gorm.DB {
 func (r *WebsiteRepository) FindAll(isSFW bool) []WebsiteListRow {
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
+		Select(websiteListColumns).
 		Scopes(sfwScope(isSFW)).
 		Order("created DESC").
 		Scan(&rows)
@@ -49,7 +52,7 @@ func (r *WebsiteRepository) FindAll(isSFW bool) []WebsiteListRow {
 func (r *WebsiteRepository) FindByCategoryID(categoryID int, isSFW bool) []WebsiteListRow {
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
+		Select(websiteListColumns).
 		Where("category_id = ?", categoryID).
 		Scopes(sfwScope(isSFW)).
 		Scan(&rows)
@@ -62,7 +65,7 @@ func (r *WebsiteRepository) FindByIDs(ids []int, isSFW bool) []WebsiteListRow {
 	}
 	var rows []WebsiteListRow
 	r.db.Table("galgame_website").
-		Select("id, name, url, description, icon, icon_image_hash, age_limit, category_id").
+		Select(websiteListColumns).
 		Where("id IN ?", ids).
 		Scopes(sfwScope(isSFW)).
 		Scan(&rows)
@@ -118,6 +121,24 @@ func (r *WebsiteRepository) FindFavorite(tx *gorm.DB, userID, websiteID int) (*m
 		return nil, err
 	}
 	return &fav, nil
+}
+
+func (r *WebsiteRepository) CountByCategoryID(categoryID int) int64 {
+	var c int64
+	r.db.Model(&model.GalgameWebsite{}).Where("category_id = ?", categoryID).Count(&c)
+	return c
+}
+
+func (r *WebsiteRepository) FindConflict(name, url string, excludeID int) (*model.GalgameWebsite, error) {
+	var website model.GalgameWebsite
+	query := r.db.Where("name = ? OR url = ?", name, url)
+	if excludeID > 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+	if err := query.First(&website).Error; err != nil {
+		return nil, err
+	}
+	return &website, nil
 }
 
 func (r *WebsiteRepository) CreateLike(tx *gorm.DB, userID, websiteID int) error {
