@@ -1,177 +1,22 @@
 /*
- * KunEditor reference stylesheet — COPIED from @kungal/editor's apps/docs
- * (app/assets/css/kun-editor.css), kept in sync with the installed version
- * (currently 0.32.1). `@kungal/editor-vue` ships ZERO CSS; it only renders stable
- * class hooks (`.kun-editor__*`, `.kun-mention-dropdown*`) and `data-*` state.
- * This themes those hooks with KunUI design tokens (`--color-*`), which the forum
- * already loads. The forum-specific overrides live at the very bottom.
+ * Forum overrides on top of the KunEditor reference stylesheet.
+ *
+ * `@kungal/editor-vue` ships ZERO CSS — it only renders stable class hooks
+ * (`.kun-editor__*`, `.kun-mention-dropdown*`) and `data-*` state, and
+ * `@kungal/editor-nuxt/editor.css` (imported just above this file in index.css)
+ * themes them with KunUI tokens. This file used to be a full COPY of that
+ * sheet, which meant upstream style fixes never arrived: the copy was stuck at
+ * 0.32.1 and so missed both the `--kun-editor-surface` fix (floating panels
+ * painted with the glassy page tint, so document text showed through them) and
+ * the structural rules 0.34.0's toolbar link panel needs to position itself.
+ * Only the genuinely forum-specific rules live here now.
  */
 
-/* ── Shell + dual-view tabs ─────────────────────────────────────────────── */
-.kun-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.kun-editor__toolbar {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.kun-editor__tab {
-  padding: 0.25rem 0.75rem;
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-
-.kun-editor__tab[data-active='true'] {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--color-primary-foreground, #fff);
-}
-
-/* Swap-sides button (split mode) — pushed to the end of the tab row. */
-.kun-editor__swap {
-  margin-left: auto;
-}
-
-/* ── Split view — editable source + read-only WYSIWYG preview ────────────── */
-/* Stacked on narrow screens; side-by-side (swappable) from md up. The panes
-   div is a plain block in non-split modes, so this only affects split. */
-.kun-editor[data-mode='split'] .kun-editor__panes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-.kun-editor[data-mode='split'] .kun-editor__pane {
-  flex: 1 1 0;
-  min-width: 0;
-  /* Each pane scrolls internally (a bounded height) so scroll sync has something
-     to sync. Override --kun-editor-split-height to taste. */
-  height: var(--kun-editor-split-height, 60vh);
-}
-/* Make each editor fill + scroll within its pane. */
-.kun-editor[data-mode='split'] .kun-editor__source .cm-editor {
-  height: 100%;
-}
-.kun-editor[data-mode='split'] .kun-editor__wysiwyg {
-  overflow: auto;
-}
-@media (min-width: 48rem) {
-  .kun-editor[data-mode='split'] .kun-editor__panes {
-    flex-direction: row;
-    align-items: stretch;
-  }
-  .kun-editor[data-mode='split'] .kun-editor__panes[data-swap='true'] {
-    flex-direction: row-reverse;
-  }
-}
-
-/* ── WYSIWYG surface (ProseMirror) ──────────────────────────────────────── */
-.kun-editor__wysiwyg .milkdown {
-  outline: none;
-}
-
-.kun-editor__wysiwyg .ProseMirror {
-  min-height: 8rem;
-  padding: 0.75rem;
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  outline: none;
-  /* ProseMirror REQUIRES a white-space rule; pre-wrap keeps wrapping + spaces. */
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-/* Placeholder: the editor sets a `data-placeholder` attr + this class on the
- * empty block (a decoration, not real content). Render the text via ::before so
- * it never affects the doc / caret. The empty block is the containing block
- * (editor 0.31.1) — absolute with no positioned ancestor laid the text out
- * against the VIEWPORT, so a long placeholder ran past the editor's right edge
- * and could paint over the toolbar. */
-.kun-editor__placeholder {
-  position: relative;
-}
-
-.kun-editor__placeholder::before {
-  content: attr(data-placeholder);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  overflow-wrap: break-word;
-  color: var(--color-default-400);
-  pointer-events: none;
-}
-
-/* In-flight "uploading…" placeholder — a decoration widget the editor drops at
- * the caret while `uploadImage` runs (paste / drop / toolbar), replaced by the
- * image when it resolves. */
-.kun-editor__uploading {
-  color: var(--color-primary);
-  font-size: 0.875rem;
-  user-select: none;
-}
-
-/* ── Selection bubble toolbar (floats over a text selection) ────────────── */
-/* Positioned by floating-ui (absolute left/top); visibility via data-show. */
-.kun-editor__bubble {
-  position: absolute;
-  display: flex;
-  gap: 0.125rem;
-  padding: 0.25rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
-  z-index: 40;
-}
-.kun-editor__bubble[data-show='false'] {
-  display: none;
-}
-.kun-editor__bubble-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.25rem;
-  border: 0;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--color-foreground);
-  cursor: pointer;
-}
-.kun-editor__bubble-btn:hover {
-  background: var(--color-default-100);
-}
-
-/* Mount skeleton (editor 0.31.0): `<KunEditor>` renders `.kun-editor__loading`
- * with three `.kun-editor__skeleton` bars until the ProseMirror view is up. The
- * reference stylesheet shimmers them with a moving multi-stop background, which
- * 铁律 #1 forbids; this pulses one solid token instead. Do not "resync" that
- * shimmer back in. */
-.kun-editor__loading {
-  padding: 0.75rem 0;
-}
-
+/* The reference sheet shimmers the mount skeleton with a moving multi-stop
+ * background, which 铁律 #1 forbids; pulse one solid token instead. */
 .kun-editor__skeleton {
-  height: 0.85rem;
-  margin: 0.6rem 0;
-  border-radius: 4px;
   background: var(--color-default-200);
   animation: kun-editor-pulse 1.2s ease-in-out infinite;
-}
-
-.kun-editor__skeleton:nth-child(2) {
-  width: 85%;
-}
-
-.kun-editor__skeleton:nth-child(3) {
-  width: 60%;
 }
 
 @keyframes kun-editor-pulse {
@@ -180,252 +25,17 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kun-editor__skeleton {
-    animation: none;
-  }
-}
-
-/* ── Formatting toolbar ─────────────────────────────────────────────────── */
-.kun-editor__format-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.125rem;
-}
-
-.kun-editor__toolbar-divider {
-  width: 1px;
-  align-self: stretch;
-  margin: 0.25rem;
-  background: var(--color-default-200);
-}
-
-.kun-editor__tool {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  color: var(--color-foreground);
-  cursor: pointer;
-}
-
-.kun-editor__tool:hover {
-  background: var(--color-default-100);
-}
-
-/* Pressed toggle marks (editor 0.32.0). `<KunEditorToolbar>` paints its own
- * active look through KunButton props, but the headless `.kun-editor__tool` and
- * the selection bubble only get `data-active` — with no rule here the bubble's
- * bold/italic/strike/code render identically pressed and unpressed, which is the
- * exact bug 0.32.1 set out to fix. Soft primary rather than the reference
- * stylesheet's solid `--color-primary`, so the bubble matches the toolbar. */
+/* Soft primary rather than the reference sheet's solid `--color-primary`, so
+ * the headless tools and the selection bubble match `<KunEditorToolbar>`, which
+ * paints its own pressed look through KunButton props. */
 .kun-editor__tool[data-active='true'],
-.kun-editor__bubble-btn[data-active='true'] {
+.kun-editor__bubble-btn[data-active='true'],
+.kun-editor__tool[data-active='true']:hover,
+.kun-editor__bubble-btn[data-active='true']:hover {
   background: var(--color-primary-100);
   color: var(--color-primary-600);
 }
 
-.kun-editor__tool[data-active='true']:hover,
-.kun-editor__bubble-btn[data-active='true']:hover {
-  background: var(--color-primary-100);
-}
-
-.kun-editor__icon {
-  display: inline-flex;
-}
-
-/* ── Markdown source (CodeMirror) ───────────────────────────────────────── */
-.kun-editor__source .cm-editor {
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-
-/* ── @mention dropdown (a slash view; positioned by SlashProvider) ──────── */
-.kun-mention-dropdown {
-  position: absolute;
-  z-index: 30;
-  display: none;
-  min-width: 12rem;
-  max-width: 20rem;
-  max-height: 16rem;
-  overflow-y: auto;
-  padding: 0.25rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
-
-.kun-mention-dropdown[data-show='true'] {
-  display: block;
-}
-
-.kun-mention-dropdown__item {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.5rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.kun-mention-dropdown__item:hover,
-.kun-mention-dropdown__item[data-active='true'] {
-  background: var(--color-default-100);
-}
-
-.kun-mention-dropdown__avatar {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  object-fit: cover;
-}
-
-.kun-mention-dropdown__avatar--fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-default-200);
-  color: var(--color-default-600);
-  font-size: 0.75rem;
-}
-
-.kun-mention-dropdown__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.875rem;
-}
-
-.kun-mention-dropdown__hint {
-  padding: 0.375rem 0.5rem;
-  color: var(--color-default-400);
-  font-size: 0.875rem;
-}
-
-/* ── Sticker / emoji picker (toolbar popover) ───────────────────────────── */
-.kun-editor__picker {
-  position: relative;
-  display: inline-flex;
-}
-
-.kun-editor__picker-panel {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  left: 0;
-  z-index: 30;
-  width: 18rem;
-  padding: 0.5rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-default-200);
-  border-radius: 0.5rem;
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
-
-.kun-editor__picker-tabs {
-  display: flex;
-  gap: 0.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.kun-editor__picker-tab {
-  flex: 1;
-  padding: 0.25rem 0.5rem;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-
-.kun-editor__picker-tab[data-active='true'] {
-  border-bottom-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.kun-editor__emoji-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 0.125rem;
-  max-height: 16rem;
-  overflow-y: auto;
-}
-
-.kun-editor__emoji {
-  aspect-ratio: 1;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.kun-editor__emoji:hover {
-  background: var(--color-default-100);
-}
-
-.kun-editor__sticker-body {
-  max-height: 16rem;
-  overflow-y: auto;
-}
-
-.kun-editor__pack-name {
-  padding: 0.25rem 0.125rem;
-  color: var(--color-default-500);
-  font-size: 0.75rem;
-}
-
-.kun-editor__sticker-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.25rem;
-}
-
-.kun-editor__sticker {
-  aspect-ratio: 1;
-  padding: 0.125rem;
-  border: none;
-  border-radius: 0.375rem;
-  background: transparent;
-  cursor: pointer;
-}
-
-.kun-editor__sticker:hover {
-  background: var(--color-default-100);
-}
-
-.kun-editor__sticker img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.kun-editor__picker-hint {
-  padding: 1rem;
-  color: var(--color-default-400);
-  font-size: 0.875rem;
-  text-align: center;
-}
-
-/* ══ Forum overrides ═════════════════════════════════════════════════════ */
 /* Cap the WYSIWYG height and scroll inside, replacing the in-repo editor's
    KunOverlayScroll max-h-[500px] wrapper. The empty-state min-height is a var
    (default 8rem = the reference) so a host can grow a specific editor by setting
@@ -439,14 +49,12 @@
 /* The topic writing surface (edit/topic) is a full-document editor: let it grow
    with content so the PAGE scrolls (and the sticky toolbar pins), instead of the
    editor being an inner 500px scroller. It also sits INSIDE the shared document
-   card, so it drops its own border/padding/radius to blend in. `position:
-   relative` is a leftover backstop — since editor 0.31.1 the empty block anchors
-   its own placeholder. Higher specificity beats the base rule above. */
+   card, so it drops its own border/padding/radius to blend in. Higher
+   specificity beats the base rule above. */
 .kun-doc-editor .kun-editor__wysiwyg .ProseMirror {
   max-height: none;
   min-height: 60vh;
   overflow: visible;
-  position: relative;
   border: none;
   border-radius: 0;
   padding: 0;

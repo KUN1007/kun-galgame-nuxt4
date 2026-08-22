@@ -11,7 +11,9 @@
 @import './editor.css';
 /* Reference stylesheet for the headless @kungal/editor <KunEditor> — themes its
    stable class hooks (.kun-editor__*, .kun-mention-dropdown*) with KunUI tokens.
-   Copied from the library's apps/docs reference; keep in sync on lib upgrades. */
+   Shipped by the layer since editor 0.31.1, so upstream style fixes arrive with
+   a version bump; the forum's own rules override it in the file below. */
+@import '@kungal/editor-nuxt/editor.css';
 @import './editor/kun-editor.css';
 @import './code-theme.css';
 @import './editor/code-mirror.css';

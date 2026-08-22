@@ -40,12 +40,7 @@ export const useKunEditorAdapters = (opts?: {
     useMessage(message, level)
   }
 
-  // Without this the selection bubble asks for the URL through the browser's
-  // native `window.prompt`. Supplying it also takes over the KunUI toolbar's
-  // inline popover, which is the point: one link surface everywhere.
-  const { prompt: linkPrompt } = useKunEditorLinkPrompt()
-
   return allowImage
-    ? { uploadImage, searchMentionUsers, stickerSource, notify, linkPrompt }
-    : { searchMentionUsers, notify, linkPrompt }
+    ? { uploadImage, searchMentionUsers, stickerSource, notify }
+    : { searchMentionUsers, notify }
 }

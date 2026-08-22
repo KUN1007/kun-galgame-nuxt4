@@ -144,8 +144,6 @@ onMounted(() => {
 
     <LazyReportModal />
 
-    <LazyKunMilkdownLinkPopover />
-
     <LazyTopicUpvoteModal />
 
     <KunFloatingBar />
