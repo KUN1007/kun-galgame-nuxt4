@@ -33,11 +33,12 @@ func (s *EngineService) GetList(ctx context.Context) ([]dto.EngineListItem, *err
 			return nil, appErr
 		}
 		for _, e := range res.Items {
+			name := e.Label(ctx)
 			items = append(items, dto.EngineListItem{
 				ID:           int(e.ID),
-				Name:         e.Label(ctx),
+				Name:         name,
 				Description:  e.Description,
-				Alias:        emptyStrSliceIfNil(e.Aliases),
+				Alias:        e.Aliases.Values(name),
 				GalgameCount: e.WorkCount,
 			})
 		}
@@ -73,11 +74,12 @@ func (s *EngineService) GetDetail(
 		return nil, appErr
 	}
 
+	name := e.Label(ctx)
 	return &dto.EngineDetail{
 		ID:           int(e.ID),
-		Name:         e.Label(ctx),
+		Name:         name,
 		Description:  e.Description,
-		Alias:        emptyStrSliceIfNil(e.Aliases),
+		Alias:        e.Aliases.Values(name),
 		Galgame:      listCardsToEntityCards(page.Galgames),
 		GalgameCount: page.Total,
 	}, nil

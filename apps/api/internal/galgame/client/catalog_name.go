@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/json"
@@ -34,6 +35,54 @@ type CatalogAlias struct {
 	Lang    string `json:"lang"`
 	Kind    string `json:"kind"`
 	Machine bool   `json:"machine"`
+}
+
+// catAliases decodes an alias list in either wire shape. The label browse row
+// only grew an aliases field after wave 209 had already converted aliases to
+// rows, while engines still send bare strings — and one CatalogTaxonomyItem
+// covers all four vocabularies, so a []string field there made every
+// /catalog/labels read answer "解析 Catalog 词表响应失败", taking /galgame/official
+// down with it.
+type catAliases []CatalogAlias
+
+func (a *catAliases) UnmarshalJSON(b []byte) error {
+	var raw []json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	rows := make(catAliases, 0, len(raw))
+	for _, r := range raw {
+		r = bytes.TrimSpace(r)
+		if len(r) > 0 && r[0] == '"' {
+			var value string
+			if err := json.Unmarshal(r, &value); err != nil {
+				return err
+			}
+			rows = append(rows, CatalogAlias{Value: value})
+			continue
+		}
+		var row CatalogAlias
+		if err := json.Unmarshal(r, &row); err != nil {
+			return err
+		}
+		rows = append(rows, row)
+	}
+	*a = rows
+	return nil
+}
+
+// Values flattens the rows for display, minus blanks and whatever name the
+// header already shows. Since wave 209 a localized name is an alias row too, so
+// a label rendered as 猫猫社 would otherwise list 猫猫社 as its own alias.
+func (a catAliases) Values(rendered string) []string {
+	out := make([]string, 0, len(a))
+	for _, alias := range a {
+		if alias.Value == "" || alias.Value == rendered {
+			continue
+		}
+		out = append(out, alias.Value)
+	}
+	return out
 }
 
 // CatalogIntro is the single intro shape the work, character, name, label and

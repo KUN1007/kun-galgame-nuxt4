@@ -146,12 +146,13 @@ func sortOfficialsByCount(items []dto.OfficialListItem) {
 }
 
 func (s *OfficialService) officialRow(ctx context.Context, o client.CatalogTaxonomyItem) dto.OfficialListItem {
+	name := o.Label(ctx)
 	return dto.OfficialListItem{
 		ID:           int(o.ID),
-		Name:         o.Label(ctx),
+		Name:         name,
 		Category:     o.Kind,
 		Logo:         s.galgameClient.ImageURLFromHash(o.LogoHash),
-		Alias:        emptyStrSliceIfNil(o.Aliases),
+		Alias:        o.Aliases.Values(name),
 		GalgameCount: o.WorkCount,
 	}
 }

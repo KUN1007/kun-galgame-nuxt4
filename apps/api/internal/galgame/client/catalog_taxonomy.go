@@ -21,7 +21,7 @@ type CatalogTaxonomyItem struct {
 	Tier        string                      `json:"tier"`
 	WorkCount   int                         `json:"work_count"`
 	Description string                      `json:"description"`
-	Aliases     []string                    `json:"aliases"`
+	Aliases     catAliases                  `json:"aliases"`
 	Sexual      bool                        `json:"sexual"`
 	HasNSFW     *bool                       `json:"has_nsfw"`
 	LogoHash    string                      `json:"logo_hash"`
@@ -51,7 +51,7 @@ type CatalogLabelDetail struct {
 	Localized   map[string]catLocalizedName `json:"localized"`
 	Kind        string                      `json:"kind"`
 	Lang        string                      `json:"lang"`
-	Aliases     []CatalogAlias              `json:"aliases"`
+	Aliases     catAliases                  `json:"aliases"`
 	WorkCount   int                         `json:"work_count"`
 	Intros      []CatalogIntro              `json:"intros"`
 	Links       []CatalogLabelLink          `json:"links"`
@@ -85,7 +85,7 @@ type CatalogEngineDetail struct {
 	DisplayName string                      `json:"display_name"`
 	Localized   map[string]catLocalizedName `json:"localized"`
 	Description string                      `json:"description"`
-	Aliases     []string                    `json:"aliases"`
+	Aliases     catAliases                  `json:"aliases"`
 	WorkCount   int                         `json:"work_count"`
 }
 

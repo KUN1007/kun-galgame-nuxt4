@@ -17,7 +17,7 @@ const searchResult = ref<GalgameTaxonomySearchItem[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
 const displayOfficials = computed(() =>
-  searchQuery.value.trim() ? searchResult.value : data.value!.officials
+  searchQuery.value.trim() ? searchResult.value : (data.value?.officials ?? [])
 )
 
 const handleSearch = async () => {

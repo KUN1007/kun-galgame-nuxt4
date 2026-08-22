@@ -111,7 +111,7 @@ func (s *OfficialService) GetDetail(
 		Lang:                o.Lang,
 		Description:         intro.Intro,
 		DescriptionMachine:  intro.Machine,
-		Alias:               officialAliases(o.Aliases, name),
+		Alias:               o.Aliases.Values(name),
 		Galgame:             cards,
 		GalgameCount:        page.Total,
 		OwnGalgameCount:     page.Total - imprintCount,
@@ -164,18 +164,4 @@ func officialLinks(links []client.CatalogLabelLink) []dto.OfficialLink {
 
 func (s *OfficialService) ResolveLegacyID(ctx context.Context, wikiID int) (int64, bool, *errors.AppError) {
 	return s.galgameClient.LookupWikiLabel(ctx, wikiID)
-}
-
-// officialAliases flattens the label's alias rows for display, minus whatever
-// the header already shows. Since wave 209 a localized name is an alias row
-// too, so a label rendered as 猫猫社 would otherwise list 猫猫社 as its own alias.
-func officialAliases(aliases []client.CatalogAlias, rendered string) []string {
-	out := make([]string, 0, len(aliases))
-	for _, a := range aliases {
-		if a.Value == "" || a.Value == rendered {
-			continue
-		}
-		out = append(out, a.Value)
-	}
-	return out
 }

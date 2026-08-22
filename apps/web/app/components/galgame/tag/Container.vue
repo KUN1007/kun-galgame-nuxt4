@@ -33,9 +33,9 @@ const matchModeOptions = [
 const displayTags = computed(() => {
   if (searchMode.value === 'single') {
     if (searchQuery.value.trim()) return searchResult.value
-    return data.value!.tags
+    return data.value?.tags ?? []
   }
-  return data.value!.tags
+  return data.value?.tags ?? []
 })
 
 const isBrowsingList = computed(() =>
