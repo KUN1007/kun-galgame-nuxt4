@@ -22,14 +22,14 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-const spoilerSpan = `<span class="kun-spoiler text-transparent kun-spoiler-hidden">$1</span>`
+const plainSpoilerSpan = `<span ` + spoilerClass + `>$1</span>`
 
 var (
-	spoilerRegex   = regexp.MustCompile(`\|\|(.*?)\|\|`)
-	videoLinkRegex = regexp.MustCompile(`kv:<a href="(https?://[^\s]+?\.(mp4))">[^<]+</a>`)
-	codeBlockRegex = regexp.MustCompile(`(?s)<pre><code class="language-(\w+)"`)
-	mentionRegex   = regexp.MustCompile(`<a href="kungal-user:(\d+)"[^>]*>(.*?)</a>`)
-	quoteRegex     = regexp.MustCompile(`<a href="kungal-reply:(\d+)"[^>]*>#?(\d+)</a>`)
+	plainSpoilerRegex = regexp.MustCompile(`(?s)\|\|(.*?)\|\|`)
+	videoLinkRegex    = regexp.MustCompile(`kv:<a href="(https?://[^\s]+?\.(mp4))">[^<]+</a>`)
+	codeBlockRegex    = regexp.MustCompile(`(?s)<pre><code class="language-(\w+)"`)
+	mentionRegex      = regexp.MustCompile(`<a href="kungal-user:(\d+)"[^>]*>(.*?)</a>`)
+	quoteRegex        = regexp.MustCompile(`<a href="kungal-reply:(\d+)"[^>]*>#?(\d+)</a>`)
 
 	md         goldmark.Markdown
 	mdHardWrap goldmark.Markdown
@@ -111,6 +111,7 @@ func newGoldmark(hardWraps bool) goldmark.Markdown {
 			mathjax.MathJax,
 			&h1ToH2Extension{},
 			&lazyImageExtension{},
+			&spoilerExtension{},
 		),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
@@ -143,7 +144,7 @@ func newSanitizePolicy() *bluemonday.Policy {
 
 func RenderQuestionPlain(source string) string {
 	escaped := string(util.EscapeHTML([]byte(source)))
-	return spoilerRegex.ReplaceAllString(escaped, spoilerSpan)
+	return plainSpoilerRegex.ReplaceAllString(escaped, plainSpoilerSpan)
 }
 
 func Render(source string) string {
@@ -209,8 +210,6 @@ func applyTransforms(result string) string {
 
 	result = strings.ReplaceAll(result, "<table>", `<div class="kun-table-container"><table>`)
 	result = strings.ReplaceAll(result, "</table>", `</table></div>`)
-
-	result = spoilerRegex.ReplaceAllString(result, spoilerSpan)
 
 	result = videoLinkRegex.ReplaceAllString(result,
 		`<video controls loop playsinline width="100%" src="$1"></video>`)

@@ -200,6 +200,12 @@ func TestRenderQuestionPlain(t *testing.T) {
 			bad:  []string{"<script"},
 		},
 		{
+			name: "spoiler across lines",
+			in:   "||第一行\n第二行||",
+			want: []string{`class="kun-spoiler`, "第一行\n第二行</span>"},
+			bad:  []string{"||"},
+		},
+		{
 			name: "spoiler xss escaped",
 			in:   "||<img src=x onerror=alert(1)>||",
 			want: []string{"kun-spoiler", "&lt;img", "onerror=alert(1)"},
