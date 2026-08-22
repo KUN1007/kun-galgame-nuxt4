@@ -248,9 +248,9 @@ Authorization: Bearer <token>
 
 ### `POST /image/meta-batch`
 
-一次拿一批 hash 的内在元信息（`width` / `height` / `thumbhash`）——即 `GET /image/:hash`
+一次拿一批 hash 的内在元信息（`width` / `height` / `thumbhash` / `sexual`）——即 `GET /image/:hash`
 的批量形式。供调用方一次性为整页图片预留宽高比 + 渲染 blur-up 占位，避免每图一个请求、
-消除布局抖动。**元信息内容寻址、永不变，调用方可永久缓存。**
+消除布局抖动。**尺寸与 thumbhash 内容寻址、永不变，调用方可永久缓存。**
 
 与所有 `/image` 端点一样需要调用方鉴权；**不做站点隔离**——尺寸 / thumbhash 非敏感信息
 （`GET /image/:hash` 本就跨站返回 width/height）。服务端不认识的 hash 直接从结果中省略。
@@ -265,13 +265,20 @@ Authorization: Bearer <token>
 ```json
 {
   "metas": {
-    "abcd...ef": { "width": 512, "height": 724, "thumbhash": "1QcSHQRnh493V4dIh4eXh1h4kJUI" },
-    "0011...22": { "width": 1920, "height": 1080, "thumbhash": "..." }
+    "abcd...ef": { "width": 512, "height": 724, "thumbhash": "1QcSHQRnh493V4dIh4eXh1h4kJUI", "sexual": 0 },
+    "0011...22": { "width": 1920, "height": 1080, "thumbhash": "...", "sexual": 2 }
   }
 }
 ```
 
 - `thumbhash` 在旧图回填（`cmd/migrate-image-thumbhash`）跑完前为空串省略；`width`/`height` 始终有值（上传时即写入）
+- `sexual` 是机器分级（`images.review_labels->'grade'->>'level'`，夜间 grader 写入）折算到公开三档的结果：
+  `0→0 安全`、`1→1 性暗示`、`2→2 露骨`、`3→2`——ladder 顶端的"明确性行为"公开面不与裸露区分。
+- **`sexual` 缺席 ≠ 0。** 缺席表示该图尚未被评级（刚上传、夜间 grader 还没跑到），
+  `0` 表示已评级且判为安全；把两者混为一谈会把未审图当作安全图渲染。因此
+  `sexual` 为 0 时**照常出现在响应里**，只有无分级时才整个字段省略。
+- 分级会随 grader 重跑而改变，与尺寸/thumbhash 不同：缓存 `sexual` 的调用方需要能自愈
+  （catalog 的做法是只永久缓存"完整"条目——thumbhash 与 sexual 都在——未分级条目照常返回但不入缓存）。
 
 ---
 
