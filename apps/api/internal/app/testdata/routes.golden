@@ -114,6 +114,9 @@ GET    /api/message/muted                             cors.New → middleware.Na
 GET    /api/message/nav/contact                       cors.New → middleware.NamePreference → OptionalAuth → Auth → ChatHandler.GetNavContact
 GET    /api/message/nav/system                        cors.New → middleware.NamePreference → OptionalAuth → Auth → MessageHandler.GetNavSummary
 GET    /api/news                                      cors.New → middleware.NamePreference → NewsHandler.GetFeed
+GET    /api/news/archive                              cors.New → middleware.NamePreference → NewsHandler.GetArchive
+GET    /api/news/month                                cors.New → middleware.NamePreference → NewsHandler.GetMonth
+GET    /api/news/sources                              cors.New → middleware.NamePreference → NewsHandler.GetSources
 GET    /api/perm/bundles                              cors.New → middleware.NamePreference → RolePermissionHandler.GetBundles
 GET    /api/perm/mine                                 cors.New → middleware.NamePreference → OptionalAuth → Auth → UserPermissionHandler.GetMine
 GET    /api/ranking/galgame                           cors.New → middleware.NamePreference → RankingHandler.GetGalgameRanking

@@ -30,3 +30,44 @@ export interface KunNewsFeed {
   count: number
   next_cursor: string
 }
+
+// A feed page is grouped on (date, source), never on date alone: one partner
+// republishes a whole week of bulletins under a single timestamp, and a header
+// that spanned two partners would print one partner's attribution over the
+// other's items.
+export interface KunNewsGroup {
+  key: string
+  date: string
+  source: KunNewsSource | undefined
+  items: KunNewsItem[]
+}
+
+export interface KunNewsArchiveYear {
+  year: number
+  count: number
+}
+
+export interface KunNewsArchiveMonth {
+  month: number
+  count: number
+}
+
+export interface KunNewsArchive {
+  years: KunNewsArchiveYear[]
+  months: KunNewsArchiveMonth[]
+}
+
+export interface KunNewsDay {
+  day: number
+  count: number
+}
+
+export interface KunNewsMonth {
+  items: KunNewsItem[]
+  sources: Record<string, KunNewsSource>
+  days: KunNewsDay[]
+  total: number
+  count: number
+  page: number
+  limit: number
+}

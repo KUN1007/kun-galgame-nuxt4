@@ -97,6 +97,9 @@ func (a *App) setupRoutes() {
 	api.Get("/activity/timeline", a.ActivityHandler.GetTimeline)
 
 	api.Get("/news", a.NewsHandler.GetFeed)
+	api.Get("/news/sources", a.NewsHandler.GetSources)
+	api.Get("/news/archive", a.NewsHandler.GetArchive)
+	api.Get("/news/month", a.NewsHandler.GetMonth)
 
 	api.Get("/resource", a.TopicHandler.GetResourceList)
 

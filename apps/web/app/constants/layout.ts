@@ -80,6 +80,14 @@ export const kunLayoutItem: KunLayoutItem[] = [
         hintColor: 'danger'
       },
       {
+        name: 'news',
+        icon: 'lucide:newspaper',
+        router: '/news',
+        label: 'Galgame 情报',
+        hint: '新',
+        hintColor: 'danger'
+      },
+      {
         name: 'website',
         icon: 'lucide:globe',
         router: '/website',
@@ -393,6 +401,11 @@ export const kunSidebarRail: KunRailGroup[] = [
             label: 'Galgame 发售月历',
             router: '/galgame-calendar',
             icon: 'lucide:calendar-days'
+          },
+          {
+            label: 'Galgame 情报',
+            router: '/news',
+            icon: 'lucide:newspaper'
           },
           { label: 'Gal 网站资料库', router: '/website', icon: 'lucide:globe' },
           { label: 'Gal 工具资源', router: '/toolset', icon: 'lucide:wrench' },

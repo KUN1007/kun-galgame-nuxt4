@@ -1,9 +1,14 @@
 <script setup lang="ts">
-const props = defineProps<{
-  item: KunNewsItem
-  source: KunNewsSource | undefined
-}>()
+const props = withDefaults(
+  defineProps<{
+    item: KunNewsItem
+    source: KunNewsSource | undefined
+    size?: 'sm' | 'md'
+  }>(),
+  { size: 'sm' }
+)
 
+const isWide = computed(() => props.size === 'md')
 const sourceName = computed(() => props.source?.name ?? '合作站点')
 </script>
 
@@ -17,7 +22,12 @@ const sourceName = computed(() => props.source?.name ?? '合作站点')
         aspect-ratio="16/9"
         object-fit="cover"
         loading="lazy"
-        class-name="col-start-1 row-start-1 mr-3 w-28 shrink-0 self-start overflow-hidden rounded-lg sm:row-span-3 sm:mr-4 sm:w-48"
+        :class-name="
+          cn(
+            'col-start-1 row-start-1 mr-3 shrink-0 self-start overflow-hidden rounded-lg sm:row-span-3 sm:mr-4',
+            isWide ? 'w-32 sm:w-64' : 'w-28 sm:w-48'
+          )
+        "
       />
 
       <div class="col-start-2 row-start-1 flex items-start gap-2">
@@ -42,14 +52,26 @@ const sourceName = computed(() => props.source?.name ?? '合作站点')
           rel="noopener"
           color="default"
           underline="none"
-          class-name="hover:text-primary line-clamp-2 wrap-anywhere break-normal text-sm font-medium transition-colors sm:text-base"
+          :class-name="
+            cn(
+              'hover:text-primary line-clamp-2 wrap-anywhere break-normal transition-colors',
+              isWide
+                ? 'text-base font-semibold sm:text-lg'
+                : 'text-sm font-medium sm:text-base'
+            )
+          "
         >
           {{ item.title }}
         </KunLink>
       </div>
 
       <p
-        class="text-default-500 col-start-1 col-end-3 row-start-2 line-clamp-2 text-sm sm:col-start-2"
+        :class="
+          cn(
+            'text-default-500 col-start-1 col-end-3 row-start-2 text-sm sm:col-start-2',
+            isWide ? 'line-clamp-3 sm:leading-6' : 'line-clamp-2'
+          )
+        "
       >
         {{ item.preview }}
       </p>

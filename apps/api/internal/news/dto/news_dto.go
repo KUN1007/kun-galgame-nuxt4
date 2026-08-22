@@ -43,3 +43,39 @@ type NewsFeed struct {
 	Count      int64                 `json:"count"`
 	NextCursor string                `json:"next_cursor"`
 }
+
+type NewsArchiveMonth struct {
+	Month int   `json:"month"`
+	Count int64 `json:"count"`
+}
+
+type NewsArchiveYear struct {
+	Year  int   `json:"year"`
+	Count int64 `json:"count"`
+}
+
+// NewsArchive carries Months for the one year the caller asked about, not for
+// every year: each month is a separate upstream count, so building all of them
+// eagerly would cost a request per month of the whole corpus.
+type NewsArchive struct {
+	Years  []NewsArchiveYear  `json:"years"`
+	Months []NewsArchiveMonth `json:"months"`
+}
+
+type NewsDay struct {
+	Day   int `json:"day"`
+	Count int `json:"count"`
+}
+
+// NewsMonth is one calendar month, page by page. Total is the whole month and
+// Count is what is left after the day filter, so the header can keep naming the
+// month while the paginator divides the narrowed list.
+type NewsMonth struct {
+	Items   []NewsItem            `json:"items"`
+	Sources map[string]NewsSource `json:"sources"`
+	Days    []NewsDay             `json:"days"`
+	Total   int                   `json:"total"`
+	Count   int                   `json:"count"`
+	Page    int                   `json:"page"`
+	Limit   int                   `json:"limit"`
+}

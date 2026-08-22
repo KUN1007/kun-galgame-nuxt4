@@ -98,6 +98,13 @@ type FeedQuery struct {
 	Source string
 	Cursor string
 	Limit  int
+	// Both bounds are INCLUSIVE upstream (published_at >= / <=), so an
+	// exclusive upper bound has to be expressed as T-1µs — the resolution of a
+	// Postgres timestamptz. Formatting drops what RFC3339 cannot carry, hence
+	// RFC3339Nano below: plain RFC3339 truncates 23:59:59.999999 down to
+	// 23:59:59 and loses whatever was published in that last second.
+	PublishedAfter  time.Time
+	PublishedBefore time.Time
 }
 
 func (q FeedQuery) values() url.Values {
@@ -114,6 +121,12 @@ func (q FeedQuery) values() url.Values {
 	if q.Limit > 0 {
 		v.Set("limit", strconv.Itoa(min(q.Limit, MaxLimit)))
 	}
+	if !q.PublishedAfter.IsZero() {
+		v.Set("published_after", q.PublishedAfter.UTC().Format(time.RFC3339Nano))
+	}
+	if !q.PublishedBefore.IsZero() {
+		v.Set("published_before", q.PublishedBefore.UTC().Format(time.RFC3339Nano))
+	}
 	return v
 }
 
@@ -127,6 +140,38 @@ func (c *Client) Feed(ctx context.Context, q FeedQuery) (*Feed, error) {
 		return nil, fmt.Errorf("%w: malformed feed payload", ErrUpstream)
 	}
 	return &feed, nil
+}
+
+// Count is how many items match a filter. It is the only aggregate the news
+// face exposes — there is no group-by endpoint — so an archive of years and
+// months has to be probed one boundary at a time.
+func (c *Client) Count(ctx context.Context, q FeedQuery) (int64, error) {
+	q.Cursor = ""
+	q.Limit = 1
+	feed, err := c.Feed(ctx, q)
+	if err != nil {
+		return 0, err
+	}
+	return feed.Count, nil
+}
+
+// Sources is the whole partner directory, not just the partners that happen to
+// appear on the page you fetched. The feed inlines a source block per item, so
+// a consumer that only reads the feed can never list a partner whose newest
+// item fell off the first page — which is exactly what a source filter has to
+// do before the first item is loaded.
+func (c *Client) Sources(ctx context.Context) ([]Source, error) {
+	data, err := c.getData(ctx, "/v1/news/sources", nil)
+	if err != nil {
+		return nil, err
+	}
+	var out struct {
+		Sources []Source `json:"sources"`
+	}
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, fmt.Errorf("%w: malformed sources payload", ErrUpstream)
+	}
+	return out.Sources, nil
 }
 
 func (c *Client) getData(ctx context.Context, path string, query url.Values) (json.RawMessage, error) {
