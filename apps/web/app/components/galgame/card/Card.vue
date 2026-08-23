@@ -29,12 +29,8 @@ const gridClass = computed(() =>
     : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
 )
 
-const cardHref = (galgame: GalgameCard) => {
-  if (galgame.status === GalgameStatus.VndbDraft) {
-    return `/edit/galgame/publish?q=${encodeURIComponent(galgame.name)}`
-  }
-  return galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
-}
+const cardHref = (galgame: GalgameCard) =>
+  galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
 </script>
 
 <template>
@@ -62,26 +58,11 @@ const cardHref = (galgame: GalgameCard) => {
           v-if="
             showPlatform ||
             (showRating && galgame.rating_count) ||
-            showNsfwBadge ||
-            galgame.is_on_forum === false ||
-            galgame.status === GalgameStatus.VndbDraft
+            showNsfwBadge
           "
           class="absolute top-2 right-2 left-2 flex items-start gap-1"
         >
-          <span
-            v-if="galgame.status === GalgameStatus.VndbDraft"
-            class="bg-primary rounded-full px-3 py-1 text-xs whitespace-nowrap text-white backdrop-blur-sm sm:text-sm"
-          >
-            未在论坛发布
-          </span>
-          <span
-            v-else-if="galgame.is_on_forum === false"
-            class="bg-background rounded-full px-3 py-1 text-xs backdrop-blur-sm sm:text-sm"
-          >
-            未收录
-          </span>
-
-          <div v-else-if="showPlatform" class="flex flex-wrap gap-1">
+          <div v-if="showPlatform" class="flex flex-wrap gap-1">
             <template v-if="galgame.platform.length">
               <span
                 v-for="(platform, i) in galgame.platform"

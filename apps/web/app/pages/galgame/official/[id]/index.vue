@@ -42,9 +42,9 @@ const worksDescription = computed(() => {
   const detail = data.value
   if (!detail?.galgame_count) return ''
   if (!detail.imprint_galgame_count) {
-    return `本站已收录 ${detail.galgame_count} 部, 下面是最近更新的几部。`
+    return `资料库中有 ${detail.galgame_count} 部, 下面是最近更新的几部。`
   }
-  return `本站已收录 自有 ${detail.own_galgame_count} 部 · 经旗下厂牌 ${detail.imprint_galgame_count} 部, 下面是最近更新的几部。`
+  return `资料库中自有 ${detail.own_galgame_count} 部 · 经旗下厂牌 ${detail.imprint_galgame_count} 部, 下面是最近更新的几部。`
 })
 
 const official = data.value
@@ -164,7 +164,7 @@ if (official && !official.moved_to) {
     <GalgameOfficialRelationGraph :official-id="officialId" />
 
     <p class="text-default-400 text-xs">
-      本页仅展示本站已收录的作品, 资料来自 NextMoe 目录。<template
+      本页展示资料库中该会社的作品, 资料来自 NextMoe 目录。<template
         v-if="isSfwMode"
         >当前为 SFW 模式, 该会社含 NSFW 内容的 Galgame
         不计入上方数量。</template

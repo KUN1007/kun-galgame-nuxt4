@@ -64,7 +64,7 @@ const goto = (n: number) => {
         <KunInfo
           color="warning"
           title="此表单仅用于 VNDB 未收录的作品"
-          description="Galgame 资料库已全量同步 VNDB。VNDB 收录的作品请回到「发布 Galgame」向导按名称搜索并认领, 不要在此重复提交。确实搜不到的原创 / 同人 / 独立作品再用本表单。"
+          description="Galgame 资料库已全量同步 VNDB。VNDB 收录的作品请回到「发布 Galgame」向导按名称搜索, 打开详情页发布资源, 不要在此重复提交。确实搜不到的原创 / 同人 / 独立作品再用本表单。"
         />
 
         <nav class="flex items-center">

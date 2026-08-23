@@ -6,6 +6,7 @@ import type {
 } from '~/constants/galgame'
 
 type SortField =
+  | 'popularity'
   | 'time'
   | 'created'
   | 'view'
@@ -49,7 +50,7 @@ export const useGalgameFilters = () => {
     opts
   )
   const gameType = useRouteQuery<string>('gameType', 'all', opts)
-  const sortField = useRouteQuery<SortField>('sortField', 'time', opts)
+  const sortField = useRouteQuery<SortField>('sortField', 'popularity', opts)
   const sortOrder = useRouteQuery<KunOrder>('sortOrder', 'desc', opts)
 
   const releasedFrom = useRouteQuery<string>('releasedFrom', '', opts)

@@ -26,8 +26,6 @@ const {
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-const showDraftsModal = ref(false)
-
 const { data, status } = await useKunFetch<GalgameEngineDetail>(
   `/galgame-engine/${engine_id.value}`,
   {
@@ -69,10 +67,9 @@ useKunSeoMeta({
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            本页展示本站已收录的、使用该引擎制作的 Galgame, 可按类型 / 语言 /
-            平台 / 排序筛选。本站尚未收录的作品不在此列。默认仅显示 SFW 的
-            Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW
-            开关。如果有数据错误请
+            本页展示资料库中使用该引擎制作的 Galgame, 可按类型 / 语言 / 平台 /
+            排序筛选。默认仅显示 SFW 的 Galgame, 查看 NSFW Galgame
+            请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
@@ -89,16 +86,6 @@ useKunSeoMeta({
               {{ a }}
             </KunChip>
           </div>
-          <div class="flex flex-wrap justify-end gap-2">
-            <KunButton
-              variant="flat"
-              color="default"
-              @click="showDraftsModal = true"
-            >
-              <KunIcon name="lucide:library-big" />
-              未发布的游戏
-            </KunButton>
-          </div>
         </div>
       </template>
     </KunHeader>
@@ -110,13 +97,6 @@ useKunSeoMeta({
       color="warning"
       title="部分 Galgame 已隐藏"
       description="当前为 SFW 模式，该引擎含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
-    />
-
-    <GalgameDraftsModal
-      v-model="showDraftsModal"
-      entity-type="engine"
-      :entity-id="engine_id"
-      :entity-name="data.name"
     />
 
     <GalgameCard

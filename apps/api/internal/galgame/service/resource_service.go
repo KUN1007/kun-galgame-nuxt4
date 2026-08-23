@@ -12,6 +12,7 @@ import (
 	"kun-galgame-api/internal/galgame/repository"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/trust/gate"
+	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/linkcheck"
@@ -24,7 +25,9 @@ import (
 
 type ResourceService struct {
 	resourceRepo       *repository.ResourceRepository
+	galgameRepo        *repository.GalgameRepository
 	galgameClient      *client.GalgameClient
+	catalog            *catalogclient.Client
 	userClient         *userclient.Client
 	check              *gate.CheckService
 	scan               *gate.ScanService
@@ -36,7 +39,9 @@ type ResourceService struct {
 
 func NewResourceService(
 	resourceRepo *repository.ResourceRepository,
+	galgameRepo *repository.GalgameRepository,
 	galgameClient *client.GalgameClient,
+	catalog *catalogclient.Client,
 	userClient *userclient.Client,
 	linkChecker *linkcheck.Client,
 	check *gate.CheckService,
@@ -46,7 +51,9 @@ func NewResourceService(
 ) *ResourceService {
 	return &ResourceService{
 		resourceRepo:       resourceRepo,
+		galgameRepo:        galgameRepo,
 		galgameClient:      galgameClient,
+		catalog:            catalog,
 		userClient:         userClient,
 		check:              check,
 		scan:               scan,
@@ -212,6 +219,7 @@ func (s *ResourceService) GetGalgameResources(
 func (s *ResourceService) CreateResource(
 	ctx context.Context,
 	userID int,
+	accessToken string,
 	req *dto.CreateGalgameResourceRequest,
 ) *errors.AppError {
 	if s.resourceRepo.IsResourcePublishBanned(req.GalgameID) {
@@ -239,8 +247,17 @@ func (s *ResourceService) CreateResource(
 	}
 
 	txErr := s.resourceRepo.DB().Transaction(func(tx *gorm.DB) error {
-		tx.Clauses(clause.OnConflict{DoNothing: true}).
-			Create(&model.GalgameLocal{ID: req.GalgameID})
+		if s.galgameRepo != nil {
+			if err := s.galgameRepo.PublishLocal(tx, req.GalgameID); err != nil {
+				return err
+			}
+			if err := s.galgameRepo.SetCreatorIfUnset(tx, req.GalgameID, userID); err != nil {
+				return err
+			}
+		} else {
+			tx.Clauses(clause.OnConflict{DoNothing: true}).
+				Create(&model.GalgameLocal{ID: req.GalgameID})
+		}
 		if err := s.resourceRepo.Create(tx, res); err != nil {
 			return err
 		}
@@ -271,7 +288,17 @@ func (s *ResourceService) CreateResource(
 		slog.Info("trust check hold", "subject_kind", gate.SubjectKindGalgameResource, "subject_id", res.ID, "author_id", userID, "matched", matched)
 	}
 	s.scan.ScanBg(gate.SubjectKindGalgameResource, strconv.Itoa(res.ID), moderationText, int64(userID))
+	s.claimOnFirstResource(ctx, accessToken, req.GalgameID)
 	return nil
+}
+
+func (s *ResourceService) claimOnFirstResource(ctx context.Context, accessToken string, gid int) {
+	if accessToken == "" || s.catalog == nil || !s.catalog.Configured() {
+		return
+	}
+	if _, appErr := adoptAndPublish(ctx, s.catalog, accessToken, int64(gid)); appErr != nil {
+		slog.Warn("resource: 静默认领 catalog 作品失败", "gid", gid, "error", appErr)
+	}
 }
 
 func (s *ResourceService) SetResourcePublishBan(galgameID int, banned bool) *errors.AppError {

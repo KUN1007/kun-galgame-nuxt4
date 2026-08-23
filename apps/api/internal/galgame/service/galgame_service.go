@@ -145,16 +145,6 @@ func (s *GalgameService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
 	g := client.CatalogDetailToFull(ctx, d, galgameID)
-	// An entry still in submission is not public: it used to answer 200 to
-	// anyone with the id, canonical tag and VideoGame JSON-LD included, so
-	// search engines indexed games nobody had approved. Crawlers are anonymous,
-	// and the page 404s for everyone — this endpoint stays open to signed-in
-	// callers because the submitter and the reviewers both still read it
-	// (/galgame/:gid/edit and the preview modal), and the forum has no cheap way
-	// to ask catalog who owns a claim.
-	if g.Status != client.GalgameStatusPublished && currentUserID <= 0 {
-		return nil, errors.ErrNotFound("未找到该 Galgame")
-	}
 	s.galgameClient.HydrateOfficialLinks(ctx, &g)
 
 	go s.galgameRepo.IncrementView(galgameID)
@@ -182,6 +172,7 @@ func (s *GalgameService) GetDetail(
 	detail.FavoriteCount = local.FavoriteCount
 	detail.ResourcePublishBanned = local.ResourcePublishBanned
 	detail.IsOnForum = local.ID != 0
+	detail.Indexed = local.Published
 	detail.IsLiked = isLiked
 	detail.IsFavorited = isFavorited
 	detail.Platform = platforms
@@ -290,8 +281,13 @@ func (s *GalgameService) GetList(
 		MinRatingCount:       req.MinRatingCount,
 		MinRating:            req.MinRating,
 		ShowNoResource:       req.ShowNoResource,
+		Indexed:              req.Indexed,
 		Page:                 req.Page,
 		Limit:                req.Limit,
+	}
+
+	if !req.Indexed && catalogLibraryRequest(req) {
+		return s.catalogLibrary(ctx, req, releasedFrom, releasedTo, isSFW)
 	}
 
 	return s.hydrateListCards(ctx, filter, isSFW)
@@ -302,6 +298,9 @@ func (s *GalgameService) hydrateListCards(
 	filter model.GalgameListFilter,
 	isSFW bool,
 ) (*dto.GalgameListPage, *errors.AppError) {
+	if len(filter.RestrictIDs) > 0 && !entityUsesLocalList(filter) {
+		return s.hydrateIDPage(ctx, filter.RestrictIDs, filter.Page, filter.Limit, isSFW)
+	}
 	ids, total := s.listRepo.ListIDs(filter)
 	if len(ids) == 0 {
 		return &dto.GalgameListPage{Galgames: []dto.GalgameListCard{}, Total: total}, nil

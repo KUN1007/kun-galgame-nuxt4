@@ -38,10 +38,7 @@ func (r *searchRecorder) get(key string) string {
 	return r.query.Get(key)
 }
 
-// The failure this guards is silent: drop `claim_state=live` and the result set
-// quietly WIDENS to every registry row — unclaimed VNDB stubs and withdrawn
-// entries included. That is the 2026-07-31 production incident.
-func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
+func TestSearchGalgames_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	rec := &searchRecorder{}
 	svc := rec.service(t)
 
@@ -51,8 +48,8 @@ func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
 	if rec.path != "/v1/catalog/works/search" {
 		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
-	if got := rec.get("claim_state"); got != "live" {
-		t.Errorf("claim_state = %q, want live — without it search leaks unpublished works", got)
+	if got := rec.get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want it absent — catalog is the existence layer", got)
 	}
 	if got := rec.get("q"); got != "恋爱" {
 		t.Errorf("q = %q, want the raw keywords", got)
@@ -68,7 +65,7 @@ func TestSearchGalgames_AsksForPublishedWorksOnly(t *testing.T) {
 	}
 }
 
-func TestSearchGalgames_NSFWCallerStillOnlySeesPublished(t *testing.T) {
+func TestSearchGalgames_NSFWCallerStillHasNoClaimGate(t *testing.T) {
 	rec := &searchRecorder{}
 	svc := rec.service(t)
 
@@ -81,7 +78,7 @@ func TestSearchGalgames_NSFWCallerStillOnlySeesPublished(t *testing.T) {
 	if got := rec.get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)
 	}
-	if got := rec.get("claim_state"); got != "live" {
-		t.Errorf("claim_state = %q, want live for an NSFW caller too", got)
+	if got := rec.get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want it absent for an NSFW caller too", got)
 	}
 }

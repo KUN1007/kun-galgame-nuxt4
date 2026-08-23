@@ -181,30 +181,8 @@ func (s *SeriesService) GetDetail(
 		Description:        seriesIntro(rec),
 		Galgame:            listCardsToEntityCards(page.Galgames),
 		GalgameCount:       page.Total,
-		UnpublishedGalgame: s.unpublishedMembers(ctx, id, isSFW),
+		UnpublishedGalgame: []dto.GalgameCard{},
 	}, nil
-}
-
-const seriesUnpublishedStates = "draft,pending,none"
-
-func (s *SeriesService) unpublishedMembers(ctx context.Context, id string, isSFW bool) []dto.GalgameCard {
-	if s.enricher == nil {
-		return []dto.GalgameCard{}
-	}
-	q := client.OpenPopulation(url.Values{
-		"series_id":   {id},
-		"page":        {"1"},
-		"limit":       {strconv.Itoa(seriesMemberCap)},
-		"include":     {CatalogCardInclude},
-		"claim_state": {seriesUnpublishedStates},
-		"sort":        {"released_asc"},
-	})
-	client.ApplyWorksGate(q, isSFW)
-	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
-	if appErr != nil {
-		return []dto.GalgameCard{}
-	}
-	return s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, res.Items))
 }
 
 func seriesIntro(rec *client.CatalogSeriesDetail) string {

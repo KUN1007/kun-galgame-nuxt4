@@ -61,6 +61,7 @@ Four things a sweep must **not** delete, all of them the invisible-constraint ex
 - The `w161-p3` line moves submission, claims, editing, and the cron inbox from the retired wiki family to catalog. Treat the read-only source-workspace file at `${CODEX_SESSION_REPO%/*}/kun-galgame-infra/refs/proj/161-n5-grand-window.md` as the coordination ledger—not a `../` path from this worktree—and verify both branch and deployment state before assuming the cutover is live.
 - The old `/galgame/messages/feed` S2S source is retired; the staged cron consumes `/api/v1/catalog/claim-events/feed` with a distinct cursor/idempotency namespace. The forum-side wiki-message proxy and `wiki_message_read_state` table are gone (migration 071).
 - Catalog `site` and catalog source key are different identities. Keep dual-read compatibility where the Wave 161 branch records it; do not collapse them back into one constant.
+- 方案③ (2026-08-21, letmoe + infra signed; kungal/moyu reuse): catalog is the existence layer. `/galgame` browse and site search do **not** send `claim_state`. Users do not claim games; the write that indexes a page is publishing a resource. `galgame.published` is the sticky SEO flag (first resource, not cleared on delete; migration 078). Hidden/ban still unpublishes. Do not reintroduce a user-facing 认领 flow or a local full replica.
 
 ## Cross-Service Contracts (inviolable — owned by kun-galgame-infra)
 

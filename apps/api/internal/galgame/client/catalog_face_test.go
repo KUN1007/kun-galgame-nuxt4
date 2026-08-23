@@ -439,7 +439,7 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 
 }
 
-func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
+func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 	for family, filter := range map[string]string{
 		"tag":    "tag_id",
 		"label":  "label_id",
@@ -458,11 +458,11 @@ func TestCatalogMemberGIDs_PublishedMembersOnly(t *testing.T) {
 				t.Fatalf("path = %q, want /v1/catalog/works", p)
 			}
 			q := rec.queryAt(0)
-			if got := q.Get("claim_state"); got != "live" {
-				t.Errorf("claim_state = %q, want live — without it the %s page lists unpublished works", got, family)
+			if got := q.Get("claim_state"); got != "" {
+				t.Errorf("claim_state = %q, want it absent — the %s page is catalog membership", got, family)
 			}
-			if got := q.Get("claimed"); got != "true" {
-				t.Errorf("claimed = %q, want true", got)
+			if got := q.Get("claimed"); got != "" {
+				t.Errorf("claimed = %q, want it absent", got)
 			}
 			if got := q.Get(filter); got != "5" {
 				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
@@ -577,8 +577,8 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	if got := q.Get("label_id"); got != "993" {
 		t.Errorf("label_id = %q, want 993", got)
 	}
-	if got := q.Get("claim_state"); got != "live" {
-		t.Errorf("claim_state = %q, want live", got)
+	if got := q.Get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want it absent", got)
 	}
 
 	if len(members) != 2 {

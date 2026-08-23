@@ -308,7 +308,7 @@ func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
 	if it.ClaimedBy == nil {
 		return true
 	}
-	if it.gid() <= 0 {
+	if !isKungalClaim(it.ClaimedBy.Site) || it.ClaimedBy.WorkID <= 0 {
 		return false
 	}
 	switch it.ClaimedBy.State {
@@ -329,10 +329,13 @@ func (it *CatalogWorkListItem) ClaimState() string {
 }
 
 func (it *CatalogWorkListItem) gid() int {
-	if it.ClaimedBy == nil || !isKungalClaim(it.ClaimedBy.Site) {
-		return 0
+	if it.ClaimedBy != nil && isKungalClaim(it.ClaimedBy.Site) && it.ClaimedBy.WorkID > 0 {
+		return it.ClaimedBy.WorkID
 	}
-	return it.ClaimedBy.WorkID
+	if it.ID > 0 {
+		return int(it.ID)
+	}
+	return 0
 }
 
 const ClaimSiteKungal = "kungal"

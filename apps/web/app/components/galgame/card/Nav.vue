@@ -192,7 +192,7 @@ const hasActiveFilter = computed(
     language.value !== 'all' ||
     platform.value !== 'all' ||
     gameType.value !== 'all' ||
-    sortField.value !== 'time' ||
+    sortField.value !== 'popularity' ||
     sortOrder.value !== 'desc' ||
     !!releasedFrom.value ||
     !!releasedTo.value ||
@@ -219,7 +219,7 @@ const resetFilters = () => {
   language.value = 'all'
   platform.value = 'all'
   gameType.value = 'all'
-  sortField.value = 'time'
+  sortField.value = 'popularity'
   sortOrder.value = 'desc'
   releasedFrom.value = ''
   releasedTo.value = ''
@@ -309,6 +309,7 @@ const resetFilters = () => {
         "
         @click="
           sortField = opt.value as
+            | 'popularity'
             | 'time'
             | 'view'
             | 'created'

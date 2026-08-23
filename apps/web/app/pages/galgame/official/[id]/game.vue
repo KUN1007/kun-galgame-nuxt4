@@ -27,8 +27,6 @@ const { officialId, data, status } = await useGalgameOfficialDetail(
 const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
 const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
 
-const showDraftsModal = ref(false)
-
 const official = data.value
 if (official && !official.moved_to) {
   useKunSeoMeta({
@@ -49,25 +47,12 @@ if (official && !official.moved_to) {
         />
       </template>
 
-      <template #endContent>
+      <template v-if="data.imprint_galgame_count" #endContent>
         <div class="flex flex-wrap items-center gap-2">
-          <template v-if="data.imprint_galgame_count">
-            <KunChip color="primary">自有 {{ data.own_galgame_count }}</KunChip>
-            <KunChip color="secondary">
-              经旗下 {{ data.imprint_galgame_count }}
-            </KunChip>
-          </template>
-
-          <KunButton
-            class-name="ml-auto"
-            variant="flat"
-            size="sm"
-            color="default"
-            @click="showDraftsModal = true"
-          >
-            <KunIcon name="lucide:library-big" />
-            未发布的游戏
-          </KunButton>
+          <KunChip color="primary">自有 {{ data.own_galgame_count }}</KunChip>
+          <KunChip color="secondary">
+            经旗下 {{ data.imprint_galgame_count }}
+          </KunChip>
         </div>
       </template>
     </KunHeader>
@@ -84,13 +69,6 @@ if (official && !official.moved_to) {
       color="warning"
       title="部分 Galgame 已隐藏"
       description="当前为 SFW 模式，该会社含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
-    />
-
-    <GalgameDraftsModal
-      v-model="showDraftsModal"
-      entity-type="official"
-      :entity-id="officialId"
-      :entity-name="data.name"
     />
 
     <GalgameCard

@@ -509,8 +509,6 @@ func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, i
 			q[k] = v
 		}
 		q.Set("limit", strconv.Itoa(catalogIDsChunk))
-		q.Set("claimed", "true")
-		q.Set("claim_state", claimStateLive)
 		ApplyWorksGate(q, isSFW)
 		if cursor != "" {
 			q.Set("cursor", cursor)

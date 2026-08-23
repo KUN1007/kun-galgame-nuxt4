@@ -16,8 +16,6 @@ const ratingAggJoin = "LEFT JOIN (SELECT galgame_id, SUM(overall) AS rsum, " +
 	"COUNT(*) AS rcnt FROM galgame_rating GROUP BY galgame_id) rt " +
 	"ON rt.galgame_id = g.id"
 
-const publishedOnly = "g.published"
-
 type GalgameListRepository struct {
 	db *gorm.DB
 }
@@ -73,9 +71,9 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		ID int `gorm:"column:id"`
 	}
 
-	if !hasResourceFilter(f) {
+	if !f.HasResourcePredicate() {
 		build := func() *gorm.DB {
-			q := r.db.Table("galgame g").Where(publishedOnly)
+			q := applyIndexability(r.db.Table("galgame g"), f)
 			if f.RestrictIDs != nil {
 				q = q.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
 			}
@@ -87,7 +85,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 			if ratingFilter {
 				q = applyRatingFilter(q, f, bayes)
 			}
-			if !f.ShowNoResource {
+			if !f.Indexed && !f.ShowNoResource {
 				q = q.Where("EXISTS (SELECT 1 FROM galgame_resource gr WHERE gr.galgame_id = g.id)")
 			}
 			return q
@@ -106,10 +104,9 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		return
 	}
 
-	inner := r.db.Table("galgame g").
+	inner := applyIndexability(r.db.Table("galgame g").
 		Select("DISTINCT g.id").
-		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id").
-		Where(publishedOnly)
+		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f)
 	if f.RestrictIDs != nil {
 		inner = inner.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
 	}
@@ -143,10 +140,9 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	r.db.Table("(?) AS sub", inner).Select("COUNT(*)").Scan(&total)
 
-	main := r.db.Table("galgame g").
+	main := applyIndexability(r.db.Table("galgame g").
 		Select("g.id").
-		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id").
-		Where(publishedOnly)
+		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f)
 	groupBy := "g.id, " + sortCol
 	if isSubquerySort {
 		groupBy = "g.id"
@@ -255,12 +251,11 @@ func applyGameTypeFilter(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
 	}
 }
 
-func hasResourceFilter(f model.GalgameListFilter) bool {
-	return (f.Type != "" && f.Type != "all") ||
-		(f.Language != "" && f.Language != "all") ||
-		(f.Platform != "" && f.Platform != "all") ||
-		len(f.IncludeProviders) > 0 ||
-		len(f.ExcludeOnlyProviders) > 0
+func applyIndexability(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
+	if f.Indexed {
+		return q.Where("g.published")
+	}
+	return q
 }
 
 func providerArrayLit(providers []string) string {

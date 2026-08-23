@@ -78,20 +78,20 @@ func seriesNames(t *testing.T, svc *SeriesService, isSFW bool) []string {
 func TestSeriesIndex_HidesAdultSeriesFromSFWReaders(t *testing.T) {
 	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil, nil)
 
-	if got := seriesNames(t, svc, true); len(got) != 1 || got[0] != "全年龄系列" {
-		t.Errorf("SFW index = %v, want only the series with no adult member", got)
+	if got := seriesNames(t, svc, true); len(got) != 2 {
+		t.Errorf("SFW index = %v, want the all-ages series and unclaimed membership", got)
 	}
-	if got := seriesNames(t, svc, false); len(got) != 2 {
-		t.Errorf("open index = %v, want both series that have published members", got)
+	if got := seriesNames(t, svc, false); len(got) != 3 {
+		t.Errorf("open index = %v, want every series that has catalog members", got)
 	}
 }
 
-func TestSeriesIndex_HidesSeriesWithNothingListable(t *testing.T) {
+func TestSeriesIndex_HidesSeriesWithNoWorks(t *testing.T) {
 	svc := NewSeriesService(client.New(seriesStub(t, true).URL, "nm_test_key", ""), nil, nil)
 
 	for _, name := range seriesNames(t, svc, false) {
-		if name == "无可展示成员" {
-			t.Errorf("open index lists %q, whose page has nothing to show", name)
+		if name == "无已发布作品" {
+			t.Errorf("open index lists %q, which has no catalog members", name)
 		}
 	}
 }
@@ -102,7 +102,7 @@ func TestSeriesIndex_UnansweredHasNSFWIsNotSafe(t *testing.T) {
 	if got := seriesNames(t, svc, true); len(got) != 0 {
 		t.Errorf("SFW index = %v, want nothing — the catalog answered nothing", got)
 	}
-	if got := seriesNames(t, svc, false); len(got) != 2 {
-		t.Errorf("open index = %v, want both series that have published members", got)
+	if got := seriesNames(t, svc, false); len(got) != 3 {
+		t.Errorf("open index = %v, want every series that has catalog members", got)
 	}
 }

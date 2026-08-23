@@ -41,37 +41,7 @@ const handleSearch = async () => {
   searchResults.value = res
 }
 
-const isClaiming = ref(false)
-
-const handleClaim = async (hit: SearchHit) => {
-  const unclaimed = isUnclaimedState(hit.claim_state)
-  const ok = await useComponentMessageStore().alert(
-    unclaimed ? '将此作品收录到本站吗?' : '认领此草稿吗?',
-    unclaimed
-      ? '该作品目前只存在于资料库, 本站尚未收录。收录后它会立即以已发布状态出现在本站, 您将成为该 Galgame 的创建者, 并获得 +3 萌萌点。'
-      : '认领后该条目立即变为已发布状态, 您将成为该 Galgame 的创建者, 并获得 +3 萌萌点。若该条目其实是他人正在审核中的投稿, 认领会被拒绝。'
-  )
-  if (!ok) return
-
-  const endpoint = unclaimed
-    ? `/galgame/work/${hit.work_id}/claim`
-    : `/galgame/${hit.id}/claim`
-
-  isClaiming.value = true
-  // gid comes back from the server: for an unclaimed row the forum id does not
-  // exist until this call mints it, and work_id is catalog's id space, not the
-  // forum's — the same conflation that once linked 我的审核 rows to an
-  // unrelated galgame.
-  const result = await kunFetch<{ to_state: string; gid?: number }>(endpoint, {
-    method: 'POST',
-    body: {}
-  })
-  isClaiming.value = false
-  if (result?.to_state) {
-    useKunLoliInfo(unclaimed ? '收录成功, 已发布' : '认领成功, 已发布', 5)
-    await navigateTo(`/galgame/${result.gid ?? hit.id}`)
-  }
-}
+const gameHref = (hit: SearchHit): string => `/galgame/${hit.id || hit.work_id}`
 
 const handleCreateNew = async () => {
   const store = usePersistEditGalgameStore()
@@ -103,7 +73,7 @@ onMounted(() => {
   <div class="space-y-6">
     <KunHeader
       name="发布 Galgame"
-      description="先搜索您想发布的游戏：已存在的直接前往或一键认领，确实没有的再新建申请，避免重复提交。"
+      description="先搜索您想发布资源的游戏。资料库里已有的作品直接打开详情页发布资源；确实没有的再新建申请。"
     >
       <template #endContent>
         <div class="flex items-center gap-2">
@@ -137,10 +107,8 @@ onMounted(() => {
         </KunButton>
       </div>
       <p class="text-default-500 text-sm">
-        搜索覆盖已发布的 Galgame、尚未发布的草稿
-        (可一键认领)、资料库中本站尚未收录的作品 (标记为「未认领」, 可一键收录),
-        以及他人正在审核中的投稿 (标记为「审核中」, 无法认领);
-        同时会显示您自己的待审核 / 已拒绝投稿。
+        搜索覆盖资料库中的全部游戏。打开详情页即可发布资源；catalog 没有的原创 /
+        同人作品走下方新建申请。您自己的待审核 / 已拒绝投稿也会列在这里。
       </p>
     </div>
 
@@ -199,37 +167,19 @@ onMounted(() => {
           <div class="min-w-0 flex-1 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <h4 class="truncate font-medium">{{ nameOfHit(hit) }}</h4>
-              <KunChip
-                size="xs"
-                variant="flat"
-                :color="stateBadge(hit.claim_state).color"
-              >
-                {{ stateBadge(hit.claim_state).label }}
-              </KunChip>
             </div>
             <p class="text-default-500 text-sm">
               VNDB: {{ hit.vndb_id || '—' }}
             </p>
           </div>
-          <KunButton
-            v-if="isClaimableState(hit.claim_state)"
-            size="sm"
-            :loading="isClaiming"
-            :disabled="isClaiming"
-            @click="handleClaim(hit)"
-          >
-            {{
-              isUnclaimedState(hit.claim_state) ? '收录并发布' : '认领并发布'
-            }}
-          </KunButton>
           <span
-            v-else-if="hit.claim_state === CLAIM_STATE_PENDING"
+            v-if="hit.claim_state === CLAIM_STATE_PENDING"
             class="text-default-400 shrink-0 text-sm"
           >
             他人投稿审核中
           </span>
-          <KunLink v-else :to="`/galgame/${hit.id}`">
-            <KunButton size="sm" variant="flat">前往发布资源</KunButton>
+          <KunLink v-else :to="gameHref(hit)">
+            <KunButton size="sm" variant="flat">查看 / 发布资源</KunButton>
           </KunLink>
         </div>
       </div>

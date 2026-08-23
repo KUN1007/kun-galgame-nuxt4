@@ -27,8 +27,11 @@ func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 			}
 		})
 	}
+	if got := (&CatalogWorkListItem{ID: 14}).gid(); got != 14 {
+		t.Errorf("unclaimed gid() = %d, want the catalog work id", got)
+	}
 	if (&CatalogWorkListItem{}).gid() != 0 {
-		t.Error("an unclaimed row has no gid")
+		t.Error("a row with no catalog id has no gid")
 	}
 }
 
@@ -172,7 +175,7 @@ func TestIdentityRouteRefusesAWorkThatNamesSomethingElse(t *testing.T) {
 	}
 }
 
-func TestIdentityRouteRefusesAForeignClaim(t *testing.T) {
+func TestIdentityRouteResolvesAForeignClaimByCatalogID(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
 		500: `{"id":500,"claimed_by":{"site":"moyu","work_id":500,"state":"live"}}`,
 	})
@@ -180,12 +183,12 @@ func TestIdentityRouteRefusesAForeignClaim(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("catalogIDsForGIDs: %v", appErr)
 	}
-	if _, found := ids[500]; found {
-		t.Error("a foreign tenant's claim must not resolve as a kungal gid")
+	if ids[500] != 500 {
+		t.Errorf("foreign-claimed work 500 resolved to %d, want catalog id 500", ids[500])
 	}
 }
 
-func TestIdentityRouteRefusesAnUnclaimedWork(t *testing.T) {
+func TestIdentityRouteResolvesAnUnclaimedWorkByCatalogID(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
 		600: `{"id":600,"claimed_by":null}`,
 	})
@@ -193,7 +196,7 @@ func TestIdentityRouteRefusesAnUnclaimedWork(t *testing.T) {
 	if appErr != nil {
 		t.Fatalf("catalogIDsForGIDs: %v", appErr)
 	}
-	if _, found := ids[600]; found {
-		t.Error("an unclaimed work must not resolve as a kungal gid")
+	if ids[600] != 600 {
+		t.Errorf("unclaimed work 600 resolved to %d, want catalog id 600", ids[600])
 	}
 }

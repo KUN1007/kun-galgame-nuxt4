@@ -158,7 +158,7 @@ func (s *SubmissionService) ClaimUnclaimed(
 	// "未收录" banner and no resource or comment section, right after telling
 	// the user 认领成功, 已发布.
 	if err := s.galgameRepo.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
+		if err := s.galgameRepo.EnsureLocalStub(tx, gid); err != nil {
 			return err
 		}
 		return s.galgameRepo.SetCreatorIfUnset(tx, gid, int(uid))

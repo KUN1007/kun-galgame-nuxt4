@@ -68,7 +68,8 @@ watch([() => route.fullPath, showKUNGalgameNoResource], () => {
 
           <template #description>
             <p class="text-default-500">
-              Galgame 资源页面, 提供各类 Galgame 下载。我们不是资源的提供者,
+              浏览资料库中的全部 Galgame,
+              打开任意作品即可发布资源。我们不是资源的提供者,
               我们只是资源的指路人。
             </p>
           </template>

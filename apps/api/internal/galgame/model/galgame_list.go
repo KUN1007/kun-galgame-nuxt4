@@ -15,9 +15,18 @@ type GalgameListFilter struct {
 	MinRatingCount       int
 	MinRating            float64
 	ShowNoResource       bool
+	Indexed              bool
 	RestrictIDs          []int
 	Page                 int
 	Limit                int
+}
+
+func (f GalgameListFilter) HasResourcePredicate() bool {
+	return (f.Type != "" && f.Type != "all") ||
+		(f.Language != "" && f.Language != "all") ||
+		(f.Platform != "" && f.Platform != "all") ||
+		len(f.IncludeProviders) > 0 ||
+		len(f.ExcludeOnlyProviders) > 0
 }
 
 type GalgameResourceMeta struct {

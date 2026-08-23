@@ -696,11 +696,9 @@ func (s *QuizService) SearchGalgameOptions(
 ) []dto.QuizGalgameOption {
 	empty := []dto.QuizGalgameOption{}
 	q := url.Values{
-		"q":           {keywords},
-		"limit":       {strconv.Itoa(quizGalgameSearchLimit)},
-		"sort":        {"relevance"},
-		"claimed":     {"true"},
-		"claim_state": {"live"},
+		"q":     {keywords},
+		"limit": {strconv.Itoa(quizGalgameSearchLimit)},
+		"sort":  {"relevance"},
 	}
 	client.ApplyWorksGate(q, isSFW)
 	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)

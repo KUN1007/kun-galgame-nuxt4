@@ -87,11 +87,10 @@ func (s *TagService) GetByMultiTag(
 	ids := rawQuery.Get("tag_ids")
 
 	q := url.Values{
-		"page":        {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},
-		"limit":       {strconv.Itoa(atoiOr(rawQuery.Get("limit"), 24))},
-		"claim_state": {"live"},
-		"include":     {CatalogCardInclude},
-		"sort":        {"released_desc"},
+		"page":    {strconv.Itoa(atoiOr(rawQuery.Get("page"), 1))},
+		"limit":   {strconv.Itoa(atoiOr(rawQuery.Get("limit"), 24))},
+		"include": {CatalogCardInclude},
+		"sort":    {"released_desc"},
 	}
 	if selected := splitCSV(ids); len(selected) > 0 {
 		if len(selected) > maxTagFilterIDs {

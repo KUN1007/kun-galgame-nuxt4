@@ -167,12 +167,11 @@ func (s *SearchService) SearchGalgames(
 	}
 
 	q := url.Values{
-		"q":           {raw},
-		"page":        {strconv.Itoa(page)},
-		"limit":       {strconv.Itoa(limit)},
-		"claim_state": {"live"},
-		"include":     {galgameService.CatalogCardInclude},
-		"sort":        {"relevance"},
+		"q":       {raw},
+		"page":    {strconv.Itoa(page)},
+		"limit":   {strconv.Itoa(limit)},
+		"include": {galgameService.CatalogCardInclude},
+		"sort":    {"relevance"},
 	}
 	client.ApplyWorksGate(q, isSFW)
 

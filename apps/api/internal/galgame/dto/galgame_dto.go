@@ -24,6 +24,7 @@ type GalgameListRequest struct {
 	MinRatingCount       int     `query:"min_rating_count" validate:"omitempty,min=0"`
 	MinRating            float64 `query:"min_rating" validate:"omitempty,min=0,max=10"`
 	ShowNoResource       bool    `query:"show_no_resource"`
+	Indexed              bool    `query:"indexed"`
 }
 
 type GalgameCover struct {
@@ -242,6 +243,7 @@ type GalgameDetail struct {
 	ResourceUpdateTime         string                   `json:"resource_update_time"`
 	View                       int                      `json:"view"`
 	IsOnForum                  bool                     `json:"is_on_forum"`
+	Indexed                    bool                     `json:"indexed"`
 	Status                     int                      `json:"status"`
 	OriginalLanguage           string                   `json:"original_language"`
 	AgeLimit                   string                   `json:"age_limit"`

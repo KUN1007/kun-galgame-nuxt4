@@ -135,6 +135,7 @@ export interface GalgameDetail {
   screenshots: GalgameScreenshot[]
   view: number
   is_on_forum?: boolean
+  indexed?: boolean
   status?: number
   original_language: string
   age_limit: 'all' | 'r18'

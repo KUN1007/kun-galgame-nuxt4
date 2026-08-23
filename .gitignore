@@ -46,6 +46,13 @@ logs
 .DS_Store
 Thumbs.db
 
+# Playwright MCP / coding-agent screenshots. take_screenshot with a relative
+# filename writes into the workspace cwd, not ~/.grok/playwright-output.
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+
 # Temp / misc
 tmp
 gitignore

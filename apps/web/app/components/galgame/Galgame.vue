@@ -74,18 +74,6 @@ const hasContributorCard = computed(
       @on-rating-created="handleRatingCreated"
     />
 
-    <KunInfo
-      v-if="galgame.is_on_forum === false"
-      color="danger"
-      title="该游戏尚未在本站收录"
-      description="本站还没有这款 Galgame 的任何本地数据, 当前页面的资料均来自百科。点赞 / 收藏 / 评论 / 评分 都会让它被本站收录, 但您不会成为该 Galgame 的创建者, 也不会获得萌萌点奖励; 发布下载资源同样会让它被收录, 并照常获得发布资源的萌萌点奖励。"
-    >
-      <p v-if="galgame.status === 2" class="text-sm">
-        想成为该 Galgame 的创建者? 可前往「发布
-        Galgame」页面认领它（认领后您将成为创建者并获得萌萌点奖励）。
-      </p>
-    </KunInfo>
-
     <div v-if="galgame.tag?.length" class="md:hidden">
       <GalgameTag :tags="galgame.tag" variant="mobile" />
     </div>

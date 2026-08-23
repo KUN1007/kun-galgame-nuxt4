@@ -72,8 +72,13 @@ export const buildSitemapUrls = async (
       }
     })
 
+  const withPage = (path: string, page: number) => {
+    const sep = path.includes('?') ? '&' : '?'
+    return `${path}${sep}page=${page}&limit=${PAGE_SIZE}`
+  }
+
   const fetchPage = async (src: PagedSource, page: number) => {
-    const body = await apiGet(`${src.path}?page=${page}&limit=${PAGE_SIZE}`)
+    const body = await apiGet(withPage(src.path, page))
     return body ? src.pick(unwrap(body)) : []
   }
 
@@ -89,7 +94,7 @@ export const buildSitemapUrls = async (
     }))
 
   const collect = async (src: PagedSource): Promise<SitemapUrl[]> => {
-    const firstBody = await apiGet(`${src.path}?page=1&limit=${PAGE_SIZE}`)
+    const firstBody = await apiGet(withPage(src.path, 1))
     if (!firstBody) return []
     const firstRows = src.pick(unwrap(firstBody))
     const urls = toUrls(src, firstRows)
@@ -152,7 +157,7 @@ export const buildSitemapUrls = async (
       priority: 0.8
     },
     {
-      path: '/galgame',
+      path: '/galgame?indexed=true',
       pick: (d) =>
         ((d as { galgames?: [] })?.galgames ?? []) as Record<string, unknown>[],
       total: (d) => (d as { total?: number })?.total,

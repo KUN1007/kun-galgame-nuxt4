@@ -80,12 +80,11 @@ func (s *SeriesService) buildCard(ctx context.Context, row seriesIndexRow) index
 	}
 
 	members, appErr := s.galgameClient.CatalogWorksSearch(ctx, client.OpenPopulation(url.Values{
-		"series_id":   {strconv.Itoa(row.ID)},
-		"page":        {"1"},
-		"limit":       {strconv.Itoa(seriesMemberCap)},
-		"include":     {CatalogCardInclude},
-		"claim_state": {"live"},
-		"sort":        {"released_asc"},
+		"series_id": {strconv.Itoa(row.ID)},
+		"page":      {"1"},
+		"limit":     {strconv.Itoa(seriesMemberCap)},
+		"include":   {CatalogCardInclude},
+		"sort":      {"released_asc"},
 	}))
 	if appErr != nil {
 		return indexedSeries{card: card, hasNSFW: row.hasNSFW}

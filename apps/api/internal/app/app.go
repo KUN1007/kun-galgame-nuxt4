@@ -371,7 +371,7 @@ func New(cfg *config.Config) *App {
 	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
-	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, gc, uc, linkChecker, trustCheck, trustScan, cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL)
+	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, galgameLocalRepo, gc, catalogCli, uc, linkChecker, trustCheck, trustScan, cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
 	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc, trustCheck, trustScan)
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)

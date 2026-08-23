@@ -95,7 +95,9 @@ func (h *ResourceHandler) CreateResource(c fiber.Ctx) error {
 	if appErr := utils.ParseAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
-	if appErr := h.resourceService.CreateResource(c.Context(), user.ID, &req); appErr != nil {
+	if appErr := h.resourceService.CreateResource(
+		c.Context(), user.ID, middleware.GetAccessToken(c), &req,
+	); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "资源创建成功")

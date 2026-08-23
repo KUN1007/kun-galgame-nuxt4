@@ -146,6 +146,7 @@ export const KUN_RESOURCE_PLATFORM_CONST = [
 ] as const
 
 export const KUN_GALGAME_RESOURCE_SORT_FIELD_MAP: Record<string, string> = {
+  popularity: '热度',
   views: '总浏览数',
   time: '更新顺序',
   created: '创建顺序',

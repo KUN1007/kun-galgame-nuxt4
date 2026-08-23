@@ -67,10 +67,9 @@ useKunSeoMeta({
     >
       <template #endContent>
         <p class="text-default-500">
-          本页展示该系列的全部 Galgame。本站已发布的作品可按类型 / 语言 / 平台 /
-          排序筛选; 尚未在本站发布的作品会单独列在页面下方。默认仅显示 SFW 的
-          Galgame, 查看 NSFW Galgame 请在设置面板打开 NSFW
-          开关。如果有数据错误请
+          本页展示资料库中该系列的 Galgame, 可按类型 / 语言 / 平台 /
+          排序筛选。默认仅显示 SFW 的 Galgame, 查看 NSFW Galgame
+          请在设置面板打开 NSFW 开关。如果有数据错误请
           <KunLink to="/doc/contact"> 联系我们 </KunLink>。
         </p>
       </template>
@@ -99,20 +98,8 @@ useKunSeoMeta({
     />
 
     <KunNull
-      v-if="!data.galgame_count && !data.unpublished_galgame.length"
+      v-if="!data.galgame_count"
       :description="`${data.name} 系列下暂无 Galgame`"
     />
-
-    <div v-if="data.unpublished_galgame.length" class="space-y-3">
-      <KunHeader
-        name="未在本站发布的作品"
-        :description="`该系列还有 ${data.unpublished_galgame.length} 部作品已被收录但尚未在本站发布, 点击任意一部即可前往发布页认领并成为创建者。`"
-        scale="h3"
-      />
-      <GalgameCard
-        :is-transparent="false"
-        :galgames="data.unpublished_galgame"
-      />
-    </div>
   </div>
 </template>

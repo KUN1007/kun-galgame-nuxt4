@@ -158,12 +158,14 @@ func effectOf(ev *catalogclient.ClaimEventFeedItem) claimEffect {
 	// off galgame (galgame_rating is RESTRICT), so dropping the stub took every
 	// comment and resource down with it — or silently failed on a rated entry —
 	// and a later unban rebuilt the row owned by whoever lifted the ban.
+	// draft/declined used to unpublish too; that tied SEO to claim state and
+	// yanked games that still had resources off the sitemap.
 	case catalogclient.ClaimStateHidden:
 		return claimEffectUnpublish
 	case catalogclient.ClaimStatePending:
 		return claimEffectRememberSubmitter
 	case catalogclient.ClaimStateDraft, catalogclient.ClaimStateDeclined:
-		return claimEffectUnpublish
+		return claimEffectNone
 	default:
 		return claimEffectUnknownState
 	}
@@ -193,7 +195,7 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 		gid := int(*ev.ProductWorkID)
 		creator := s.claimantOf(ctx, ev, gid)
 		if err := s.galgameRepo.DB().Transaction(func(tx *gorm.DB) error {
-			if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
+			if err := s.galgameRepo.EnsureLocalStub(tx, gid); err != nil {
 				return err
 			}
 			if creator > 0 {
@@ -201,7 +203,7 @@ func (s *GalgameClaimEventSync) apply(ctx context.Context, ev *catalogclient.Cla
 			}
 			return nil
 		}); err != nil {
-			slog.Warn("claim live: 发布本地行失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
+			slog.Warn("claim live: 建立本地行失败, 将重试", "event", ev.ID, "gid", gid, "error", err)
 			return true
 		}
 		if isApproval(ev) {

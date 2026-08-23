@@ -37,7 +37,7 @@ func (r *worksQueryRecorder) get(key string) string {
 	return r.query.Get(key)
 }
 
-func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
+func TestMultiTag_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	rec := &worksQueryRecorder{}
 	svc := NewTagService(rec.client(t), &GalgameEnricher{}, nil)
 
@@ -48,8 +48,8 @@ func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
 	if rec.path != "/v1/catalog/works/search" {
 		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
-	if got := rec.get("claim_state"); got != "live" {
-		t.Errorf("claim_state = %q, want live — without it the multi-tag page lists unpublished and unclaimed works", got)
+	if got := rec.get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want it absent — the tag page is the catalog membership", got)
 	}
 	if got := rec.query["tag_id"]; len(got) != 1 || got[0] != "5,7" {
 		t.Errorf("tag_id = %v, want one param valued \"5,7\"", got)
@@ -62,7 +62,7 @@ func TestMultiTag_AsksForPublishedWorksOnly(t *testing.T) {
 	}
 }
 
-func TestQuizPicker_OffersPublishedWorksOnly(t *testing.T) {
+func TestQuizPicker_OffersTheCatalogWithoutAClaimGate(t *testing.T) {
 	rec := &worksQueryRecorder{}
 	svc := NewQuizService(nil, rec.client(t), nil, nil, nil)
 
@@ -72,10 +72,10 @@ func TestQuizPicker_OffersPublishedWorksOnly(t *testing.T) {
 	if rec.path != "/v1/catalog/works/search" {
 		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
-	if got := rec.get("claim_state"); got != "live" {
-		t.Errorf("claim_state = %q, want live — without it the picker offers unpublished games", got)
+	if got := rec.get("claim_state"); got != "" {
+		t.Errorf("claim_state = %q, want it absent — the picker is the catalog", got)
 	}
-	if got := rec.get("claimed"); got != "true" {
-		t.Errorf("claimed = %q, want true", got)
+	if got := rec.get("claimed"); got != "" {
+		t.Errorf("claimed = %q, want it absent", got)
 	}
 }
