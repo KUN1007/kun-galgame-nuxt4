@@ -105,6 +105,19 @@ func (s *SubmissionService) Claim(
 	if appErr != nil {
 		return nil, appErr
 	}
+	// Stamp the local row now instead of waiting for the claim-event cron,
+	// exactly as Submit and ClaimUnclaimed do: the caller is redirected to
+	// /galgame/:gid the moment this returns, and until the row (and its
+	// creator_user_id) exists the detail page renders no 贡献者 card.
+	if err := s.galgameRepo.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.galgameRepo.PublishLocal(tx, gid); err != nil {
+			return err
+		}
+		return s.galgameRepo.SetCreatorIfUnset(tx, gid, int(uid))
+	}); err != nil {
+		slog.Warn("claim: 建立本地 galgame 行失败, 等待 claim 事件同步补齐",
+			"gid", gid, "uid", uid, "error", err)
+	}
 	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
 		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
 	}
