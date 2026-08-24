@@ -97,6 +97,10 @@ func (r *GalgameRepository) UnpublishLocal(galgameID int) error {
 		UpdateColumn("published", false).Error
 }
 
+func (r *GalgameRepository) DeleteLocal(galgameID int) error {
+	return r.db.Where("id = ?", galgameID).Delete(&model.GalgameLocal{}).Error
+}
+
 func (r *GalgameRepository) EnsureLocalStub(tx *gorm.DB, galgameID int) error {
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&model.GalgameLocal{ID: galgameID}).Error

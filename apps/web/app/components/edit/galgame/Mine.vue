@@ -51,6 +51,28 @@ const handleResubmit = async (item: UserClaimItem) => {
     refresh()
   }
 }
+
+const isDeleting = ref<Record<number, boolean>>({})
+
+const handleDelete = async (item: UserClaimItem) => {
+  const ok = await useComponentMessageStore().alert(
+    '确定删除这条草稿吗?',
+    '删除后该草稿会被彻底移除, 且无法恢复。'
+  )
+  if (!ok) {
+    return
+  }
+  const gid = galgameClaimGid(item)
+  isDeleting.value = { ...isDeleting.value, [gid]: true }
+  const res = await kunFetch<string>(`/galgame/${gid}/draft`, {
+    method: 'DELETE'
+  })
+  isDeleting.value = { ...isDeleting.value, [gid]: false }
+  if (res !== null) {
+    useMessage('已删除', 'success')
+    refresh()
+  }
+}
 </script>
 
 <template>
@@ -129,6 +151,17 @@ const handleResubmit = async (item: UserClaimItem) => {
               @click="handleWithdraw(item)"
             >
               撤回
+            </KunButton>
+            <KunButton
+              v-if="item.claim_state === CLAIM_STATE_DRAFT"
+              size="sm"
+              color="danger"
+              variant="flat"
+              :loading="isDeleting[galgameClaimGid(item)]"
+              :disabled="isDeleting[galgameClaimGid(item)]"
+              @click="handleDelete(item)"
+            >
+              删除
             </KunButton>
           </template>
         </template>

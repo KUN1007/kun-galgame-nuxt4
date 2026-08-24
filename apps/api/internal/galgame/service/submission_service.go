@@ -229,6 +229,24 @@ func (s *SubmissionService) Withdraw(
 	return s.act(ctx, accessToken, gid, catalogclient.ClaimActionWithdraw, "")
 }
 
+func (s *SubmissionService) DeleteDraft(
+	ctx context.Context,
+	accessToken string,
+	gid int,
+) *errors.AppError {
+	workID, appErr := s.workIDOf(ctx, gid)
+	if appErr != nil {
+		return appErr
+	}
+	if err := s.catalog.DeleteDraftUser(ctx, accessToken, workID); err != nil {
+		return claimActionError(err)
+	}
+	if err := s.galgameRepo.DeleteLocal(gid); err != nil {
+		slog.Warn("delete draft: 删除本地 galgame 行失败", "gid", gid, "error", err)
+	}
+	return nil
+}
+
 func (s *SubmissionService) act(
 	ctx context.Context,
 	accessToken string,

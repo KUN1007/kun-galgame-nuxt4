@@ -10,6 +10,7 @@ DELETE /api/galgame-rating/:id/comments/:postId       cors.New → middleware.Na
 DELETE /api/galgame-resource/:id/comments/:postId     cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.ResourceDelete
 DELETE /api/galgame/:gid                              cors.New → middleware.NamePreference → OptionalAuth → Auth → SubmissionHandler.Withdraw
 DELETE /api/galgame/:gid/cover/:coverId/vote          cors.New → middleware.NamePreference → OptionalAuth → Auth → CoverVoteHandler.Unvote
+DELETE /api/galgame/:gid/draft                        cors.New → middleware.NamePreference → OptionalAuth → Auth → SubmissionHandler.DeleteDraft
 DELETE /api/galgame/:gid/resource                     cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceHandler.DeleteResource
 DELETE /api/galgame/collection/:cid                   cors.New → middleware.NamePreference → OptionalAuth → Auth → GalgameCollectionHandler.Delete
 DELETE /api/galgame/comments/:postId                  cors.New → middleware.NamePreference → OptionalAuth → Auth → CommunityCommentHandler.Delete

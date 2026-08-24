@@ -30,6 +30,12 @@ func (c *Client) ActOnClaimUser(ctx context.Context, accessToken string, workID 
 		userClaimBase+"/works/"+strconv.FormatInt(workID, 10)+"/claim-actions/"+action, req)
 }
 
+func (c *Client) DeleteDraftUser(ctx context.Context, accessToken string, workID int64) error {
+	_, err := userEditDo[struct{}](ctx, c, http.MethodDelete, accessToken,
+		userClaimBase+"/works/"+strconv.FormatInt(workID, 10), nil)
+	return err
+}
+
 func (c *Client) MyClaims(ctx context.Context, accessToken string, f UserClaimFilter) (*UserClaimPage, error) {
 	q := url.Values{}
 	if len(f.ClaimStates) > 0 {
