@@ -58,12 +58,8 @@ const handleSubmitGalgame = async () => {
 
   const { banner: _bannerBlob, ...jsonFields } = data
   let bannerHash = ''
-  if (banner instanceof File) {
-    const uploaded = await uploadGalgameImage(
-      banner,
-      'galgame_banner',
-      banner.name
-    )
+  if (banner) {
+    const uploaded = await uploadGalgameImage(banner, 'galgame_banner')
     if (uploaded) {
       bannerHash = uploaded.hash
     }

@@ -21,6 +21,8 @@ type submitRecorder struct {
 	editBody   map[string]any
 	editPath   string
 	editAuth   string
+	mergePath  string
+	mergeAuth  string
 }
 
 func (r *submitRecorder) service(t *testing.T) *SubmissionService {
@@ -36,10 +38,13 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 			r.body = body
 			r.submitPath = req.URL.Path
 			r.submitAuth = req.Header.Get("Authorization")
-		case strings.Contains(req.URL.Path, "/catalog/edit/proposals"):
+		case strings.HasSuffix(req.URL.Path, "/catalog/edit/proposals"):
 			r.editBody = body
 			r.editPath = req.URL.Path
 			r.editAuth = req.Header.Get("Authorization")
+		case strings.HasSuffix(req.URL.Path, "/merge"):
+			r.mergePath = req.URL.Path
+			r.mergeAuth = req.Header.Get("Authorization")
 		}
 		r.mu.Unlock()
 
@@ -66,6 +71,8 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
 				`{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}` +
 				`],"next_cursor":null}}`))
+		case strings.HasSuffix(req.URL.Path, "/merge"):
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":9,"seq":2,"action":"merged"}}`))
 		default:
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":1}}}`))
 		}
@@ -144,6 +151,12 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	}
 	if _, ok := rec.editBody["site"]; ok {
 		t.Errorf("the banner edit must assert no site: %v", rec.editBody)
+	}
+	if rec.mergePath != "/api/v1/user/catalog/edit/proposals/1/merge" {
+		t.Errorf("open banner proposal hit %q, want the merge face", rec.mergePath)
+	}
+	if rec.mergeAuth != "Bearer user-jwt" {
+		t.Errorf("banner merge auth = %q, want the submitter's bearer", rec.mergeAuth)
 	}
 }
 

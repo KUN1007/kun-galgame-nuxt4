@@ -81,13 +81,24 @@ func (s *SubmissionService) Submit(
 	patch := form.CoverPatch()
 	attached := patch == nil
 	if patch != nil {
-		if _, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
+		created, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
 			EntityType: catalogclient.EntityTypeWork, EntityID: res.WorkID,
 			Patch: patch, Note: "投稿时提交的横幅图",
-		}); err != nil {
+		})
+		switch {
+		case err != nil:
 			slog.Error("submit: 附加横幅图失败, 投稿已建立但封面丢失", "work", res.WorkID, "error", err)
-		} else {
+		case created.Merged:
 			attached = true
+		default:
+			// Approving the claim moves only the claim state, never the open
+			// edit proposals, so a banner that stays open here is never shown.
+			// The submitter owns the work, so merge it now instead.
+			if _, err := s.catalog.MergeEditProposalUser(ctx, accessToken, created.Proposal.ID, ""); err != nil {
+				slog.Error("submit: 合并横幅图提案失败", "proposal", created.Proposal.ID, "error", err)
+			} else {
+				attached = true
+			}
 		}
 	}
 	return &SubmitResult{
