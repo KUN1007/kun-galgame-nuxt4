@@ -76,6 +76,35 @@ func TestListEditProposalsUser_MineIsTheToken(t *testing.T) {
 	}
 }
 
+func TestListEditProposalsUser_V2OmitsPatchAndCarriesTimes(t *testing.T) {
+	srv, _ := recordingServer(t, 0, `{"object":"list","items":[{`+
+		`"id":"1064","state":"merged","target_object":"work","entity_id":"17",`+
+		`"proposer_uid":"2","site":"kungal","created_at":"2026-08-15T11:35:34Z"`+
+		`}]}`)
+
+	items, err := userClient(srv.URL).ListEditProposalsUser(context.Background(), "user-jwt",
+		UserEditProposalFilter{Mine: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("items decoded wrong: %+v", items)
+	}
+	it := items[0]
+	if it.Patch == nil {
+		t.Fatal("omitted patch must decode to an empty map")
+	}
+	if it.Amendments == nil {
+		t.Fatal("omitted amendments must decode to an empty slice")
+	}
+	if it.CreatedAt.UTC().Format("2006-01-02") != "2026-08-15" {
+		t.Fatalf("created_at = %v, want 2026-08-15", it.CreatedAt)
+	}
+	if it.Status != "merged" || it.ID != 1064 || it.EntityType != "catalog.work" {
+		t.Fatalf("decoded wrong: %+v", it)
+	}
+}
+
 func TestListEditProposalsUser_QueueOmitsMine(t *testing.T) {
 	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"items":[],"total":0}}`)
 

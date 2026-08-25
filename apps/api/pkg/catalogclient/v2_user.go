@@ -151,6 +151,9 @@ type v2Proposal struct {
 	ProposerUID    json.RawMessage `json:"proposer_uid"`
 	Site           string          `json:"site"`
 	Merged         bool            `json:"merged"`
+	CreatedAt      string          `json:"created_at"`
+	UpdatedAt      string          `json:"updated_at"`
+	DecidedAt      *string         `json:"decided_at"`
 }
 
 func (p v2Proposal) proposal() EditProposal {
@@ -165,19 +168,48 @@ func (p v2Proposal) proposal() EditProposal {
 	if entityType == "" {
 		entityType = entityTypeFromObject(p.TargetObject)
 	}
-	return EditProposal{
+	patch := p.Patch
+	if patch == nil {
+		patch = map[string]any{}
+	}
+	effective := p.EffectivePatch
+	if effective == nil {
+		effective = map[string]any{}
+	}
+	amendments := p.Amendments
+	if amendments == nil {
+		amendments = []EditAmendment{}
+	}
+	out := EditProposal{
 		ID:             parseFlexID(p.ID),
 		EntityType:     entityType,
 		EntityID:       parseFlexID(p.EntityID),
 		Note:           p.Note,
 		DecisionNote:   p.DecisionNote,
-		Patch:          p.Patch,
-		EffectivePatch: p.EffectivePatch,
-		Amendments:     p.Amendments,
+		Patch:          patch,
+		EffectivePatch: effective,
+		Amendments:     amendments,
 		ProposerUID:    parseFlexID(p.ProposerUID),
 		Site:           p.Site,
 		Status:         status,
+		CreatedAt:      parseRFC3339(p.CreatedAt),
+		UpdatedAt:      parseRFC3339(p.UpdatedAt),
 	}
+	if p.DecidedAt != nil {
+		t := parseRFC3339(*p.DecidedAt)
+		if !t.IsZero() {
+			out.DecidedAt = &t
+		}
+	}
+	return out
+}
+
+func parseRFC3339(raw string) time.Time {
+	t, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		t, _ = time.Parse("2006-01-02T15:04:05Z", raw)
+	}
+	return t
 }
 
 type v2Revision struct {
@@ -197,11 +229,7 @@ type v2Revision struct {
 }
 
 func (r v2Revision) time() time.Time {
-	t, err := time.Parse(time.RFC3339, r.CreatedAt)
-	if err != nil {
-		t, _ = time.Parse("2006-01-02T15:04:05Z", r.CreatedAt)
-	}
-	return t
+	return parseRFC3339(r.CreatedAt)
 }
 
 func (r v2Revision) revision() EditRevision {
