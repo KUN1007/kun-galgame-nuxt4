@@ -69,14 +69,14 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
 
-	if got := rec.urlPath(); got != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", got)
+	if got := rec.urlPath(); got != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", got)
 	}
 	if got := rec.all("tag_id"); len(got) != 1 || got[0] != "638,41" {
 		t.Errorf("tag_id = %v, want exactly one param valued \"638,41\"", got)
 	}
-	if got := rec.get("page"); got != "3" {
-		t.Errorf("page = %q, want %q — pagination must reach upstream", got, "3")
+	if rec.get("page") != "" && rec.get("cursor") == "" {
+		t.Errorf("page=%q cursor=%q, want a v2 cursor for page 3", rec.get("page"), rec.get("cursor"))
 	}
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want %q", got, "24")
@@ -84,8 +84,8 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 	if got := rec.get("include"); got != CatalogCardInclude {
 		t.Errorf("include = %q, want %q (cards render names + covers)", got, CatalogCardInclude)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 on every lane", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true on every lane", got)
 	}
 	if got := rec.get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)
@@ -100,8 +100,8 @@ func TestGetByMultiTag_SFWGateStaysClosed(t *testing.T) {
 		url.Values{"tag_ids": {"41"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	if got := rec.get("nsfw"); got != "" {
+		t.Errorf("nsfw = %q, want it absent for an SFW caller", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)

@@ -160,13 +160,14 @@ type CatalogWorkListItem struct {
 	Cover         string        `json:"cover"`
 	Updated       string        `json:"updated"`
 
-	Localized map[string]catLocalizedName `json:"localized"`
-	Latin     string                      `json:"latin"`
-	Intros    catIntros                   `json:"intros"`
-	Labels    []catWorkLabel              `json:"labels"`
-	Ratings   []catRating                 `json:"ratings"`
-	Covers    *catCoverSlots              `json:"covers"`
-	Refs      []catRef                    `json:"refs"`
+	Localized  map[string]catLocalizedName `json:"localized"`
+	Latin      string                      `json:"latin"`
+	Intros     catIntros                   `json:"intros"`
+	Labels     []catWorkLabel              `json:"labels"`
+	Ratings    []catRating                 `json:"ratings"`
+	Covers     *catCoverSlots              `json:"covers"`
+	CoverSlots *catCoverSlots              `json:"cover_slots"`
+	Refs       []catRef                    `json:"refs"`
 
 	ViaLabel *CatalogLabelVia `json:"via_label"`
 }
@@ -413,9 +414,13 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 		b.ClaimState = claimStateNone
 	}
 	b.VndbID = b.Refs["vndb"]
+	slots := it.CoverSlots
+	if slots == nil {
+		slots = it.Covers
+	}
 	b.EffectiveBannerHash, b.EffectiveBannerURL,
 		b.EffectiveBannerWidth, b.EffectiveBannerHeight,
-		b.EffectiveBannerThumbhash = coverFields(it.Covers, it.Cover)
+		b.EffectiveBannerThumbhash = coverFields(slots, it.Cover)
 	return b
 }
 

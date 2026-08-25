@@ -40,12 +40,12 @@ func TestGetData_ForwardsBasicAndPassesThrough(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
-	data, err := c.getData(context.Background(), "/api/v1/catalog/works/3853/credits",
+	data, err := c.getData(context.Background(), "/api/v2/catalog/works/3853/credits",
 		url.Values{"limit": {"10"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotPath != "/api/v1/catalog/works/3853/credits" {
+	if gotPath != "/api/v2/catalog/works/3853/credits" {
 		t.Fatalf("bad path %q", gotPath)
 	}
 	if gotQuery != "limit=10" {
@@ -80,7 +80,7 @@ func TestErrorMapping(t *testing.T) {
 			_, _ = w.Write([]byte(tc.body))
 		}))
 		c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
-		_, err := c.getData(context.Background(), "/api/v1/catalog/works/1/credits", nil)
+		_, err := c.getData(context.Background(), "/api/v2/catalog/works/1/credits", nil)
 		if !errors.Is(err, tc.want) {
 			t.Fatalf("status %d: want %v, got %v", tc.status, tc.want, err)
 		}
@@ -93,7 +93,7 @@ func TestUpstreamUnreachable(t *testing.T) {
 	deadURL := srv.URL
 	srv.Close()
 	c := New(Config{BaseURL: deadURL, ClientID: "cid", ClientSecret: "sec"})
-	if _, err := c.getData(context.Background(), "/api/v1/catalog/works/1/credits", nil); !errors.Is(err, ErrUpstream) {
+	if _, err := c.getData(context.Background(), "/api/v2/catalog/works/1/credits", nil); !errors.Is(err, ErrUpstream) {
 		t.Fatalf("want ErrUpstream, got %v", err)
 	}
 }

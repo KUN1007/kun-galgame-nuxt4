@@ -61,12 +61,12 @@ func TestEditMineAsksForItsOwn(t *testing.T) {
 	if status, raw := doJSON(t, app, "GET", "/api/galgame-edit/mine", ""); status != http.StatusOK {
 		t.Fatalf("mine: status = %d body %s", status, raw)
 	}
-	req := fake.callTo("/api/v1/user/catalog/edit/proposals")
+	req := fake.callTo("/v2/me/proposals")
 	if req == nil {
 		t.Fatalf("mine did not reach the user-plane list: %+v", fake.requests)
 	}
-	if !strings.Contains(req.Query, "mine=true") {
-		t.Fatalf("mine query = %q, want mine=true", req.Query)
+	if strings.Contains(req.Query, "mine=") {
+		t.Fatalf("mine is the path, not a query flag: %q", req.Query)
 	}
 }
 
@@ -76,14 +76,14 @@ func TestEditQueueAsksForEverybodys(t *testing.T) {
 	if status, raw := doJSON(t, app, "GET", "/api/galgame-edit/queue", ""); status != http.StatusOK {
 		t.Fatalf("queue: status = %d body %s", status, raw)
 	}
-	req := fake.callTo("/api/v1/user/catalog/edit/proposals")
+	req := fake.callTo("/v2/moderation/proposals")
 	if req == nil {
 		t.Fatalf("queue did not reach the user-plane list: %+v", fake.requests)
 	}
 	if strings.Contains(req.Query, "mine") {
 		t.Fatalf("queue query = %q, want no mine flag", req.Query)
 	}
-	if !strings.Contains(req.Query, "status=open") {
+	if !strings.Contains(req.Query, "state=open") && !strings.Contains(req.Query, "status=open") {
 		t.Fatalf("queue query = %q, want the status filter", req.Query)
 	}
 }

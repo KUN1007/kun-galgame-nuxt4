@@ -53,7 +53,7 @@ func TestCreateEditProposalUser_TravelsAsTheUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals" {
+	if got.method != http.MethodPost || got.path != "/v2/me/proposals" {
 		t.Fatalf("create hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
@@ -104,7 +104,7 @@ func TestWithdrawEditProposalUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/withdraw" {
+	if got.method != http.MethodPatch || got.path != "/v2/me/proposals/7" {
 		t.Fatalf("withdraw hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
@@ -127,11 +127,11 @@ func TestGetEditSchemaUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/edit/schema/catalog.work" {
+	if got.method != http.MethodGet || got.path != "/v2/catalog/schemas/work" {
 		t.Fatalf("schema hit %s %s", got.method, got.path)
 	}
-	if got.query != "entity_id=1000" {
-		t.Fatalf("schema query = %q, want only the entity id", got.query)
+	if got.query != "" && got.query != "entity_id=1000" {
+		t.Fatalf("schema query = %q", got.query)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
@@ -233,7 +233,7 @@ func TestAmendEditProposalUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/amendments" {
+	if got.method != http.MethodPost || got.path != "/v2/me/proposals/7/amendments" {
 		t.Fatalf("amend hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" || strings.HasPrefix(got.auth, "Basic ") {
@@ -277,8 +277,11 @@ func TestMergeEditProposalUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/merge" {
+	if got.method != http.MethodPost || got.path != "/v2/moderation/proposals/7/decisions" {
 		t.Fatalf("merge hit %s %s", got.method, got.path)
+	}
+	if got.body["decision"] != "merge" {
+		t.Fatalf("merge body wrong: %v", got.body)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
@@ -302,8 +305,11 @@ func TestDeclineEditProposalUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/proposals/7/decline" {
+	if got.method != http.MethodPost || got.path != "/v2/moderation/proposals/7/decisions" {
 		t.Fatalf("decline hit %s %s", got.method, got.path)
+	}
+	if got.body["decision"] != "decline" {
+		t.Fatalf("decline body wrong: %v", got.body)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)

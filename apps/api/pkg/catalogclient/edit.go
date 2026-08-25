@@ -41,6 +41,29 @@ type EditAmendment struct {
 	CreatedAt  time.Time      `json:"created_at"`
 }
 
+func (a *EditAmendment) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		ID         json.RawMessage `json:"id"`
+		Seq        int             `json:"seq"`
+		Set        map[string]any  `json:"set"`
+		Unset      []string        `json:"unset"`
+		AmenderUID json.RawMessage `json:"amender_uid"`
+		Note       string          `json:"note"`
+		CreatedAt  time.Time       `json:"created_at"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	a.ID = parseFlexID(aux.ID)
+	a.Seq = aux.Seq
+	a.Set = aux.Set
+	a.Unset = aux.Unset
+	a.AmenderUID = parseFlexID(aux.AmenderUID)
+	a.Note = aux.Note
+	a.CreatedAt = aux.CreatedAt
+	return nil
+}
+
 type EditRevision struct {
 	ID            int64          `json:"id"`
 	Seq           int            `json:"seq"`
@@ -56,6 +79,49 @@ type EditRevision struct {
 	LegacyNote    string         `json:"legacy_note,omitempty"`
 	LegacyMinor   bool           `json:"legacy_minor,omitempty"`
 	LegacyID      *int64         `json:"legacy_id,omitempty"`
+}
+
+func (r *EditRevision) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		ID            json.RawMessage `json:"id"`
+		Seq           int             `json:"seq"`
+		Action        string          `json:"action"`
+		ChangedFields []string        `json:"changed_fields"`
+		Snapshot      map[string]any  `json:"snapshot"`
+		ActorUID      json.RawMessage `json:"actor_uid"`
+		AmenderUID    json.RawMessage `json:"amender_uid"`
+		ProposalID    json.RawMessage `json:"proposal_id"`
+		Site          string          `json:"site"`
+		CreatedAt     time.Time       `json:"created_at"`
+		LegacyAction  string          `json:"legacy_action"`
+		LegacyNote    string          `json:"legacy_note"`
+		LegacyMinor   bool            `json:"legacy_minor"`
+		LegacyID      json.RawMessage `json:"legacy_id"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	r.ID = parseFlexID(aux.ID)
+	r.Seq = aux.Seq
+	r.Action = aux.Action
+	r.ChangedFields = aux.ChangedFields
+	r.Snapshot = aux.Snapshot
+	r.ActorUID = parseFlexID(aux.ActorUID)
+	r.Site = aux.Site
+	r.CreatedAt = aux.CreatedAt
+	r.LegacyAction = aux.LegacyAction
+	r.LegacyNote = aux.LegacyNote
+	r.LegacyMinor = aux.LegacyMinor
+	if n := parseFlexID(aux.AmenderUID); n != 0 {
+		r.AmenderUID = &n
+	}
+	if n := parseFlexID(aux.ProposalID); n != 0 {
+		r.ProposalID = &n
+	}
+	if n := parseFlexID(aux.LegacyID); n != 0 {
+		r.LegacyID = &n
+	}
+	return nil
 }
 
 type EditRevertResult struct {

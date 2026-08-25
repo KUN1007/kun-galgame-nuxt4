@@ -32,11 +32,11 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 
 		r.mu.Lock()
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/catalog/works/submit"):
+		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/claims":
 			r.body = body
 			r.submitPath = req.URL.Path
 			r.submitAuth = req.Header.Get("Authorization")
-		case strings.Contains(req.URL.Path, "/catalog/edit/proposals"):
+		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/proposals":
 			r.editBody = body
 			r.editPath = req.URL.Path
 			r.editAuth = req.Header.Get("Authorization")
@@ -45,10 +45,8 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/catalog/works/submit"):
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{` +
-				`"work_id":90210,"product_work_id":90210,` +
-				`"claim_state":"pending","event_id":5}}`))
+		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/claims":
+			_, _ = w.Write([]byte(`{"object":"claim","id":"90210","state":"pending","display_name":"白恋サクラ"}`))
 		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
 			var body struct {
 				Items []struct {
@@ -67,7 +65,7 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 				`{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}` +
 				`],"next_cursor":null}}`))
 		default:
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":1}}}`))
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"1","state":"open"}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -93,8 +91,8 @@ func TestSubmitAdoptsTheRegistryIssuedID(t *testing.T) {
 	if _, present := rec.body["product_work_id"]; present {
 		t.Errorf("request carried product_work_id %v — kungal must name no id", rec.body["product_work_id"])
 	}
-	if rec.submitPath != "/api/v1/user/catalog/works/submit" {
-		t.Errorf("mint hit %q, want the user plane", rec.submitPath)
+	if rec.submitPath != "/v2/me/claims" {
+		t.Errorf("mint hit %q, want POST /v2/me/claims", rec.submitPath)
 	}
 	if rec.submitAuth != "Bearer user-jwt" {
 		t.Errorf("mint auth = %q, want the submitter's bearer and no Basic credential", rec.submitAuth)
@@ -130,10 +128,10 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	if rec.editBody["entity_type"] != "catalog.work" {
 		t.Errorf("entity_type = %v, want catalog.work", rec.editBody["entity_type"])
 	}
-	if rec.editBody["entity_id"] != float64(90210) {
+	if rec.editBody["entity_id"] != "90210" {
 		t.Errorf("entity_id = %v, want the registry work id 90210", rec.editBody["entity_id"])
 	}
-	if rec.editPath != "/api/v1/user/catalog/edit/proposals" {
+	if rec.editPath != "/v2/me/proposals" {
 		t.Errorf("banner edit hit %q, want the user plane", rec.editPath)
 	}
 	if rec.editAuth != "Bearer user-jwt" {

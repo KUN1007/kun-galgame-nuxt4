@@ -25,14 +25,14 @@ func TestVoteCover_ForwardsBearerAndParsesEnvelope(t *testing.T) {
 	if gotMethod != http.MethodPut {
 		t.Fatalf("method = %s, want PUT", gotMethod)
 	}
-	if gotPath != "/api/v1/user/catalog/works/1000/covers/88/vote" {
+	if gotPath != "/v2/me/cover-votes/88" {
 		t.Fatalf("bad path %q", gotPath)
 	}
 	if gotAuth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", gotAuth)
 	}
-	if gotBodyLen > 0 {
-		t.Fatalf("vote must send no body, got %d bytes", gotBodyLen)
+	if gotBodyLen == 0 {
+		t.Fatalf("v2 vote must send {\"vote\":\"up\"}")
 	}
 	if res.CoverID != 88 || res.VoteCount != 13 || !res.Voted {
 		t.Fatalf("envelope not parsed: %+v", res)
@@ -52,7 +52,7 @@ func TestUnvoteCover_UsesDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotMethod != http.MethodDelete || gotPath != "/api/v1/user/catalog/works/1000/covers/88/vote" {
+	if gotMethod != http.MethodDelete || gotPath != "/v2/me/cover-votes/88" {
 		t.Fatalf("unvote hit %s %s", gotMethod, gotPath)
 	}
 	if res.Voted || res.VoteCount != 12 {

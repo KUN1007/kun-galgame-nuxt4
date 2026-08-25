@@ -33,16 +33,16 @@ func TestReportPlaytime_ForwardsBearerAndBody(t *testing.T) {
 	if gotMethod != http.MethodPut {
 		t.Errorf("method = %s, want PUT", gotMethod)
 	}
-	if gotPath != "/v1/playtime/works/7" {
-		t.Errorf("path = %s, want /v1/playtime/works/7", gotPath)
+	if gotPath != "/v2/me/playtimes/7" {
+		t.Errorf("path = %s, want /v2/me/playtimes/7", gotPath)
 	}
 	if gotAuth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the user's bearer", gotAuth)
 	}
-	if gotBody["minutes"] != float64(720) || gotBody["status"] != "finished" {
-		t.Errorf("body = %v, want the absolute minutes and status", gotBody)
+	if gotBody["minutes"] != float64(720) {
+		t.Errorf("body = %v, want the absolute minutes", gotBody)
 	}
-	if got.Minutes != 720 || got.ClientID != "forum" {
+	if got.Minutes != 720 {
 		t.Errorf("record = %+v", got)
 	}
 }

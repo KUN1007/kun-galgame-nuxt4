@@ -97,17 +97,17 @@ func TestReportPlaytimeTravelsAsTheUserAndAnswersTheFold(t *testing.T) {
 		t.Fatalf("want a write then a fold read, got %+v", fake.requests)
 	}
 	write := fake.requests[0]
-	if write.Method != http.MethodPut || write.Path != "/v1/playtime/works/1000" {
-		t.Errorf("write went to %s %s, want PUT /v1/playtime/works/1000", write.Method, write.Path)
+	if write.Method != http.MethodPut || write.Path != "/v2/me/playtimes/1000" {
+		t.Errorf("write went to %s %s, want PUT /v2/me/playtimes/1000", write.Method, write.Path)
 	}
 	if write.Auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the user's own bearer, never the s2s pair", write.Auth)
 	}
-	if write.Body["minutes"] != float64(720) || write.Body["status"] != "finished" {
+	if write.Body["minutes"] != float64(720) {
 		t.Errorf("body = %v", write.Body)
 	}
 	read := fake.requests[1]
-	if read.Method != http.MethodGet || read.Path != "/v1/playtime/works/1000" {
+	if read.Method != http.MethodGet || read.Path != "/v2/me/playtimes/1000" {
 		t.Errorf("fold read = %s %s", read.Method, read.Path)
 	}
 

@@ -31,14 +31,14 @@ func TestEditSnapshotUser_TravelsAsTheUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/edit/snapshot" {
+	if got.method != http.MethodGet || got.path != "/v2/moderation/snapshots/work/1000" {
 		t.Fatalf("snapshot hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
-	if got.query != "entity_id=1000&entity_type=catalog.work" {
-		t.Fatalf("snapshot query = %q", got.query)
+	if got.query != "" {
+		t.Fatalf("snapshot query = %q, want the id on the path", got.query)
 	}
 	if values["catalog.work.name_zh_cn"] != "现值" {
 		t.Fatalf("values decoded wrong: %v", values)
@@ -55,20 +55,20 @@ func TestListEditProposalsUser_MineIsTheToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/edit/proposals" {
+	if got.method != http.MethodGet || got.path != "/v2/me/proposals" {
 		t.Fatalf("list hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
 	q := parseQuery(t, got.query)
-	if q.Get("mine") != "true" {
-		t.Fatalf("mine flag missing: %q", got.query)
+	if q.Has("mine") {
+		t.Fatalf("mine is the path, not a query flag: %q", got.query)
 	}
 	if q.Has("proposer_uid") || q.Has("site") {
 		t.Fatalf("the user plane names neither a proposer nor a site: %q", got.query)
 	}
-	if q.Get("entity_id") != "1000" || q.Get("status") != "open" || q.Get("limit") != "20" {
+	if q.Get("entity_id") != "1000" || q.Get("state") != "open" || q.Get("limit") != "20" {
 		t.Fatalf("filter lost on the wire: %q", got.query)
 	}
 	if len(items) != 1 || items[0].ID != 7 {
@@ -111,7 +111,7 @@ func TestWorkCoversUser_BallotFromTheToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/works/1000/covers" {
+	if got.method != http.MethodGet || got.path != "/v2/catalog/works/1000/covers" {
 		t.Fatalf("covers hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {

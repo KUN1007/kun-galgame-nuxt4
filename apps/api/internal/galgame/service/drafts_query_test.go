@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 
@@ -44,20 +45,23 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	if _, appErr := svc.GetDrafts(context.Background(), 2, 24, DraftFilters{}); appErr != nil {
 		t.Fatalf("GetDrafts: %v", appErr)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claimed"); got != "false" {
 		t.Errorf("claimed = %q, want false — anything else lists games kungal already has", got)
 	}
-	if got := rec.get("page"); got != "2" {
-		t.Errorf("page = %q, want 2", got)
+	if got := rec.get("page"); got != "" {
+		t.Errorf("page = %q, want it rewritten to a cursor", got)
+	}
+	if got := rec.get("cursor"); !strings.HasPrefix(got, "cur_") {
+		t.Errorf("cursor = %q, want cur_… for page 2", got)
 	}
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want 24", got)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true — the age gate is never a population cut", got)
 	}
 	if got := rec.get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent on the unclaimed-works funnel", got)
@@ -70,7 +74,7 @@ func TestDrafts_EntityScopeUsesCatalogIDs(t *testing.T) {
 		param   string
 		want    string
 	}{
-		"label":  {DraftFilters{LabelID: 129}, "label_id", "129"},
+		"label":  {DraftFilters{LabelID: 129}, "company_id", "129"},
 		"tag":    {DraftFilters{TagID: 55}, "tag_id", "55"},
 		"engine": {DraftFilters{EngineID: 7}, "engine_id", "7"},
 	} {
@@ -83,8 +87,8 @@ func TestDrafts_EntityScopeUsesCatalogIDs(t *testing.T) {
 			if got := rec.get(tc.param); got != tc.want {
 				t.Errorf("%s = %q, want %q", tc.param, got, tc.want)
 			}
-			if got := rec.get("nsfw"); got != "1" {
-				t.Errorf("nsfw = %q, want 1 on every lane", got)
+			if got := rec.get("nsfw"); got != "true" {
+				t.Errorf("nsfw = %q, want true on every lane", got)
 			}
 		})
 	}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 const userEditBase = userBase + "/edit"
@@ -21,12 +22,53 @@ type UserEditCreateRequest struct {
 }
 
 func (c *Client) CreateEditProposalUser(ctx context.Context, accessToken string, req UserEditCreateRequest) (*EditCreateResult, error) {
-	return userEditPost[EditCreateResult](ctx, c, accessToken, userEditBase+"/proposals", req)
+	raw, _, err := c.userV2Do(ctx, http.MethodPost, accessToken, "/v2/me/proposals", map[string]any{
+		"entity_type": req.EntityType,
+		"entity_id":   strconv.FormatInt(req.EntityID, 10),
+		"patch":       req.Patch,
+		"note":        req.Note,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	var env struct {
+		Code     int             `json:"code"`
+		Data     json.RawMessage `json:"data"`
+		Object   string          `json:"object"`
+		Merged   bool            `json:"merged"`
+		Proposal json.RawMessage `json:"proposal"`
+		Revision *EditRevision   `json:"revision"`
+	}
+	_ = json.Unmarshal(raw, &env)
+	payload := raw
+	if env.Object == "" && len(bytes.TrimSpace(env.Data)) > 0 {
+		payload = env.Data
+		_ = json.Unmarshal(payload, &env)
+	}
+	if len(bytes.TrimSpace(env.Proposal)) > 0 {
+		var prop EditProposal
+		if err := json.Unmarshal(env.Proposal, &prop); err != nil {
+			return nil, err
+		}
+		return &EditCreateResult{Proposal: prop, Merged: env.Merged, Revision: env.Revision}, nil
+	}
+	var out v2Proposal
+	if err := json.Unmarshal(payload, &out); err != nil {
+		return nil, err
+	}
+	prop := out.proposal()
+	return &EditCreateResult{Proposal: prop, Merged: prop.Status == "merged" || env.Merged, Revision: env.Revision}, nil
 }
 
 func (c *Client) WithdrawEditProposalUser(ctx context.Context, accessToken string, id int64) (*EditProposal, error) {
-	return userEditPost[EditProposal](ctx, c, accessToken,
-		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/withdraw", struct{}{})
+	var out v2Proposal
+	err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/proposals/"+strconv.FormatInt(id, 10),
+		map[string]any{"state": "withdrawn"}, &out, ifMatchStar())
+	if err != nil {
+		return nil, err
+	}
+	prop := out.proposal()
+	return &prop, nil
 }
 
 func (c *Client) GetEditProposalUser(ctx context.Context, accessToken string, id int64) (*EditProposal, error) {
@@ -45,18 +87,60 @@ func (c *Client) AmendEditProposalUser(ctx context.Context, accessToken string, 
 	if note != "" {
 		body["note"] = note
 	}
-	return userEditPost[EditAmendment](ctx, c, accessToken,
-		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/amendments", body)
+	var out EditAmendment
+	err := c.userV2JSON(ctx, http.MethodPost, accessToken,
+		"/v2/me/proposals/"+strconv.FormatInt(id, 10)+"/amendments", body, &out,
+		ifMatchStar())
+	if err != nil {
+		return nil, err
+	}
+	if out.Set == nil {
+		out.Set = set
+	}
+	if out.Unset == nil {
+		out.Unset = unset
+	}
+	if out.Note == "" {
+		out.Note = note
+	}
+	return &out, nil
 }
 
 func (c *Client) MergeEditProposalUser(ctx context.Context, accessToken string, id int64, note string) (*EditRevision, error) {
-	return userEditPost[EditRevision](ctx, c, accessToken,
-		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/merge", map[string]any{"note": note})
+	var out EditRevision
+	err := c.userV2JSON(ctx, http.MethodPost, accessToken,
+		"/v2/moderation/proposals/"+strconv.FormatInt(id, 10)+"/decisions",
+		map[string]any{"decision": "merge", "note": note}, &out,
+		ifMatchStar())
+	if err != nil {
+		return nil, err
+	}
+	if out.Action == "" {
+		out.Action = "merged"
+	}
+	return &out, nil
 }
 
 func (c *Client) DeclineEditProposalUser(ctx context.Context, accessToken string, id int64, note string) (*EditProposal, error) {
-	return userEditPost[EditProposal](ctx, c, accessToken,
-		userEditBase+"/proposals/"+strconv.FormatInt(id, 10)+"/decline", map[string]any{"note": note})
+	var out v2Proposal
+	err := c.userV2JSON(ctx, http.MethodPost, accessToken,
+		"/v2/moderation/proposals/"+strconv.FormatInt(id, 10)+"/decisions",
+		map[string]any{"decision": "decline", "note": note}, &out,
+		ifMatchStar())
+	if err != nil {
+		return nil, err
+	}
+	prop := out.proposal()
+	if prop.ID == 0 {
+		prop.ID = id
+	}
+	if prop.Status == "" || prop.Status == "open" {
+		prop.Status = "declined"
+	}
+	if prop.DecisionNote == "" {
+		prop.DecisionNote = note
+	}
+	return &prop, nil
 }
 
 func (c *Client) RevertEditEntityUser(ctx context.Context, accessToken string, entityType string, entityID int64, toSeq int, note string) (*EditRevertResult, error) {
@@ -66,26 +150,62 @@ func (c *Client) RevertEditEntityUser(ctx context.Context, accessToken string, e
 }
 
 func (c *Client) GetEditSchemaUser(ctx context.Context, accessToken, entityType string, entityID int64) (*EditSchema, error) {
-	path := userEditBase + "/schema/" + entityType
-	if entityID > 0 {
-		q := url.Values{}
-		q.Set("entity_id", strconv.FormatInt(entityID, 10))
-		path += "?" + q.Encode()
+	object := "work"
+	if strings.HasPrefix(entityType, "catalog.") {
+		object = strings.TrimPrefix(entityType, "catalog.")
+		if object == "label" {
+			object = "company"
+		}
 	}
-	return userEditDo[EditSchema](ctx, c, http.MethodGet, accessToken, path, nil)
+	var schema v2Schema
+	if err := c.userV2JSON(ctx, http.MethodGet, accessToken, "/v2/catalog/schemas/"+object, nil, &schema, nil); err != nil {
+		return nil, err
+	}
+	out := &EditSchema{EntityType: schema.EntityType}
+	if out.EntityType == "" {
+		out.EntityType = entityType
+	}
+	for _, f := range schema.Fields {
+		kind := f.FieldType
+		if kind == "" {
+			kind = f.Kind
+		}
+		canPropose, canReview := !f.Deprecated, true
+		if f.CanPropose != nil {
+			canPropose = *f.CanPropose
+		}
+		if f.CanReview != nil {
+			canReview = *f.CanReview
+		}
+		locked := !canPropose && !canReview && !f.Deprecated
+		out.Fields = append(out.Fields, EditSchemaField{
+			Key:        f.Key,
+			Kind:       kind,
+			DiffHint:   f.DiffHint,
+			Deprecated: f.Deprecated,
+			Locked:     locked,
+			CanPropose: canPropose,
+			CanReview:  canReview,
+		})
+	}
+	return out, nil
 }
 
 func (c *Client) EditSnapshotUser(ctx context.Context, accessToken, entityType string, entityID int64) (map[string]any, error) {
-	q := url.Values{}
-	q.Set("entity_type", entityType)
-	q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	data, err := userEditDo[struct {
-		Values map[string]any `json:"values"`
-	}](ctx, c, http.MethodGet, accessToken, userEditBase+"/snapshot?"+q.Encode(), nil)
+	object := "work"
+	if strings.HasPrefix(entityType, "catalog.") {
+		object = strings.TrimPrefix(entityType, "catalog.")
+		if object == "label" {
+			object = "company"
+		}
+	}
+	var snap v2Snapshot
+	err := c.userV2JSON(ctx, http.MethodGet, accessToken,
+		"/v2/moderation/snapshots/"+object+"/"+strconv.FormatInt(entityID, 10), nil, &snap, nil)
 	if err != nil {
 		return nil, err
 	}
-	return data.Values, nil
+	return snap.values(), nil
 }
 
 type UserEditProposalFilter struct {
@@ -105,31 +225,53 @@ func (c *Client) ListEditProposalsUser(ctx context.Context, accessToken string, 
 		q.Set("entity_id", strconv.FormatInt(f.EntityID, 10))
 	}
 	if f.Status != "" {
-		q.Set("status", f.Status)
+		q.Set("state", f.Status)
 	}
 	if f.Limit > 0 {
 		q.Set("limit", strconv.Itoa(f.Limit))
 	}
-	if f.Mine {
-		q.Set("mine", "true")
+	path := "/v2/me/proposals"
+	if !f.Mine {
+		path = "/v2/moderation/proposals"
 	}
-	page, err := userEditDo[proposalListPage](ctx, c, http.MethodGet, accessToken,
-		userEditBase+"/proposals?"+q.Encode(), nil)
-	if err != nil {
+	if len(q) > 0 {
+		path += "?" + q.Encode()
+	}
+	var page v2List[v2Proposal]
+	if err := c.userV2JSON(ctx, http.MethodGet, accessToken, path, nil, &page, nil); err != nil {
 		return nil, err
 	}
-	return page.Items, nil
+	rows := page.rows()
+	out := make([]EditProposal, 0, len(rows))
+	for _, it := range rows {
+		out = append(out, it.proposal())
+	}
+	return out, nil
 }
 
 func (c *Client) WorkCoversUser(ctx context.Context, accessToken string, workID int64) ([]CoverTally, error) {
-	data, err := userEditDo[struct {
-		Covers []CoverTally `json:"covers"`
-	}](ctx, c, http.MethodGet, accessToken,
-		userClaimBase+"/works/"+strconv.FormatInt(workID, 10)+"/covers", nil)
+	var page v2List[struct {
+		ID        json.RawMessage `json:"id"`
+		VoteCount int             `json:"vote_count"`
+		Hash      string          `json:"hash"`
+		ImageHash string          `json:"image_hash"`
+		Voted     bool            `json:"voted"`
+	}]
+	err := c.userV2JSON(ctx, http.MethodGet, accessToken,
+		"/v2/catalog/works/"+strconv.FormatInt(workID, 10)+"/covers", nil, &page, nil)
 	if err != nil {
 		return nil, err
 	}
-	return data.Covers, nil
+	rows := page.rows()
+	out := make([]CoverTally, 0, len(rows))
+	for _, it := range rows {
+		hash := it.Hash
+		if hash == "" {
+			hash = it.ImageHash
+		}
+		out = append(out, CoverTally{ID: parseFlexID(it.ID), ImageHash: hash, VoteCount: it.VoteCount, Voted: it.Voted})
+	}
+	return out, nil
 }
 
 func userEditPost[T any](ctx context.Context, c *Client, accessToken, path string, body any) (*T, error) {

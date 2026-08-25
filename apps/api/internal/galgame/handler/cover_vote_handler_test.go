@@ -80,7 +80,7 @@ func TestCoverVoteTravelsAsTheUser(t *testing.T) {
 		t.Fatalf("expected exactly one catalog call, got %+v", fake.requests)
 	}
 	req := fake.requests[0]
-	if req.Method != "PUT" || req.Path != "/api/v1/user/catalog/works/1000/covers/88/vote" {
+	if req.Method != "PUT" || req.Path != "/v2/me/cover-votes/88" {
 		t.Fatalf("vote hit %s %s", req.Method, req.Path)
 	}
 	if req.Auth != "Bearer user-jwt" {

@@ -31,7 +31,7 @@ const taxonomyMemberPageCap = 200
 
 const maxTagFilterIDs = 10
 
-const CatalogCardInclude = "names,covers"
+const CatalogCardInclude = "titles,covers"
 
 func tagCategory(kind string, sexual bool) string {
 	if sexual {

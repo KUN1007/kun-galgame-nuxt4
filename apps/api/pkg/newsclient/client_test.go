@@ -10,11 +10,11 @@ import (
 
 func TestSourcesDecodesDirectory(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/news/sources" {
+		if r.URL.Path != "/v2/news/sources" {
 			t.Errorf("unexpected path %q", r.URL.Path)
 		}
-		if r.Header.Get("X-API-Key") != "k" {
-			t.Errorf("missing key header")
+		if r.Header.Get("Authorization") != "Bearer k" {
+			t.Errorf("missing bearer, got %q", r.Header.Get("Authorization"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"code":0,"data":{"sources":[

@@ -1,8 +1,6 @@
 package service
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,21 +23,9 @@ type coverPlaneRecorder struct {
 func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		raw, _ := io.ReadAll(req.Body)
 		w.Header().Set("Content-Type", "application/json")
-		if strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch") {
-			var in struct {
-				Items []struct {
-					ExternalID string `json:"external_id"`
-				} `json:"items"`
-			}
-			_ = json.Unmarshal(raw, &in)
-			out := make([]string, 0, len(in.Items))
-			for _, it := range in.Items {
-				out = append(out, `{"external_id":"`+it.ExternalID+`","work":{"id":1000}}`)
-			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				strings.Join(out, ",") + `]}}`))
+		if req.URL.Path == "/v2/catalog/works" && req.URL.Query().Get("refs") != "" {
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claimed_by":{"site":"kungal","work_id":1,"state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
 			return
 		}
 
@@ -48,13 +34,18 @@ func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 		stale := r.staleToken
 		r.mu.Unlock()
 
-		if stale && strings.Contains(req.URL.Path, "/user/catalog/") {
+		if stale && strings.HasPrefix(req.Header.Get("Authorization"), "Bearer ") {
 			w.WriteHeader(http.StatusForbidden)
-			_, _ = w.Write([]byte(`{"code":233,"message":"missing required scope: catalog:edit"}`))
+			_, _ = w.Write([]byte(`{"code":"SCOPE_REQUIRED","title":"missing required scope: catalog:edit"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"covers":[` +
-			`{"id":88,"image_hash":"abc","vote_count":3,"voted":true}]}}`))
+		if strings.HasPrefix(req.URL.Path, "/api/v1/catalog/works/") {
+			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"covers":[` +
+				`{"id":88,"image_hash":"abc","vote_count":3,"voted":true}]}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"object":"list","items":[` +
+			`{"id":"88","hash":"abc","vote_count":3,"voted":true}]}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -76,7 +67,7 @@ func TestCoverVotesReadAsTheViewerWhenTheyHaveAToken(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/user/catalog/works/1000/covers" {
+	if rec.path != "/v2/catalog/works/1000/covers" {
 		t.Errorf("covers read hit %q, want the user plane's covers face", rec.path)
 	}
 	if rec.auth != "Bearer user-jwt" {

@@ -1,5 +1,5 @@
 // Package newsclient reads the NextMoe news face — the partner index at
-// /v1/news, republished from 月幕 Galgame and Galgame 批评.
+// /v2/news, republished from 月幕 Galgame and Galgame 批评.
 //
 // It holds its own credential rather than reusing the catalog one: the news
 // face is gated on the scope news:read, and a key that carries only that scope
@@ -7,6 +7,7 @@
 package newsclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -51,7 +52,7 @@ func New(cfg Config) *Client {
 	}
 }
 
-func (c *Client) Configured() bool { return c.baseURL != "" && c.apiKey != "" }
+func (c *Client) Configured() bool { return c.baseURL != "" }
 
 var (
 	ErrNotConfigured = errors.New("newsclient: not configured (empty base URL or API key)")
@@ -87,6 +88,37 @@ type Item struct {
 	WorkIDs     []int64   `json:"work_ids"`
 }
 
+func (it *Item) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		ID          json.RawMessage `json:"id"`
+		Source      Source          `json:"source"`
+		Lane        string          `json:"lane"`
+		SourceURL   string          `json:"source_url"`
+		Title       string          `json:"title"`
+		Preview     string          `json:"preview"`
+		BannerURL   string          `json:"banner_url"`
+		PublishedAt time.Time       `json:"published_at"`
+		WorkIDs     json.RawMessage `json:"work_ids"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	it.Source, it.Lane, it.SourceURL = aux.Source, aux.Lane, aux.SourceURL
+	it.Title, it.Preview, it.BannerURL, it.PublishedAt = aux.Title, aux.Preview, aux.BannerURL, aux.PublishedAt
+	raw := bytes.TrimSpace(aux.ID)
+	if len(raw) > 0 && raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return err
+		}
+		n, _ := strconv.ParseInt(s, 10, 64)
+		it.ID = n
+	} else if len(raw) > 0 {
+		_ = json.Unmarshal(raw, &it.ID)
+	}
+	return nil
+}
+
 type Feed struct {
 	Items      []Item `json:"items"`
 	Count      int64  `json:"count"`
@@ -108,7 +140,7 @@ type FeedQuery struct {
 }
 
 func (q FeedQuery) values() url.Values {
-	v := url.Values{}
+	v := url.Values{"include_total": {"true"}}
 	if q.Lane != "" {
 		v.Set("lane", q.Lane)
 	}
@@ -131,15 +163,30 @@ func (q FeedQuery) values() url.Values {
 }
 
 func (c *Client) Feed(ctx context.Context, q FeedQuery) (*Feed, error) {
-	data, err := c.getData(ctx, "/v1/news", q.values())
+	data, err := c.getData(ctx, "/v2/news", q.values())
 	if err != nil {
 		return nil, err
 	}
-	var feed Feed
-	if err := json.Unmarshal(data, &feed); err != nil {
+	var page struct {
+		Items      []Item  `json:"items"`
+		Total      *int64  `json:"total"`
+		NextCursor *string `json:"next_cursor"`
+		Count      int64   `json:"count"`
+	}
+	if err := json.Unmarshal(data, &page); err != nil {
 		return nil, fmt.Errorf("%w: malformed feed payload", ErrUpstream)
 	}
-	return &feed, nil
+	feed := &Feed{Items: page.Items, Count: page.Count}
+	if page.Total != nil {
+		feed.Count = *page.Total
+	}
+	if page.NextCursor != nil {
+		feed.NextCursor = *page.NextCursor
+	}
+	if feed.Items == nil {
+		feed.Items = []Item{}
+	}
+	return feed, nil
 }
 
 // Count is how many items match a filter. It is the only aggregate the news
@@ -161,15 +208,19 @@ func (c *Client) Count(ctx context.Context, q FeedQuery) (int64, error) {
 // item fell off the first page — which is exactly what a source filter has to
 // do before the first item is loaded.
 func (c *Client) Sources(ctx context.Context) ([]Source, error) {
-	data, err := c.getData(ctx, "/v1/news/sources", nil)
+	data, err := c.getData(ctx, "/v2/news/sources", nil)
 	if err != nil {
 		return nil, err
 	}
 	var out struct {
+		Items   []Source `json:"items"`
 		Sources []Source `json:"sources"`
 	}
 	if err := json.Unmarshal(data, &out); err != nil {
 		return nil, fmt.Errorf("%w: malformed sources payload", ErrUpstream)
+	}
+	if len(out.Items) > 0 {
+		return out.Items, nil
 	}
 	return out.Sources, nil
 }
@@ -178,7 +229,14 @@ func (c *Client) getData(ctx context.Context, path string, query url.Values) (js
 	if !c.Configured() {
 		return nil, ErrNotConfigured
 	}
-	reqURL := c.baseURL + path
+	base := strings.TrimRight(c.baseURL, "/")
+	for _, suf := range []string{"/api/v1", "/v2", "/v1"} {
+		if strings.HasSuffix(base, suf) {
+			base = strings.TrimSuffix(base, suf)
+			break
+		}
+	}
+	reqURL := base + path
 	if len(query) > 0 {
 		reqURL += "?" + query.Encode()
 	}
@@ -186,7 +244,9 @@ func (c *Client) getData(ctx context.Context, path string, query url.Values) (js
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("X-API-Key", c.apiKey)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -197,6 +257,15 @@ func (c *Client) getData(ctx context.Context, path string, query url.Values) (js
 
 	switch resp.StatusCode {
 	case http.StatusOK:
+		var env struct {
+			Code   int             `json:"code"`
+			Data   json.RawMessage `json:"data"`
+			Object string          `json:"object"`
+		}
+		if json.Unmarshal(raw, &env) == nil && env.Object == "" && len(bytes.TrimSpace(env.Data)) > 0 {
+			return env.Data, nil
+		}
+		return raw, nil
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return nil, ErrUnauthorized
 	case http.StatusBadRequest:
@@ -204,19 +273,6 @@ func (c *Client) getData(ctx context.Context, path string, query url.Values) (js
 	default:
 		return nil, fmt.Errorf("%w (status %d)", ErrUpstream, resp.StatusCode)
 	}
-
-	var env struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(raw, &env); err != nil {
-		return nil, fmt.Errorf("%w: malformed envelope", ErrUpstream)
-	}
-	if env.Code != 0 {
-		return nil, fmt.Errorf("%w (code %d): %s", ErrUpstream, env.Code, env.Message)
-	}
-	return env.Data, nil
 }
 
 func envelopeMessage(raw []byte) string {

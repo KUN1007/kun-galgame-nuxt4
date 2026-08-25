@@ -18,11 +18,11 @@ func movedCatalog(t *testing.T, survivor string) (*GalgameClient, *[]string) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels/" + survivor:
+		case "/v2/catalog/companies/" + survivor:
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":6935,"display_name":"生存ブランド","kind":"game_brand","work_count":12}}`))
-		case "/v1/catalog/labels/13323", "/v1/catalog/labels/13324":
-			w.Header().Set("Location", "/v1/catalog/labels/"+survivor)
+		case "/v2/catalog/companies/13323", "/v2/catalog/companies/13324":
+			w.Header().Set("Location", "/v2/catalog/companies/"+survivor)
 			w.WriteHeader(http.StatusMovedPermanently)
 			_, _ = w.Write([]byte(`{"code":12,"message":"this id was merged away; use current_id",` +
 				`"data":{"entity_type":"label","id":13323,"current_id":6935}}`))
@@ -51,7 +51,7 @@ func TestCatalogLabelMergedIDReportsSurvivor(t *testing.T) {
 	if rec.DisplayName != "" {
 		t.Fatalf("the survivor's content must never travel under the dead id, got %q", rec.DisplayName)
 	}
-	if len(*seen) != 1 || (*seen)[0] != "/v1/catalog/labels/13323" {
+	if len(*seen) != 1 || (*seen)[0] != "/v2/catalog/companies/13323" {
 		t.Fatalf("client followed the redirect: %v", *seen)
 	}
 }

@@ -45,8 +45,8 @@ func TestSearchGalgames_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	if _, appErr := svc.SearchGalgames(context.Background(), "恋爱", 1, 24, true); appErr != nil {
 		t.Fatalf("SearchGalgames: %v", appErr)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent — catalog is the existence layer", got)
@@ -57,8 +57,8 @@ func TestSearchGalgames_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	if got := rec.get("sort"); got != "relevance" {
 		t.Errorf("sort = %q, want relevance", got)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+	if got := rec.get("nsfw"); got != "" {
+		t.Errorf("nsfw = %q, want it absent for an SFW caller", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
@@ -72,8 +72,8 @@ func TestSearchGalgames_NSFWCallerStillHasNoClaimGate(t *testing.T) {
 	if _, appErr := svc.SearchGalgames(context.Background(), "恋爱", 1, 24, false); appErr != nil {
 		t.Fatalf("SearchGalgames: %v", appErr)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1 for an NSFW-opted caller", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true for an NSFW-opted caller", got)
 	}
 	if got := rec.get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent — an NSFW caller opts out of the editorial gate", got)

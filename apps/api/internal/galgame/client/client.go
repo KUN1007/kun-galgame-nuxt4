@@ -84,7 +84,7 @@ func cachedBatch[T any](
 }
 
 type GalgameClient struct {
-	v1Base       string
+	origin       string
 	apiKey       string
 	httpClient   *http.Client
 	imageCDNBase string
@@ -116,7 +116,7 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	transport.MaxIdleConnsPerHost = 64
 
 	return &GalgameClient{
-		v1Base: base + "/v1",
+		origin: catalogOrigin(base),
 		apiKey: apiKey,
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
@@ -185,45 +185,31 @@ type apiResponse struct {
 }
 
 func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
-	return c.getFace(ctx, c.v1Base, path, "", query, c.apiKey)
+	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
+	if appErr != nil {
+		return nil, appErr
+	}
+	if status >= 200 && status < 300 {
+		return rewriteBanners(raw, c.imageCDNBase), nil
+	}
+	st, _, err := c.v2Error(status, raw)
+	if err != nil {
+		return nil, err
+	}
+	return nil, errors.New(errors.CodeBiz, "Galgame 资源不存在", st)
 }
 
 const catalogMovedCode = 12
 
 func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
-	reqURL := c.v1Base + path
-	if len(query) > 0 {
-		reqURL += "?" + query.Encode()
+	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
+	if appErr != nil {
+		return 0, nil, appErr
 	}
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return 0, nil, errors.ErrInternal("创建请求失败")
+	if status >= 200 && status < 300 {
+		return status, &apiResponse{Data: rewriteBanners(raw, c.imageCDNBase)}, nil
 	}
-	if c.apiKey != "" {
-		req.Header.Set("X-API-Key", c.apiKey)
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		slog.Error("Galgame 服务请求失败 (传输层)",
-			"method", req.Method, "url", req.URL.String(), "error", err)
-		return 0, nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
-	}
-	var result apiResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		slog.Error("解析 Galgame 响应失败 (非 JSON 响应)",
-			"method", req.Method, "url", req.URL.String(),
-			"status", resp.StatusCode, "body", bodySnippet(respBody))
-		return resp.StatusCode, nil, errors.New(errors.CodeBiz,
-			fmt.Sprintf("Galgame 服务返回了非预期响应 (HTTP %d)", resp.StatusCode), resp.StatusCode)
-	}
-	result.Data = rewriteBanners(result.Data, c.imageCDNBase)
-	return resp.StatusCode, &result, nil
+	return c.v2Error(status, raw)
 }
 
 func BriefName(b *GalgameBrief) string {

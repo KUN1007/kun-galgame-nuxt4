@@ -21,14 +21,14 @@ func graphCatalog(t *testing.T) (*GalgameClient, func() (string, string)) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels/24/relation-graph":
+		case "/v2/catalog/companies/24/graph":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
 				`{"id":24,"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo_hash":"aabbccdd","work_count":33},` +
 				`{"id":993,"display_name":"VisualArt's","localized":{},"logo_hash":"","work_count":120},` +
 				`{"id":994,"name":"Na-Ga","logo_hash":"11223344","work_count":0}],` +
 				`"edges":[{"from":24,"to":993,"relation":"parent"},` +
 				`{"from":994,"to":993,"relation":"parent"}]}}`))
-		case "/v1/catalog/labels/309/relation-graph":
+		case "/v2/catalog/companies/309/graph":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
 				`{"id":309,"display_name":"无关系社","logo_hash":"","work_count":2}],"edges":[]}}`))
 		default:
@@ -76,11 +76,11 @@ func TestCatalogLabelRelationGraphReadsTheContractShape(t *testing.T) {
 	}
 
 	path, query := asked()
-	if path != "/v1/catalog/labels/24/relation-graph" {
+	if path != "/v2/catalog/companies/24/graph" {
 		t.Errorf("path = %q", path)
 	}
-	if query != "nsfw=1" {
-		t.Errorf("query = %q, want nsfw=1", query)
+	if query != "nsfw=true" {
+		t.Errorf("query = %q, want nsfw=true", query)
 	}
 }
 

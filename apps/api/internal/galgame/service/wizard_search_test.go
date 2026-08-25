@@ -28,9 +28,9 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 		r.mu.Lock()
 		body := `{"code":0,"message":"ok","data":{"items":[],"total":0}}`
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/catalog/works/search"):
+		case req.URL.Path == "/v2/catalog/works":
 			r.catalogQ = req.URL.Query()
-			body = `{"code":0,"message":"ok","data":{"total":2,"items":[
+			body = `{"object":"list","total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
 			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
 			   "localized":{"zh-Hans":{"value":"白恋樱","kind":"official"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
@@ -47,8 +47,8 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":0,"state":"live"}},
 			  {"id":18,"display_name":"foreign","cover":"",
 			   "claimed_by":{"site":"moyu","work_id":700,"state":"live"}}
-			]}}`
-		case strings.Contains(req.URL.Path, "/claims"):
+			]}`
+		case strings.Contains(req.URL.Path, "/v2/me/claims") || strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
 			r.claimsPath = req.URL.Path
 			r.claimsAuth = req.Header.Get("Authorization")
@@ -103,8 +103,8 @@ func TestWizard_ItemsComeFromTheCatalogSearch(t *testing.T) {
 	if got := rec.catalogQ.Get("limit"); got != "12" {
 		t.Errorf("limit = %q, want 12", got)
 	}
-	if got := rec.catalogQ.Get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1", got)
+	if got := rec.catalogQ.Get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true", got)
 	}
 	if got := rec.catalogQ.Get("content_limit"); got != "" {
 		t.Errorf("content_limit = %q, want it absent on the wizard lane", got)
@@ -169,7 +169,7 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 	if rec.wikiHits != 0 {
 		t.Errorf("wiki face hits = %d, want 0 — the pending half is terminal now", rec.wikiHits)
 	}
-	if rec.claimsPath != "/api/v1/user/catalog/claims/mine" {
+	if rec.claimsPath != "/v2/me/claims" {
 		t.Errorf("pending half hit %q, want the user plane's own-claims face", rec.claimsPath)
 	}
 	if rec.claimsAuth != "Bearer user-jwt" {

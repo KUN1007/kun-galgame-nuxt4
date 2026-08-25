@@ -93,7 +93,7 @@ func TestEditSubmitPayloadOnTheUserPlane(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("submit: status = %d body %s", status, raw)
 	}
-	req := fake.callTo("/api/v1/user/catalog/edit/proposals")
+	req := fake.callTo("/v2/me/proposals")
 	if req == nil || req.Face != "user" {
 		t.Fatalf("a non-owner submit must ride the user plane, got %+v", fake.requests)
 	}
@@ -106,7 +106,7 @@ func TestEditSubmitPayloadOnTheUserPlane(t *testing.T) {
 	if _, ok := req.Body["site"]; ok {
 		t.Fatalf("the user plane asserts no site: %v", req.Body)
 	}
-	if req.Body["entity_id"] != float64(1000) {
+	if req.Body["entity_id"] != "1000" {
 		t.Fatalf("entity id must be the TRANSLATED registry work id: %v", req.Body)
 	}
 	patch, _ := req.Body["patch"].(map[string]any)
@@ -136,8 +136,8 @@ func TestEditWithdrawAlwaysRidesTheUserToken(t *testing.T) {
 			t.Fatalf("withdraw as %s must be exactly one call, got %+v", user.Name, fake.requests)
 		}
 		req := fake.requests[0]
-		if req.Face != "user" || req.Path != "/api/v1/user/catalog/edit/proposals/7/withdraw" {
-			t.Fatalf("withdraw as %s hit %s (%s)", user.Name, req.Path, req.Face)
+		if req.Face != "user" || req.Path != "/v2/me/proposals/7" || req.Method != "PATCH" {
+			t.Fatalf("withdraw as %s hit %s %s (%s)", user.Name, req.Method, req.Path, req.Face)
 		}
 		if req.Auth != "Bearer user-jwt" {
 			t.Fatalf("withdraw as %s used auth %q", user.Name, req.Auth)
@@ -155,17 +155,17 @@ func TestEditBootstrapProjectionFollowsThePlane(t *testing.T) {
 		if status, raw := doJSON(t, app, "GET", "/api/galgame/1/edit/bootstrap", ""); status != http.StatusOK {
 			t.Fatalf("bootstrap as %s: status = %d body %s", user.Name, status, raw)
 		}
-		req := fake.callTo("/api/v1/user/catalog/edit/schema/catalog.work")
+		req := fake.callTo("/v2/catalog/schemas/work")
 		if req == nil {
 			t.Fatalf("the projection for %s must ride the user plane, got %+v", user.Name, fake.requests)
 		}
-		if req.Query != "entity_id=1000" {
+		if req.Query != "" {
 			t.Fatalf("the user plane takes no actor parameters: %q", req.Query)
 		}
 		if fake.callTo("/api/v1/catalog/edit/schema/catalog.work") != nil {
 			t.Fatalf("no projection may still be asserted on S2S for %s: %+v", user.Name, fake.requests)
 		}
-		if req := fake.callTo("/api/v1/user/catalog/edit/snapshot"); req == nil || req.Face != "user" {
+		if req := fake.callTo("/v2/moderation/snapshots/work/1000"); req == nil || req.Face != "user" {
 			t.Fatalf("the value snapshot must ride the user plane, got %+v", fake.requests)
 		}
 		if fake.callTo("/api/v1/catalog/edit/snapshot") != nil {

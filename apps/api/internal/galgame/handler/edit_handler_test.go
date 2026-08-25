@@ -40,18 +40,17 @@ func (f *fakeNotifier) EmitMany(tx *gorm.DB, specs []msgService.Spec) error {
 func fakeGalgame(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/v1/catalog/lookup/batch":
-			raw, _ := io.ReadAll(r.Body)
-			if strings.Contains(string(raw), `"external_id":"1"`) {
-				_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"external_id":"1","work":{"id":1000}}]}}`))
+		switch {
+		case r.URL.Path == "/v2/catalog/works" && r.URL.Query().Get("refs") != "":
+			if strings.Contains(r.URL.Query().Get("refs"), ":1") {
+				_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claimed_by":{"site":"kungal","work_id":1,"state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
 				return
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[]}}`))
-		case "/v1/catalog/works":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":1000,` +
+			_, _ = w.Write([]byte(`{"object":"list","items":[],"missing":[]}`))
+		case r.URL.Path == "/v2/catalog/works":
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000",` +
 				`"claimed_by":{"site":"kungal","work_id":1,"state":"live"},` +
-				`"localized":{"zh-Hans":{"value":"测试游戏","kind":"official"}}}],"next_cursor":null}}`))
+				`"localized":{"zh-Hans":{"value":"测试游戏","kind":"official"}}}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))
@@ -84,7 +83,12 @@ type recordedRequest struct {
 
 func s2sFace(path string) bool { return strings.HasPrefix(path, "/api/v1/catalog/edit/") }
 
-func userFace(path string) bool { return strings.HasPrefix(path, "/api/v1/user/catalog/edit/") }
+func userFace(path string) bool {
+	return strings.HasPrefix(path, "/api/v1/user/catalog/") ||
+		strings.HasPrefix(path, "/v2/me/") ||
+		strings.HasPrefix(path, "/v2/moderation/") ||
+		strings.HasPrefix(path, "/v2/catalog/schemas/")
+}
 
 func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -116,43 +120,36 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(f.userBody))
 			return
 		}
-		switch {
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/withdraw":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/schema/catalog.work":
+		schemaBody := func() string {
 			review := "false"
 			if f.userReviewable {
 				review = "true"
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[` +
-				`{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":` + review + `,"would_automerge":false},` +
-				`{"key":"catalog.work.vndb_id","kind":"text","diff_hint":"inline","locked":true,"can_propose":false,"can_review":false,"would_automerge":false},` +
-				`{"key":"catalog.work.legacy_alias","kind":"text","diff_hint":"inline","deprecated":true,"locked":false,"can_propose":false,"can_review":false,"would_automerge":false}` +
-				`]}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/amendments":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/merge":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7/decline":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
+			return `{"object":"schema","entity_type":"catalog.work","fields":[` +
+				`{"key":"catalog.work.name_zh_cn","field_type":"text","diff_hint":"inline","deprecated":false,"can_propose":true,"can_review":` + review + `},` +
+				`{"key":"catalog.work.vndb_id","field_type":"text","diff_hint":"inline","deprecated":false,"can_propose":false,"can_review":false},` +
+				`{"key":"catalog.work.legacy_alias","field_type":"text","diff_hint":"inline","deprecated":true,"can_propose":false,"can_review":false}` +
+				`]}`
+		}
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/v2/me/proposals":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"7","entity_type":"catalog.work","entity_id":"1000","state":"open","proposer_uid":"9","patch":{}}`))
+		case r.Method == "PATCH" && r.URL.Path == "/v2/me/proposals/7":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"7","entity_type":"catalog.work","entity_id":"1000","state":"withdrawn","patch":{}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/catalog/schemas/work":
+			_, _ = w.Write([]byte(schemaBody()))
+		case r.Method == "POST" && r.URL.Path == "/v2/me/proposals/7/amendments":
+			_, _ = w.Write([]byte(`{"object":"amendment","id":"1","seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}`))
+		case r.Method == "POST" && r.URL.Path == "/v2/moderation/proposals/7/decisions":
+			if body["decision"] == "decline" {
+				_, _ = w.Write([]byte(`{"object":"proposal","id":"7","entity_type":"catalog.work","entity_id":"1000","state":"declined","proposer_uid":"9","patch":{}}`))
+				break
+			}
+			_, _ = w.Write([]byte(`{"object":"revision","id":"100","seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}`))
 		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/revert":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/withdraw":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"withdrawn","patch":{}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"merged":false,"proposal":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","patch":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/merge":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":100,"seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/decline":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"declined","proposer_uid":9,"patch":{}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/proposals/7/amendments":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":1,"seq":1,"amender_uid":7,"set":{"catalog.work.name_zh_cn":"修正"}}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/catalog/edit/revert":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/8":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/9":
@@ -161,16 +158,18 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 				`"effective_patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/55":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"catalog.work","entity_id":1000,"site":"letmoe","status":"open","patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/snapshot":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","entity_id":1000,"values":{"catalog.work.name_zh_cn":"现值"}}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/snapshots/work/1000":
+			_, _ = w.Write([]byte(`{"object":"snapshot","entity_type":"catalog.work","entity_id":"1000","field_values":{"catalog.work.name_zh_cn":"现值"}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/schema/catalog.work":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"entity_type":"catalog.work","fields":[{"key":"catalog.work.name_zh_cn","kind":"text","diff_hint":"inline","locked":false,"can_propose":true,"can_review":false,"would_automerge":false}]}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/revisions":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[{"id":100,"seq":1,"action":"created","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}]}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/proposals":
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[]}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/me/proposals":
+			_, _ = w.Write([]byte(`{"object":"list","items":[],"total":0}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/proposals":
+			_, _ = w.Write([]byte(`{"object":"list","items":[],"total":0}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))
@@ -310,11 +309,11 @@ func TestEditSubmitPassesThePatchThrough(t *testing.T) {
 		`{"patch":{"catalog.work.name_zh_cn":"新标题"},"note":"typo"}`); status != http.StatusOK {
 		t.Fatalf("submit: status = %d body %s", status, raw)
 	}
-	if len(fake.requests) != 1 || fake.requests[0].Path != "/api/v1/user/catalog/edit/proposals" {
+	if len(fake.requests) != 1 || fake.requests[0].Path != "/v2/me/proposals" {
 		t.Fatalf("submit must be a single user-plane call, got %+v", fake.requests)
 	}
 	body := fake.requests[0].Body
-	if body["entity_type"] != "catalog.work" || body["entity_id"] != float64(1000) {
+	if body["entity_type"] != "catalog.work" || body["entity_id"] != "1000" {
 		t.Fatalf("entity assertion wrong: %v", body)
 	}
 	patch := body["patch"].(map[string]any)
@@ -410,7 +409,7 @@ func TestEditViewGates(t *testing.T) {
 			t.Fatalf("%s as bystander: status = %d body %s, want infra's 403", tc.path, status, raw)
 		}
 	}
-	if writeFake.callTo("/api/v1/user/catalog/edit/proposals/7/amendments") == nil {
+	if writeFake.callTo("/v2/me/proposals/7/amendments") == nil {
 		t.Fatalf("the amend must actually reach infra: %+v", writeFake.requests)
 	}
 
@@ -452,7 +451,7 @@ func TestEditProposalDetailCanDecideFromProjection(t *testing.T) {
 			if out.Data.CanDecide != tc.want {
 				t.Fatalf("can_decide = %v, want %v (body %s)", out.Data.CanDecide, tc.want, raw)
 			}
-			if req := fake.callTo("/api/v1/user/catalog/edit/schema/catalog.work"); req == nil {
+			if req := fake.callTo("/v2/catalog/schemas/work"); req == nil {
 				t.Fatalf("the workbench projection must ride the user plane: %+v", fake.requests)
 			}
 		})
@@ -523,7 +522,7 @@ func TestEditOwnerReview(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("owner merge: status = %d body %s", status, raw)
 	}
-	req := fake.callTo("/api/v1/user/catalog/edit/proposals/7/merge")
+	req := fake.callTo("/v2/moderation/proposals/7/decisions")
 	if req == nil || req.Auth != "Bearer user-jwt" {
 		t.Fatalf("the owner's merge must ride their own token: %+v", fake.requests)
 	}
@@ -592,7 +591,7 @@ func TestEditGameProposals(t *testing.T) {
 	if len(fake.requests) != 1 || !strings.Contains(fake.requests[0].Query, "entity_id=1") {
 		t.Fatalf("list must filter to the game: %+v", fake.requests)
 	}
-	if !strings.Contains(fake.requests[0].Query, "status=0") && !strings.Contains(fake.requests[0].Query, "status=open") {
+	if !strings.Contains(fake.requests[0].Query, "state=open") && !strings.Contains(fake.requests[0].Query, "status=open") {
 		t.Fatalf("list must default to open proposals: %q", fake.requests[0].Query)
 	}
 }

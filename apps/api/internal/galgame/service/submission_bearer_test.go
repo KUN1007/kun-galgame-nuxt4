@@ -57,7 +57,7 @@ func (r *claimPlaneRecorder) server(t *testing.T) *httptest.Server {
 		r.mu.Lock()
 		r.path = req.URL.Path
 		r.auth = req.Header.Get("Authorization")
-		if strings.Contains(req.URL.Path, "/claims/mine") {
+		if req.Method == http.MethodGet && strings.HasPrefix(req.URL.Path, "/v2/me/claims") {
 			r.claimQ = req.URL.Query()
 		} else {
 			_ = json.Unmarshal(raw, &r.body)
@@ -70,8 +70,13 @@ func (r *claimPlaneRecorder) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"code":233,"message":"` + message + `","data":null}`))
 			return
 		}
-		if strings.Contains(req.URL.Path, "/claims/mine") {
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":null,"next_before":0,"total":0}}`))
+		if req.Method == http.MethodGet && req.URL.Path == "/v2/me/claims" {
+			_, _ = w.Write([]byte(`{"object":"list","items":[]}`))
+			return
+		}
+		if req.Method == http.MethodGet && strings.HasPrefix(req.URL.Path, "/v2/me/claims/") {
+			w.Header().Set("ETag", `"c90210"`)
+			_, _ = w.Write([]byte(`{"object":"claim","id":"90210","state":"draft"}`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{` +
@@ -108,8 +113,8 @@ func TestOwnerActionSpeaksAsTheSubmitter(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/user/catalog/works/90210/claim-actions/withdraw" {
-		t.Errorf("withdraw hit %q, want the user plane's claim-action face", rec.path)
+	if rec.path != "/v2/me/claims/90210" {
+		t.Errorf("withdraw hit %q, want PATCH /v2/me/claims/{id}", rec.path)
 	}
 	if rec.auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the submitter's bearer alone", rec.auth)
@@ -133,8 +138,8 @@ func TestReviewVerdictSpeaksAsTheModerator(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/user/catalog/works/90210/claim-actions/decline" {
-		t.Errorf("decline hit %q, want the user plane's claim-action face", rec.path)
+	if rec.path != "/v2/moderation/claims/90210/decisions" {
+		t.Errorf("decline hit %q, want POST /v2/moderation/claims/{id}/decisions", rec.path)
 	}
 	if rec.auth != "Bearer mod-jwt" {
 		t.Errorf("auth = %q, want the moderator's own bearer", rec.auth)
@@ -142,8 +147,8 @@ func TestReviewVerdictSpeaksAsTheModerator(t *testing.T) {
 	if _, ok := rec.body["actor"]; ok {
 		t.Errorf("a verdict must assert no actor: %v", rec.body)
 	}
-	if rec.body["reason"] != "资料不足" {
-		t.Errorf("reason = %v, want it recorded on the event", rec.body["reason"])
+	if rec.body["note"] != "资料不足" && rec.body["reason"] != "资料不足" {
+		t.Errorf("note/reason = %v, want it recorded on the event", rec.body)
 	}
 }
 
@@ -158,8 +163,8 @@ func TestListMineIsTheTokensOwnClaims(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/user/catalog/claims/mine" {
-		t.Errorf("ListMine hit %q, want the own-claims face", rec.path)
+	if rec.path != "/v2/me/claims" {
+		t.Errorf("ListMine hit %q, want GET /v2/me/claims", rec.path)
 	}
 	if rec.auth != "Bearer user-jwt" {
 		t.Errorf("auth = %q, want the caller's bearer", rec.auth)

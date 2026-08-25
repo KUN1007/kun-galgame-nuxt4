@@ -2,10 +2,10 @@ package catalogclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -38,54 +38,27 @@ func (c *Client) UnvoteCover(ctx context.Context, accessToken string, workID, co
 }
 
 func (c *Client) coverVote(ctx context.Context, method, accessToken string, workID, coverID int64) (*CoverVoteResult, error) {
-	if c.baseURL == "" {
-		return nil, ErrNotConfigured
+	path := "/v2/me/cover-votes/" + strconv.FormatInt(coverID, 10)
+	var body any
+	if method == http.MethodPut {
+		body = map[string]any{"vote": "up"}
 	}
-	if accessToken == "" {
-		return nil, ErrUnauthorized
-	}
-	path := fmt.Sprintf("%s/works/%d/covers/%d/vote", userBase, workID, coverID)
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, nil)
-	if err != nil {
+	var out v2CoverVote
+	if err := c.userV2JSON(ctx, method, accessToken, path, body, &out, nil); err != nil {
+		if errors.Is(err, ErrNotFound) && method == http.MethodDelete {
+			return &CoverVoteResult{CoverID: coverID, Voted: false}, nil
+		}
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
+	id := parseFlexID(out.CoverID)
+	if id == 0 {
+		id = coverID
 	}
-	defer resp.Body.Close()
-
-	var env struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
+	voted := method == http.MethodPut || out.Voted
+	if method == http.MethodDelete {
+		voted = out.Voted
 	}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&env)
-
-	switch resp.StatusCode {
-	case http.StatusUnauthorized:
-		return nil, ErrUnauthorized
-	case http.StatusForbidden:
-		if isScopeDenial(env.Message) {
-			return nil, ErrInsufficientScope
-		}
-		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	case http.StatusNotFound:
-		return nil, ErrNotFound
-	}
-	if decodeErr != nil {
-		return nil, fmt.Errorf("%w: malformed envelope", ErrUpstream)
-	}
-	if resp.StatusCode != http.StatusOK || env.Code != 0 {
-		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	}
-	var out CoverVoteResult
-	if err := json.Unmarshal(env.Data, &out); err != nil {
-		return nil, fmt.Errorf("%w: malformed vote result", ErrUpstream)
-	}
-	return &out, nil
+	return &CoverVoteResult{CoverID: id, VoteCount: int64(out.VoteCount), Voted: voted}, nil
 }
 
 func isScopeDenial(message string) bool {

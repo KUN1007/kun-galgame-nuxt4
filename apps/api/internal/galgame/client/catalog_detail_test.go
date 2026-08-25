@@ -17,11 +17,14 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) (*httptest.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				`{"source":"curated","external_id":"` + itoa(int64(gid)) +
-				`","type":"work","work":{"id":` + itoa(catalogID) + `}}]}}`))
-		case req.URL.Path == "/v1/catalog/works/"+itoa(catalogID):
+		case req.URL.Path == "/v2/catalog/works" && req.URL.Query().Get("refs") != "":
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
+				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
+				`"refs":[{"source":"curated","external_id":"` + itoa(int64(gid)) + `"}]}]}`))
+		case req.URL.Path == "/v2/catalog/works" && strings.Contains(req.URL.Query().Get("ids"), itoa(catalogID)):
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
+				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"}}]}`))
+		case req.URL.Path == "/v2/catalog/works/"+itoa(catalogID):
 			seen = req.URL.Query()
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":` + body + `}`))
 		default:

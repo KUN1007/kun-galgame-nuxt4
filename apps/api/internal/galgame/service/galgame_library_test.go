@@ -71,8 +71,8 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	if page.Total != 0 {
 		t.Errorf("total = %d, want 0 from empty upstream", page.Total)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent", got)
@@ -80,8 +80,8 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	if got := rec.get("sort"); got != "popularity" {
 		t.Errorf("sort = %q, want popularity", got)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Errorf("nsfw = %q, want 1", got)
+	if got := rec.get("nsfw"); got != "" {
+		t.Errorf("nsfw = %q, want it absent on the SFW library", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw", got)

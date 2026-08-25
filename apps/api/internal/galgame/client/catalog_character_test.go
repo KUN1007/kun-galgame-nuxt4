@@ -12,7 +12,7 @@ func characterStub(t *testing.T, id int64, status int, body string) (*httptest.S
 	t.Helper()
 	var seen url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/v1/catalog/characters/"+itoa(id) {
+		if req.URL.Path != "/v2/catalog/characters/"+itoa(id) {
 			t.Errorf("unexpected upstream call: %s", req.URL.Path)
 		}
 		seen = req.URL.Query()
@@ -26,7 +26,7 @@ func characterStub(t *testing.T, id int64, status int, body string) (*httptest.S
 
 func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 	srv, seen := characterStub(t, 5, http.StatusOK,
-		`{"code":0,"message":"ok","data":{"id":5,"name":{"ja":"朝倉"},"traits":[],"intros":[],"refs":[]}}`)
+		`{"id":"5","display_name":"朝倉","traits":[],"intros":[],"refs":[]}`)
 	c := New(srv.URL, "nm_test_key", "")
 
 	if _, _, _, appErr := c.CatalogCharacterDetail(context.Background(), 5, 50, 0, false); appErr != nil {
@@ -38,7 +38,7 @@ func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 	if got := seen.Get("spoilers"); got != "2" {
 		t.Errorf("spoilers = %q, want the full ceiling 2", got)
 	}
-	if got := seen.Get("nsfw"); got != "1" {
+	if got := seen.Get("nsfw"); got != "true" {
 		t.Errorf("nsfw = %q, want the population open", got)
 	}
 
@@ -51,8 +51,8 @@ func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
 }
 
 func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
-	srv, _ := characterStub(t, 7, http.StatusOK, `{"code":0,"message":"ok","data":{
-		"id":7,"name":{"ja":"雪村杏"},"latin":"Yukimura Anzu",
+	srv, _ := characterStub(t, 7, http.StatusOK, `{
+		"id":"7","display_name":"雪村杏","latin":"Yukimura Anzu",
 		"image":"https://cdn.test/aa/bb/bust.webp",
 		"figure":"https://cdn.test/cc/dd/figure.webp",
 		"traits":[{"id":1,"name":"Blonde","name_zh":"金发","group":"Hair","group_zh":"发型","spoiler":0,"sexual":false,"lie":false},
@@ -61,7 +61,7 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 		"refs":[{"source":"vndb","external_id":"c1234"}],
 		"works":[{"work":{"id":900,"display_name":"テスト","medium":"game","content_rating":"r18"},
 		          "voices":[{"id":11,"name":"茶木ひかる","lang":"ja"}]}],
-		"next_offset":50}}`)
+		"next_offset":50}`)
 	c := New(srv.URL, "nm_test_key", "")
 
 	ch, found, movedTo, appErr := c.CatalogCharacterDetail(context.Background(), 7, 50, 0, true)

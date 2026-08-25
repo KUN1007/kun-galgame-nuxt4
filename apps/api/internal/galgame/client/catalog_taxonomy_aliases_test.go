@@ -16,14 +16,14 @@ func TestCatalogTaxonomyList_DecodesBothAliasShapes(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels":
+		case "/v2/catalog/companies":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[
 				{"id":13,"display_name":"ねこねこソフト","kind":"game_brand","work_count":9,
 				 "localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},
 				 "aliases":[{"value":"猫猫社","lang":"zh-Hans","kind":"translation","machine":true},
 				            {"value":"NekoNeko-soft","lang":"en","kind":"spelling_variant"}]}],
 				"next_cursor":null,"total":1}}`))
-		case "/v1/catalog/engines":
+		case "/v2/catalog/engines":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[
 				{"id":4,"name":"KiriKiri","work_count":88,"description":"","aliases":["KRKR",""]}],
 				"next_cursor":null,"total":1}}`))

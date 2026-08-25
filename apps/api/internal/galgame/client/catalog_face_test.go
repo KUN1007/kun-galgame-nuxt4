@@ -63,29 +63,22 @@ func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, wo
 		w.Header().Set("Content-Type", "application/json")
 
 		switch {
-		case strings.HasSuffix(req.URL.Path, "/catalog/lookup/batch"):
-			var body struct {
-				Items []struct {
-					Source     string `json:"source"`
-					ExternalID string `json:"external_id"`
-					Type       string `json:"type"`
-				} `json:"items"`
-			}
-			raw := rec.body[len(rec.body)-1]
-			_ = json.Unmarshal([]byte(raw), &body)
-			items := make([]string, 0, len(body.Items))
-			for _, it := range body.Items {
-				if id, ok := lookup[it.ExternalID]; ok {
-					items = append(items, `{"source":"curated","external_id":"`+it.ExternalID+
-						`","type":"work","work":{"id":`+itoa(id)+`}}`)
-					continue
+		case req.URL.Path == "/v2/catalog/works" && req.URL.Query().Get("refs") != "":
+			var rows []string
+			for _, token := range strings.Split(req.URL.Query().Get("refs"), ",") {
+				ext := token
+				if i := strings.LastIndex(token, ":"); i >= 0 {
+					ext = token[i+1:]
 				}
-				items = append(items, `{"source":"curated","external_id":"`+it.ExternalID+
-					`","type":"work","work":null}`)
+				if id, ok := lookup[ext]; ok {
+					if frag, ok := works[id]; ok {
+						rows = append(rows, frag)
+					}
+				}
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` + strings.Join(items, ",") + `]}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(rows, ",") + `],"missing":[]}`))
 
-		case strings.HasSuffix(req.URL.Path, "/catalog/works"):
+		case req.URL.Path == "/v2/catalog/works":
 			var rows []string
 			for _, raw := range strings.Split(req.URL.Query().Get("ids"), ",") {
 				id := atoi64(raw)
@@ -93,10 +86,10 @@ func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, wo
 					rows = append(rows, frag)
 				}
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` + strings.Join(rows, ",") + `],"next_cursor":null}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(rows, ",") + `],"next_cursor":null}`))
 
 		default:
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[]}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -175,11 +168,14 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 		t.Fatalf("GetBatch: %v", err)
 	}
 
-	if p := rec.pathAt(0); p != "/v1/catalog/lookup/batch" {
-		t.Errorf("first call = %q, want /v1/catalog/lookup/batch", p)
+	if p := rec.pathAt(0); p != "/v2/catalog/works" {
+		t.Errorf("first call = %q, want /v2/catalog/works", p)
 	}
-	if p := rec.pathAt(1); p != "/v1/catalog/works" {
-		t.Errorf("second call = %q, want /v1/catalog/works", p)
+	if rec.queryAt(0).Get("refs") == "" {
+		t.Errorf("first call missing refs=")
+	}
+	if p := rec.pathAt(1); p != "/v2/catalog/works" {
+		t.Errorf("second call = %q, want /v2/catalog/works", p)
 	}
 	if ids := rec.queryAt(1).Get("ids"); ids != "4242" {
 		t.Errorf("works ids = %q, want 4242 (the catalog id, not the gid)", ids)
@@ -267,22 +263,22 @@ func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, true); err != nil {
 		t.Fatalf("GetBatchPublic sfw: %v", err)
 	}
-	if v := rec.queryAt(1).Get("nsfw"); v != "1" {
-		t.Errorf("sfw caller sent nsfw=%q, want 1 — closing the age gate drops 94.5%% of the registry", v)
+	if v := rec.queryAt(1).Get("nsfw"); v != "" {
+		t.Errorf("sfw caller sent nsfw=%q, want it absent", v)
 	}
 	if v := rec.queryAt(1).Get("content_limit"); v != "sfw" {
 		t.Errorf("sfw caller sent content_limit=%q, want sfw — the setting must reach the wire as the editorial gate", v)
 	}
-	if v := rec.queryAt(0).Get("nsfw"); v != "1" {
-		t.Errorf("lookup sent nsfw=%q, want 1 (identity resolution is not content)", v)
+	if v := rec.queryAt(0).Get("nsfw"); v != "true" {
+		t.Errorf("lookup sent nsfw=%q, want true (identity resolution is not content)", v)
 	}
 
 	before := rec.count()
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, false); err != nil {
 		t.Fatalf("GetBatchPublic nsfw: %v", err)
 	}
-	if v := rec.queryAt(before).Get("nsfw"); v != "1" {
-		t.Errorf("nsfw caller's works fetch sent nsfw=%q, want 1", v)
+	if v := rec.queryAt(before).Get("nsfw"); v != "true" {
+		t.Errorf("nsfw caller's works fetch sent nsfw=%q, want true", v)
 	}
 	if v := rec.queryAt(before).Get("content_limit"); v != "" {
 		t.Errorf("nsfw caller sent content_limit=%q, want it absent (no editorial filter)", v)
@@ -355,7 +351,7 @@ func TestCatalogBridge_LookupIsMemoized(t *testing.T) {
 	}
 	lookups := 0
 	for i := range rec.count() {
-		if rec.pathAt(i) == "/v1/catalog/lookup/batch" {
+		if rec.pathAt(i) == "/v2/catalog/works" && rec.queryAt(i).Get("refs") != "" {
 			lookups++
 		}
 	}
@@ -376,7 +372,7 @@ func (r *faceRecorder) server(t *testing.T) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		r.mu.Lock()
 		r.path = req.URL.Path
-		r.apiKey = req.Header.Get("X-API-Key")
+		r.apiKey = strings.TrimPrefix(req.Header.Get("Authorization"), "Bearer ")
 		r.auth = req.Header.Get("Authorization")
 		r.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
@@ -392,41 +388,41 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	c := New(srv.URL, "nm_test_key", "")
 	ctx := context.Background()
 
-	t.Run("taxonomy list → /v1/catalog + key", func(t *testing.T) {
+	t.Run("taxonomy list → /v2/catalog + key", func(t *testing.T) {
 		if _, err := c.CatalogTaxonomyList(ctx, "tags", nil); err != nil {
 			t.Fatalf("CatalogTaxonomyList: %v", err)
 		}
-		if rec.path != "/v1/catalog/tags" {
-			t.Errorf("path = %q, want /v1/catalog/tags", rec.path)
+		if rec.path != "/v2/catalog/tags" {
+			t.Errorf("path = %q, want /v2/catalog/tags", rec.path)
 		}
 		if rec.apiKey != "nm_test_key" {
-			t.Errorf("X-API-Key = %q, want nm_test_key", rec.apiKey)
+			t.Errorf("Authorization bearer = %q, want nm_test_key", rec.apiKey)
 		}
 	})
 
-	t.Run("entity search → /v1/catalog/search", func(t *testing.T) {
+	t.Run("entity search → /v2/catalog/search", func(t *testing.T) {
 		if _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 10); err != nil {
 			t.Fatalf("CatalogEntitySearch: %v", err)
 		}
-		if rec.path != "/v1/catalog/search" {
-			t.Errorf("path = %q, want /v1/catalog/search", rec.path)
+		if rec.path != "/v2/catalog/search" {
+			t.Errorf("path = %q, want /v2/catalog/search", rec.path)
 		}
 	})
 
-	t.Run("works search → /v1/catalog/works/search", func(t *testing.T) {
+	t.Run("works search → /v2/catalog/works", func(t *testing.T) {
 		if _, err := c.CatalogWorksSearch(ctx, url.Values{"q": {"kun"}}); err != nil {
 			t.Fatalf("CatalogWorksSearch: %v", err)
 		}
-		if rec.path != "/v1/catalog/works/search" {
-			t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+		if rec.path != "/v2/catalog/works" {
+			t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 		}
 	})
 
-	t.Run("calendar buckets → /v1/catalog/calendar*", func(t *testing.T) {
+	t.Run("calendar buckets → /v2/catalog/calendar*", func(t *testing.T) {
 		for bucket, want := range map[string]string{
-			"":         "/v1/catalog/calendar",
-			"/pending": "/v1/catalog/calendar/pending",
-			"/tba":     "/v1/catalog/calendar/tba",
+			"":         "/v2/catalog/calendar",
+			"/pending": "/v2/catalog/calendar",
+			"/tba":     "/v2/catalog/calendar",
 		} {
 			if _, err := c.CatalogCalendar(ctx, bucket, nil); err != nil {
 				t.Fatalf("CatalogCalendar(%q): %v", bucket, err)
@@ -454,8 +450,8 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 				url.Values{filter: {"5"}}, true, 200); err != nil {
 				t.Fatalf("CatalogMemberGIDs: %v", err)
 			}
-			if p := rec.pathAt(0); p != "/v1/catalog/works" {
-				t.Fatalf("path = %q, want /v1/catalog/works", p)
+			if p := rec.pathAt(0); p != "/v2/catalog/works" {
+				t.Fatalf("path = %q, want /v2/catalog/works", p)
 			}
 			q := rec.queryAt(0)
 			if got := q.Get("claim_state"); got != "" {
@@ -464,11 +460,15 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 			if got := q.Get("claimed"); got != "" {
 				t.Errorf("claimed = %q, want it absent", got)
 			}
-			if got := q.Get(filter); got != "5" {
-				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
+			wantFilter := filter
+			if filter == "label_id" {
+				wantFilter = "company_id"
 			}
-			if got := q.Get("nsfw"); got != "1" {
-				t.Errorf("nsfw = %q, want 1 — the age gate is never a population cut", got)
+			if got := q.Get(wantFilter); got != "5" {
+				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", wantFilter, got)
+			}
+			if got := q.Get("nsfw"); got != "" {
+				t.Errorf("nsfw = %q, want it absent for an SFW member walk", got)
 			}
 			if got := q.Get("content_limit"); got != "sfw" {
 				t.Errorf("content_limit = %q, want sfw for an SFW caller", got)
@@ -571,11 +571,11 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	}
 
 	q := rec.queryAt(0)
-	if got := q.Get("label_rollup"); got != "1" {
-		t.Errorf("label_rollup = %q, want 1 — without it a holding company's page is empty", got)
+	if got := q.Get("company_rollup"); got != "true" {
+		t.Errorf("company_rollup = %q, want true — without it a holding company's page is empty", got)
 	}
-	if got := q.Get("label_id"); got != "993" {
-		t.Errorf("label_id = %q, want 993", got)
+	if got := q.Get("company_id"); got != "993" {
+		t.Errorf("company_id = %q, want 993", got)
 	}
 	if got := q.Get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent", got)

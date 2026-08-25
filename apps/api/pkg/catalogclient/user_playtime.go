@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -55,27 +55,49 @@ type PlaytimeSelf struct {
 func (c *Client) ReportPlaytime(ctx context.Context, accessToken string, workID int64,
 	report PlaytimeReport) (*PlaytimeRecord, error) {
 
-	body, err := json.Marshal(report)
-	if err != nil {
+	var out v2Playtime
+	path := "/v2/me/playtimes/" + strconv.FormatInt(workID, 10)
+	if err := c.userV2JSON(ctx, http.MethodPut, accessToken, path, map[string]any{"minutes": report.Minutes}, &out, nil); err != nil {
 		return nil, err
 	}
-	var out PlaytimeRecord
-	path := fmt.Sprintf("%s/works/%d", playtimeBase, workID)
-	if err := c.playtimeCall(ctx, http.MethodPut, accessToken, path, body, &out); err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return &PlaytimeRecord{WorkID: parseFlexID(out.WorkID), Minutes: out.Minutes, Status: out.Status, UpdatedAt: out.UpdatedAt}, nil
 }
 
 // MyPlaytime answers (nil, nil) when the user has never reported on this work.
 // Upstream calls that a 200 with a null payload, not a 404.
 func (c *Client) MyPlaytime(ctx context.Context, accessToken string, workID int64) (*PlaytimeSelf, error) {
-	var out *PlaytimeSelf
-	path := fmt.Sprintf("%s/works/%d", playtimeBase, workID)
-	if err := c.playtimeCall(ctx, http.MethodGet, accessToken, path, nil, &out); err != nil {
+	path := "/v2/me/playtimes/" + strconv.FormatInt(workID, 10)
+	raw, _, err := c.userV2Do(ctx, http.MethodGet, accessToken, path, nil, nil)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	return out, nil
+	trim := bytes.TrimSpace(raw)
+	if len(trim) == 0 || string(trim) == "null" {
+		return nil, nil
+	}
+	var env struct {
+		Code   int             `json:"code"`
+		Data   json.RawMessage `json:"data"`
+		Object string          `json:"object"`
+	}
+	if json.Unmarshal(trim, &env) == nil && env.Object == "" {
+		data := bytes.TrimSpace(env.Data)
+		if len(data) == 0 || string(data) == "null" {
+			return nil, nil
+		}
+		trim = data
+	}
+	var out v2Playtime
+	if err := json.Unmarshal(trim, &out); err != nil {
+		return nil, err
+	}
+	if parseFlexID(out.WorkID) == 0 && out.Minutes == 0 {
+		return nil, nil
+	}
+	return &PlaytimeSelf{WorkID: parseFlexID(out.WorkID), Minutes: out.Minutes, Status: out.Status, LastPlayedAt: out.LastPlayedAt, Clients: out.Clients}, nil
 }
 
 // ListMyPlaytime pages the caller's own rows oldest-change-first, returning the
@@ -91,83 +113,18 @@ func (c *Client) ListMyPlaytime(ctx context.Context, accessToken, updatedSince s
 	if limit > 0 {
 		q.Set("limit", strconv.Itoa(limit))
 	}
-	path := playtimeBase + "/mine"
+	path := "/v2/me/playtimes"
 	if len(q) > 0 {
 		path += "?" + q.Encode()
 	}
-	var out struct {
-		Items  []PlaytimeRecord `json:"items"`
-		Cursor *string          `json:"cursor"`
-	}
-	if err := c.playtimeCall(ctx, http.MethodGet, accessToken, path, nil, &out); err != nil {
+	var out v2List[v2Playtime]
+	if err := c.userV2JSON(ctx, http.MethodGet, accessToken, path, nil, &out, nil); err != nil {
 		return nil, "", err
 	}
-	cursor := ""
-	if out.Cursor != nil {
-		cursor = *out.Cursor
+	rows := out.rows()
+	items := make([]PlaytimeRecord, 0, len(rows))
+	for _, it := range rows {
+		items = append(items, PlaytimeRecord{WorkID: parseFlexID(it.WorkID), Minutes: it.Minutes, Status: it.Status, UpdatedAt: it.UpdatedAt})
 	}
-	return out.Items, cursor, nil
-}
-
-func (c *Client) playtimeCall(ctx context.Context, method, accessToken, path string,
-	body []byte, out any) error {
-
-	if c.baseURL == "" {
-		return ErrNotConfigured
-	}
-	if accessToken == "" {
-		return ErrUnauthorized
-	}
-	var reader *bytes.Reader
-	if body == nil {
-		reader = bytes.NewReader(nil)
-	} else {
-		reader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-	defer resp.Body.Close()
-
-	var env struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
-	}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&env)
-
-	switch resp.StatusCode {
-	case http.StatusUnauthorized:
-		return ErrUnauthorized
-	case http.StatusForbidden:
-		if isScopeDenial(env.Message) {
-			return ErrInsufficientScope
-		}
-		return &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	case http.StatusNotFound:
-		return ErrNotFound
-	}
-	if decodeErr != nil {
-		return fmt.Errorf("%w: malformed envelope", ErrUpstream)
-	}
-	if resp.StatusCode != http.StatusOK || env.Code != 0 {
-		return &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	}
-	if out == nil || len(env.Data) == 0 {
-		return nil
-	}
-	if err := json.Unmarshal(env.Data, out); err != nil {
-		return fmt.Errorf("%w: malformed playtime payload", ErrUpstream)
-	}
-	return nil
+	return items, out.cursor(), nil
 }

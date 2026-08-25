@@ -34,22 +34,26 @@ type gidLookupEntry struct {
 // because nothing reads that block any more leaves every list row with only
 // display_name, so every Chinese title on the site reverts to the original.
 const (
-	catalogBriefInclude       = "names,covers,refs"
-	catalogDetailBriefInclude = "names,intros,labels,covers,refs"
+	catalogBriefInclude       = "titles,covers,refs"
+	catalogDetailBriefInclude = "titles,intros,companies,covers,refs"
 )
 
 func openPopulation(q url.Values) url.Values {
-	q.Set("nsfw", "1")
+	q.Set("nsfw", "true")
 	return q
 }
 
 func OpenPopulation(q url.Values) url.Values { return openPopulation(q) }
 
 func applyWorksGate(q url.Values, contentLimit string) url.Values {
-	openPopulation(q)
 	switch contentLimit {
-	case "sfw", "nsfw":
-		q.Set("content_limit", contentLimit)
+	case "sfw":
+		q.Set("content_limit", "sfw")
+	case "nsfw":
+		q.Set("nsfw", "true")
+		q.Set("content_limit", "nsfw")
+	default:
+		q.Set("nsfw", "true")
 	}
 	return q
 }
@@ -92,41 +96,54 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 		end := min(start+gidStride, len(missing))
 		chunk := missing[start:end]
 
-		items := make([]map[string]string, 0, len(chunk)*len(anchorSourceKeys))
+		refs := make([]string, 0, len(chunk)*len(anchorSourceKeys))
+		want := make(map[string]int, len(chunk)*len(anchorSourceKeys))
 		for _, gid := range chunk {
+			ext := strconv.Itoa(gid)
 			for _, source := range anchorSourceKeys {
-				items = append(items, map[string]string{
-					"source":      source,
-					"external_id": strconv.Itoa(gid),
-					"type":        "work",
-				})
+				token := source + ":" + ext
+				refs = append(refs, token)
+				want[token] = gid
 			}
 		}
-		data, appErr := c.postFace(ctx, c.v1Base, "/catalog/lookup/batch",
-			url.Values{"nsfw": {"1"}}, map[string]any{"items": items}, c.apiKey)
+		q := url.Values{
+			"refs":    {strings.Join(refs, ",")},
+			"limit":   {strconv.Itoa(catalogIDsChunk)},
+			"include": {"refs"},
+		}
+		openPopulation(q)
+		data, appErr := c.GetV1(ctx, "/catalog/works", q)
 		if appErr != nil {
 			return nil, appErr
 		}
 		var parsed struct {
-			Items []struct {
-				ExternalID string `json:"external_id"`
-				Work       *struct {
-					ID int64 `json:"id"`
-				} `json:"work"`
-			} `json:"items"`
+			Items   []CatalogWorkListItem `json:"items"`
+			Missing []string              `json:"missing"`
 		}
 		if err := json.Unmarshal(data, &parsed); err != nil {
 			return nil, errors.ErrInternal("解析 Catalog 批量解析响应失败")
 		}
-		for _, it := range parsed.Items {
-			if it.Work == nil {
-				continue
+		miss := make(map[string]bool, len(parsed.Missing))
+		for _, token := range parsed.Missing {
+			miss[token] = true
+		}
+		inChunk := make(map[int]bool, len(chunk))
+		for _, gid := range chunk {
+			inChunk[gid] = true
+		}
+		for i := range parsed.Items {
+			row := &parsed.Items[i]
+			if g := row.gid(); g > 0 && inChunk[g] {
+				resolved[g] = row.ID
 			}
-			gid, err := strconv.Atoi(it.ExternalID)
-			if err != nil {
-				continue
+			for _, ref := range row.Refs {
+				token := ref.Source + ":" + ref.ExternalID
+				gid, ok := want[token]
+				if !ok || miss[token] {
+					continue
+				}
+				resolved[gid] = row.ID
 			}
-			resolved[gid] = it.Work.ID
 		}
 	}
 

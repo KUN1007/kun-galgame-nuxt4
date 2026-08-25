@@ -16,8 +16,8 @@ func TestTagList_AsksForTagsThatHaveWorks(t *testing.T) {
 	if got := rec.get("has_works"); got != "1" {
 		t.Fatalf("has_works = %q, want \"1\" — the empty vocabulary is back in the list", got)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Fatalf("nsfw = %q, want \"1\"", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Fatalf("nsfw = %q, want true — the index is the open population, SFW filters locally", got)
 	}
 }
 
@@ -31,8 +31,8 @@ func TestOfficialList_AsksForLabelsThatHaveWorks(t *testing.T) {
 	if got := rec.get("has_works"); got != "1" {
 		t.Fatalf("has_works = %q, want \"1\" — the empty vocabulary is back in the list", got)
 	}
-	if got := rec.get("nsfw"); got != "1" {
-		t.Fatalf("nsfw = %q, want \"1\"", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Fatalf("nsfw = %q, want true", got)
 	}
 }
 

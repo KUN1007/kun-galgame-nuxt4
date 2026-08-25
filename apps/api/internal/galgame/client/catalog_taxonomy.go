@@ -107,6 +107,12 @@ func (s *CatalogSeriesDetail) Label(ctx context.Context) string {
 }
 
 func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, q url.Values) (*CatalogTaxonomyPage, *errors.AppError) {
+	if q == nil {
+		q = url.Values{}
+	}
+	if q.Get("include_total") == "" {
+		q.Set("include_total", "true")
+	}
 	data, appErr := c.GetV1(ctx, "/catalog/"+entity, q)
 	if appErr != nil {
 		return nil, appErr
@@ -300,12 +306,10 @@ func (c *GalgameClient) LookupWikiLabel(ctx context.Context, wikiID int) (int64,
 
 func (c *GalgameClient) lookupLabelBySource(ctx context.Context, source string, wikiID int) (int64, bool, *errors.AppError) {
 	q := url.Values{
-		"source":      {source},
-		"external_id": {strconv.Itoa(wikiID)},
-		"type":        {"label"},
-		"nsfw":        {"1"},
+		"refs": {source + ":" + strconv.Itoa(wikiID)},
 	}
-	data, appErr := c.GetV1(ctx, "/catalog/lookup", q)
+	openPopulation(q)
+	data, appErr := c.GetV1(ctx, "/catalog/labels", q)
 	if appErr != nil {
 		if appErr.StatusCode == 404 {
 			return 0, false, nil
@@ -313,15 +317,14 @@ func (c *GalgameClient) lookupLabelBySource(ctx context.Context, source string, 
 		return 0, false, appErr
 	}
 	var parsed struct {
-		Label *struct {
-			ID int64 `json:"id"`
-		} `json:"label"`
+		Items   []CatalogTaxonomyItem `json:"items"`
+		Missing []string              `json:"missing"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		return 0, false, errors.ErrInternal("解析 Catalog 反查响应失败")
 	}
-	if parsed.Label == nil {
+	if len(parsed.Items) == 0 {
 		return 0, false, nil
 	}
-	return parsed.Label.ID, true, nil
+	return parsed.Items[0].ID, true, nil
 }

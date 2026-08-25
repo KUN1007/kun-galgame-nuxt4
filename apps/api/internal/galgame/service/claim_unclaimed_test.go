@@ -19,6 +19,12 @@ func (r *claimActionRecorder) catalog(t *testing.T) *catalogclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		action := req.URL.Path[strings.LastIndexByte(req.URL.Path, '/')+1:]
+		switch {
+		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/claims":
+			action = "claim"
+		case strings.HasSuffix(req.URL.Path, "/claim-actions/publish"):
+			action = "publish"
+		}
 		buf := make([]byte, req.ContentLength)
 		_, _ = req.Body.Read(buf)
 		r.actions = append(r.actions, action)
@@ -49,8 +55,8 @@ func TestAdoptAndPublish_AnchorsTheClaimAtTheCatalogWorkID(t *testing.T) {
 	if len(rec.actions) != 2 || rec.actions[0] != "claim" || rec.actions[1] != "publish" {
 		t.Fatalf("actions = %v, want claim then publish", rec.actions)
 	}
-	if !strings.Contains(rec.bodies[0], `"product_work_id":4649`) {
-		t.Errorf("claim body = %q, want product_work_id 4649 — catalog refuses a claim without one",
+	if !strings.Contains(rec.bodies[0], `"site_work_id":"4649"`) && !strings.Contains(rec.bodies[0], `"product_work_id":4649`) {
+		t.Errorf("claim body = %q, want site_work_id 4649 — catalog refuses a claim without one",
 			rec.bodies[0])
 	}
 }

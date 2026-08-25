@@ -38,24 +38,18 @@ func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 func TestAnchorLookupAsksForEverySourceKey(t *testing.T) {
 	var asked []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Items []struct {
-				Source     string `json:"source"`
-				ExternalID string `json:"external_id"`
-			} `json:"items"`
-		}
-		_ = json.NewDecoder(req.Body).Decode(&body)
-		out := make([]string, 0, len(body.Items))
-		for _, it := range body.Items {
-			asked = append(asked, it.Source)
-			work := "null"
-			if it.Source == "galgame_wiki" && it.ExternalID == "7" {
-				work = `{"id":9001}`
+		var items []string
+		for _, token := range strings.Split(req.URL.Query().Get("refs"), ",") {
+			source, ext := token, ""
+			if i := strings.LastIndex(token, ":"); i >= 0 {
+				source, ext = token[:i], token[i+1:]
 			}
-			out = append(out, `{"external_id":"`+it.ExternalID+`","work":`+work+`}`)
+			asked = append(asked, source)
+			if source == "galgame_wiki" && ext == "7" {
+				items = append(items, `{"id":"9001","refs":[{"source":"galgame_wiki","external_id":"7"}]}`)
+			}
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-			strings.Join(out, ",") + `]}}`))
+		_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(items, ",") + `],"missing":[]}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -77,23 +71,17 @@ func TestAnchorLookupAsksForEverySourceKey(t *testing.T) {
 
 func TestAnchorLookupResolvesAfterTheRename(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var body struct {
-			Items []struct {
-				Source     string `json:"source"`
-				ExternalID string `json:"external_id"`
-			} `json:"items"`
-		}
-		_ = json.NewDecoder(req.Body).Decode(&body)
-		out := make([]string, 0, len(body.Items))
-		for _, it := range body.Items {
-			work := "null"
-			if it.Source == "curated" && it.ExternalID == "8" {
-				work = `{"id":9002}`
+		var items []string
+		for _, token := range strings.Split(req.URL.Query().Get("refs"), ",") {
+			source, ext := token, ""
+			if i := strings.LastIndex(token, ":"); i >= 0 {
+				source, ext = token[:i], token[i+1:]
 			}
-			out = append(out, `{"external_id":"`+it.ExternalID+`","work":`+work+`}`)
+			if source == "curated" && ext == "8" {
+				items = append(items, `{"id":"9002","refs":[{"source":"curated","external_id":"8"}]}`)
+			}
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-			strings.Join(out, ",") + `]}}`))
+		_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(items, ",") + `],"missing":[]}`))
 	}))
 	t.Cleanup(srv.Close)
 

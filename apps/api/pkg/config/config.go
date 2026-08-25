@@ -158,11 +158,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:9281")
+	nextMoeBase := envOrDefault("KUN_NEXTMOE_API_BASE", "http://127.0.0.1:19281")
 	nextMoeKey := envOrDefault("KUN_NEXTMOE_API_KEY", "")
 	if nextMoeBase != "" && nextMoeKey == "" {
 		return nil, fmt.Errorf(
-			"KUN_NEXTMOE_API_KEY 未设置: catalog /v1 读面硬依赖 developer API key; 已配置 KUN_NEXTMOE_API_BASE=%q 但 KUN_NEXTMOE_API_KEY 为空, 不做静默降级",
+			"KUN_NEXTMOE_API_KEY 未设置: catalog /v2 读面硬依赖 nmk_ developer API key; 已配置 KUN_NEXTMOE_API_BASE=%q 但 KUN_NEXTMOE_API_KEY 为空, 不做静默降级",
 			nextMoeBase,
 		)
 	}
@@ -241,7 +241,7 @@ func Load() (*Config, error) {
 			ScanEnabled:    envOrDefaultBool("KUN_TRUST_SCAN_ENABLED", false),
 		},
 		Catalog: CatalogClientConfig{
-			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:9281"),
+			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:19281"),
 		},
 		Community: CommunityConfig{
 			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),

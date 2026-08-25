@@ -28,6 +28,22 @@ type catLocalizedName struct {
 	Machine bool   `json:"machine"`
 }
 
+func (n *catLocalizedName) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		Value     string `json:"value"`
+		Kind      string `json:"kind"`
+		Machine   bool   `json:"machine"`
+		IsMachine bool   `json:"is_machine"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	n.Value = aux.Value
+	n.Kind = aux.Kind
+	n.Machine = aux.Machine || aux.IsMachine
+	return nil
+}
+
 // CatalogAlias is one row of an entity's alias list. Wave 209 turned these from
 // bare strings into rows that carry their own language and provenance.
 type CatalogAlias struct {
@@ -92,6 +108,28 @@ type CatalogIntro struct {
 	Intro   string `json:"intro"`
 	Source  string `json:"source"`
 	Machine bool   `json:"machine"`
+}
+
+func (in *CatalogIntro) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		Lang      string `json:"lang"`
+		Intro     string `json:"intro"`
+		Value     string `json:"value"`
+		Source    string `json:"source"`
+		Machine   bool   `json:"machine"`
+		IsMachine bool   `json:"is_machine"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	in.Lang = aux.Lang
+	in.Intro = aux.Intro
+	if in.Intro == "" {
+		in.Intro = aux.Value
+	}
+	in.Source = aux.Source
+	in.Machine = aux.Machine || aux.IsMachine
+	return nil
 }
 
 // introLangOrder is the order the site presents introductions in. Anything
