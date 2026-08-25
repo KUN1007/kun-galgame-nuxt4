@@ -10,7 +10,7 @@ import (
 )
 
 func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid int, accessToken string, covers []dto.GalgameCover) {
-	if s.catalog == nil || len(covers) == 0 || !s.catalog.Configured() {
+	if s.catalog == nil || len(covers) == 0 {
 		return
 	}
 	ids, appErr := s.galgameClient.CatalogWorkIDs(ctx, []int{gid})
@@ -28,10 +28,10 @@ func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid int, accessT
 	if accessToken != "" {
 		tallies, err = s.catalog.WorkCoversUser(ctx, accessToken, workID)
 		if errors.Is(err, catalogclient.ErrInsufficientScope) {
-			tallies, err = s.catalog.WorkCoverVotes(ctx, workID, 0)
+			tallies, err = s.catalog.WorkCoverVotes(ctx, workID)
 		}
 	} else {
-		tallies, err = s.catalog.WorkCoverVotes(ctx, workID, 0)
+		tallies, err = s.catalog.WorkCoverVotes(ctx, workID)
 	}
 	if err != nil {
 		slog.Warn("galgame detail: cover vote tallies unavailable", "gid", gid, "error", err)

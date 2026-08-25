@@ -135,7 +135,7 @@ func TestWorkCoverVotes(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{BaseURL: srv.URL, AppKey: "nmk_test"})
-	tallies, err := c.WorkCoverVotes(context.Background(), 1000, 7)
+	tallies, err := c.WorkCoverVotes(context.Background(), 1000)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestWorkCoverVotesAnonymousSendsNoUID(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := New(Config{BaseURL: srv.URL, AppKey: "nmk_test"})
-	if _, err := c.WorkCoverVotes(context.Background(), 1000, 0); err != nil {
+	if _, err := c.WorkCoverVotes(context.Background(), 1000); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if gotQuery != "include=covers" {

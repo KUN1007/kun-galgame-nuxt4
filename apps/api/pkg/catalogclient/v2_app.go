@@ -38,14 +38,59 @@ func objectFamily(entityType string) string {
 	}
 }
 
+const (
+	v2PageMax     = 100
+	v2PageWalkMax = 20
+)
+
 func clampV2Limit(n int) int {
 	if n <= 0 {
 		return 20
 	}
-	if n > 100 {
-		return 100
+	if n > v2PageMax {
+		return v2PageMax
 	}
 	return n
+}
+
+func collectV2List[T any](ctx context.Context, c *Client, path string, q url.Values, want int) ([]T, *int64, error) {
+	if want <= 0 {
+		want = 20
+	}
+	var (
+		out    []T
+		total  *int64
+		cursor = q.Get("cursor")
+	)
+	for pages := 0; pages < v2PageWalkMax && len(out) < want; pages++ {
+		n := want - len(out)
+		if n > v2PageMax {
+			n = v2PageMax
+		}
+		q.Set("limit", strconv.Itoa(n))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		} else {
+			q.Del("cursor")
+		}
+		var page v2List[T]
+		if err := c.appV2JSON(ctx, path, q, &page); err != nil {
+			return nil, total, err
+		}
+		if page.Total != nil {
+			total = page.Total
+		}
+		rows := page.rows()
+		out = append(out, rows...)
+		if page.NextCursor == nil || *page.NextCursor == "" || len(rows) == 0 {
+			break
+		}
+		cursor = *page.NextCursor
+	}
+	if len(out) > want {
+		out = out[:want]
+	}
+	return out, total, nil
 }
 
 func encodeWatermark(id int64) string {

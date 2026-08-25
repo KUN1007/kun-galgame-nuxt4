@@ -485,19 +485,12 @@ func (h *EditHandler) Revert(c fiber.Ctx) error {
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}
-	items, err := h.catalog.ListEditRevisions(ctx, entityTypeGame, workID, 100)
+	revisionID, err := h.catalog.RevisionIDBySeq(ctx, entityTypeGame, workID, req.ToSeq)
 	if err != nil {
-		return editError(c, err)
-	}
-	var revisionID int64
-	for i := range items {
-		if items[i].Seq == req.ToSeq {
-			revisionID = items[i].ID
-			break
+		if stderrors.Is(err, catalogclient.ErrNotFound) {
+			return response.Error(c, errors.ErrBadRequest("目标版本不存在"))
 		}
-	}
-	if revisionID == 0 {
-		return response.Error(c, errors.ErrBadRequest("目标版本不存在"))
+		return editError(c, err)
 	}
 	result, err := h.catalog.RevertEditEntityUser(ctx, token, revisionID, req.Note)
 	if err != nil {

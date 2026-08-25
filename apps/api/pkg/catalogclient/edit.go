@@ -228,16 +228,15 @@ func (c *Client) listPublicProposals(ctx context.Context, f EditProposalFilter) 
 	if f.Status != "" {
 		q.Set("state", f.Status)
 	}
-	q.Set("limit", strconv.Itoa(clampV2Limit(f.Limit)))
-	var page v2List[v2Proposal]
-	if err := c.appV2JSON(ctx, "/v2/catalog/proposals", q, &page); err != nil {
+	rows, total, err := collectV2List[v2Proposal](ctx, c, "/v2/catalog/proposals", q, f.Limit)
+	if err != nil {
 		return nil, err
 	}
-	out := &proposalListPage{Items: make([]EditProposal, 0, len(page.rows()))}
-	if page.Total != nil {
-		out.Total = *page.Total
+	out := &proposalListPage{Items: make([]EditProposal, 0, len(rows))}
+	if total != nil {
+		out.Total = *total
 	}
-	for _, it := range page.rows() {
+	for _, it := range rows {
 		out.Items = append(out.Items, it.proposal())
 	}
 	return out, nil
@@ -249,12 +248,10 @@ func (c *Client) ListEditRevisions(ctx context.Context, entityType string, entit
 		q.Set("object", object)
 	}
 	q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	q.Set("limit", strconv.Itoa(clampV2Limit(limit)))
-	var page v2List[v2Revision]
-	if err := c.appV2JSON(ctx, "/v2/catalog/revisions", q, &page); err != nil {
+	rows, _, err := collectV2List[v2Revision](ctx, c, "/v2/catalog/revisions", q, limit)
+	if err != nil {
 		return nil, err
 	}
-	rows := page.rows()
 	out := make([]EditRevision, 0, len(rows))
 	for _, it := range rows {
 		out = append(out, it.revision())
@@ -262,20 +259,65 @@ func (c *Client) ListEditRevisions(ctx context.Context, entityType string, entit
 	return out, nil
 }
 
+func (c *Client) RevisionIDBySeq(ctx context.Context, entityType string, entityID int64, seq int) (int64, error) {
+	found, err := c.revisionIDsBySeq(ctx, entityType, entityID, seq)
+	if err != nil {
+		return 0, err
+	}
+	id := found[seq]
+	if id == 0 {
+		return 0, ErrNotFound
+	}
+	return id, nil
+}
+
+func (c *Client) revisionIDsBySeq(ctx context.Context, entityType string, entityID int64, seqs ...int) (map[int]int64, error) {
+	want := make(map[int]struct{}, len(seqs))
+	for _, seq := range seqs {
+		if seq > 0 {
+			want[seq] = struct{}{}
+		}
+	}
+	found := make(map[int]int64, len(want))
+	if len(want) == 0 {
+		return found, nil
+	}
+	q := url.Values{}
+	if object := objectFamily(entityType); object != "" {
+		q.Set("object", object)
+	}
+	q.Set("entity_id", strconv.FormatInt(entityID, 10))
+	cursor := ""
+	for pages := 0; pages < v2PageWalkMax && len(found) < len(want); pages++ {
+		q.Set("limit", strconv.Itoa(v2PageMax))
+		if cursor != "" {
+			q.Set("cursor", cursor)
+		} else {
+			q.Del("cursor")
+		}
+		var page v2List[v2Revision]
+		if err := c.appV2JSON(ctx, "/v2/catalog/revisions", q, &page); err != nil {
+			return nil, err
+		}
+		for _, it := range page.rows() {
+			if _, ok := want[it.Seq]; ok {
+				found[it.Seq] = parseFlexID(it.ID)
+			}
+		}
+		if page.NextCursor == nil || *page.NextCursor == "" {
+			break
+		}
+		cursor = *page.NextCursor
+	}
+	return found, nil
+}
+
 func (c *Client) DiffEditRevisions(ctx context.Context, entityType string, entityID int64, fromSeq, toSeq int) (*EditDiff, error) {
-	items, err := c.ListEditRevisions(ctx, entityType, entityID, 100)
+	ids, err := c.revisionIDsBySeq(ctx, entityType, entityID, fromSeq, toSeq)
 	if err != nil {
 		return nil, err
 	}
-	var fromID, toID int64
-	for i := range items {
-		switch items[i].Seq {
-		case fromSeq:
-			fromID = items[i].ID
-		case toSeq:
-			toID = items[i].ID
-		}
-	}
+	fromID, toID := ids[fromSeq], ids[toSeq]
 	if fromID == 0 || toID == 0 {
 		return nil, ErrNotFound
 	}

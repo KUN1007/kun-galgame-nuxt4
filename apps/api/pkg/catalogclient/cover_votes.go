@@ -14,7 +14,7 @@ type CoverTally struct {
 	Voted     bool   `json:"voted"`
 }
 
-func (c *Client) WorkCoverVotes(ctx context.Context, workID, viewerUID int64) ([]CoverTally, error) {
+func (c *Client) WorkCoverVotes(ctx context.Context, workID int64) ([]CoverTally, error) {
 	q := url.Values{"include": {"covers"}}
 	var rec struct {
 		Covers []struct {
@@ -28,7 +28,6 @@ func (c *Client) WorkCoverVotes(ctx context.Context, workID, viewerUID int64) ([
 	if err := c.appV2JSON(ctx, "/v2/catalog/works/"+strconv.FormatInt(workID, 10), q, &rec); err != nil {
 		return nil, err
 	}
-	_ = viewerUID
 	out := make([]CoverTally, 0, len(rec.Covers))
 	for _, it := range rec.Covers {
 		hash := it.Hash

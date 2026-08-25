@@ -45,7 +45,7 @@ func (s *GalgameUserStatsService) Stats(ctx context.Context, uid int64) GalgameU
 	}
 	out.PublishedToday = s.galgameRepo.CountPublishedByCreatorSince(int(uid), startOfToday())
 
-	if s.catalog == nil || !s.catalog.Configured() {
+	if s.catalog == nil || !s.catalog.AppConfigured() {
 		return out
 	}
 

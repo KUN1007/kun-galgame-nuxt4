@@ -69,8 +69,9 @@ func (c *Client) WithdrawEditProposalUser(ctx context.Context, accessToken strin
 
 func (c *Client) GetEditProposalUser(ctx context.Context, accessToken string, id int64) (*EditProposal, error) {
 	var out v2Proposal
+	q := url.Values{"include": {"patch,amendments"}}
 	err := c.userV2JSON(ctx, http.MethodGet, accessToken,
-		"/v2/moderation/proposals/"+strconv.FormatInt(id, 10)+"?include=patch,amendments",
+		"/v2/moderation/proposals/"+strconv.FormatInt(id, 10)+"?"+q.Encode(),
 		nil, &out, nil)
 	if err != nil {
 		return nil, err

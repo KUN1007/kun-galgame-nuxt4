@@ -52,26 +52,11 @@ func (c *Client) ActOnClaimUser(ctx context.Context, accessToken string, workID 
 		}
 		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
 	case ClaimActionWithdraw:
-		var out v2Claim
-		if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+id,
-			map[string]any{"state": "withdrawn"}, &out, ifMatchStar()); err != nil {
-			return nil, err
-		}
-		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
+		return c.patchMyClaim(ctx, accessToken, id, "withdrawn")
 	case ClaimActionPublish:
-		var out v2Claim
-		if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+id,
-			map[string]any{"state": "live"}, &out, ifMatchStar()); err != nil {
-			return nil, err
-		}
-		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
+		return c.patchMyClaim(ctx, accessToken, id, "live")
 	case ClaimActionSubmit:
-		var out v2Claim
-		if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+id,
-			map[string]any{"state": "pending"}, &out, ifMatchStar()); err != nil {
-			return nil, err
-		}
-		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
+		return c.patchMyClaim(ctx, accessToken, id, "pending")
 	case ClaimActionApprove, ClaimActionDecline, ClaimActionBan, ClaimActionUnban:
 		decision := action
 		if action == ClaimActionApprove {
@@ -92,6 +77,15 @@ func (c *Client) ActOnClaimUser(ctx context.Context, accessToken string, workID 
 	default:
 		return nil, &UserAPIError{Status: http.StatusBadRequest, Message: "unknown claim action"}
 	}
+}
+
+func (c *Client) patchMyClaim(ctx context.Context, accessToken, workID, state string) (*ClaimActionResult, error) {
+	var out v2Claim
+	if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+workID,
+		map[string]any{"state": state}, &out, ifMatchStar()); err != nil {
+		return nil, err
+	}
+	return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
 }
 
 func (c *Client) MyClaims(ctx context.Context, accessToken string, f UserClaimFilter) (*UserClaimPage, error) {

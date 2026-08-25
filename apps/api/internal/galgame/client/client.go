@@ -1,12 +1,8 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -140,44 +136,6 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	}
 }
 
-func (c *GalgameClient) getFace(ctx context.Context, base, path, token string, query url.Values, apiKey string) (json.RawMessage, *errors.AppError) {
-	reqURL := base + path
-	if len(query) > 0 {
-		reqURL += "?" + query.Encode()
-	}
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
-	}
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
-	}
-	return c.doRequest(req)
-}
-
-func (c *GalgameClient) postFace(ctx context.Context, base, path string, query url.Values, body any, apiKey string) (json.RawMessage, *errors.AppError) {
-	payload, err := json.Marshal(body)
-	if err != nil {
-		return nil, errors.ErrInternal("序列化请求失败")
-	}
-	reqURL := base + path
-	if len(query) > 0 {
-		reqURL += "?" + query.Encode()
-	}
-	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, bytes.NewReader(payload))
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if apiKey != "" {
-		req.Header.Set("X-API-Key", apiKey)
-	}
-	return c.doRequest(req)
-}
-
 type apiResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
@@ -291,50 +249,4 @@ func (c *GalgameClient) batchByGIDs(ctx context.Context, ids []int, contentLimit
 		result[gid] = CatalogItemToBrief(ctx, &row)
 	}
 	return result, nil
-}
-
-func bodySnippet(b []byte) string {
-	const max = 300
-	if len(b) > max {
-		return string(b[:max]) + "…"
-	}
-	return string(b)
-}
-
-func (c *GalgameClient) doRequest(req *http.Request) (json.RawMessage, *errors.AppError) {
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		slog.Error("Galgame 服务请求失败 (传输层)",
-			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		slog.Error("读取 Galgame 响应失败",
-			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal("读取 Galgame 响应失败")
-	}
-
-	var result apiResponse
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		slog.Error("解析 Galgame 响应失败 (非 JSON 响应)",
-			"method", req.Method, "url", req.URL.String(),
-			"status", resp.StatusCode, "body", bodySnippet(respBody))
-		return nil, errors.New(
-			errors.CodeBiz,
-			fmt.Sprintf(
-				"Galgame 服务返回了非预期响应 (HTTP %d), 请确认 galgame 服务已部署对应接口",
-				resp.StatusCode,
-			),
-			resp.StatusCode,
-		)
-	}
-
-	if result.Code != 0 {
-		return nil, errors.New(result.Code, result.Message, resp.StatusCode)
-	}
-
-	return rewriteBanners(result.Data, c.imageCDNBase), nil
 }

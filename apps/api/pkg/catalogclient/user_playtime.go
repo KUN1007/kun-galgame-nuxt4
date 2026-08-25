@@ -10,11 +10,6 @@ import (
 	"strconv"
 )
 
-// The playtime face hangs off /v1, not the /api/v1/user/catalog prefix the rest
-// of the user plane uses: upstream mounts it as its own Fiber group so a desktop
-// tracker can hold a token scoped to playtime alone.
-const playtimeBase = "/v1/playtime"
-
 const (
 	PlaytimeStatusPlaying  = "playing"
 	PlaytimeStatusFinished = "finished"
