@@ -145,7 +145,8 @@ func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
 				gotFields[part.FormName()] = string(raw)
 			}
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"hash":"h1","url":"https://cdn/image/h1"}}`))
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"object":"edit_image","hash":"h1","url":"https://cdn/image/h1"}`))
 	}))
 	defer catalog.Close()
 
@@ -171,7 +172,7 @@ func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("upload: status = %d body %s", resp.StatusCode, raw)
 	}
-	if gotPath != "/api/v1/user/catalog/edit/images" {
+	if gotPath != "/v2/me/edit-images" {
 		t.Errorf("upload hit %q, want the user plane's image leg", gotPath)
 	}
 	if gotAuth != "Bearer user-jwt" {
@@ -180,7 +181,7 @@ func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
 	if _, ok := gotFields["actor_uid"]; ok {
 		t.Errorf("the upload must assert no actor: %v", gotFields)
 	}
-	if gotFields["preset"] != "galgame_banner" {
-		t.Errorf("preset lost on the wire: %v", gotFields)
+	if gotFields["preset"] != "cover" {
+		t.Errorf("preset mapped wrong on the wire: %v", gotFields)
 	}
 }

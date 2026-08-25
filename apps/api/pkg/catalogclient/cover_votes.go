@@ -15,19 +15,29 @@ type CoverTally struct {
 }
 
 func (c *Client) WorkCoverVotes(ctx context.Context, workID, viewerUID int64) ([]CoverTally, error) {
-	q := url.Values{}
-	if viewerUID > 0 {
-		q.Set("uid", strconv.FormatInt(viewerUID, 10))
+	q := url.Values{"include": {"covers"}}
+	var rec struct {
+		Covers []struct {
+			ID        json.RawMessage `json:"id"`
+			Hash      string          `json:"hash"`
+			ImageHash string          `json:"image_hash"`
+			VoteCount int             `json:"vote_count"`
+			Voted     bool            `json:"voted"`
+		} `json:"covers"`
 	}
-	data, err := c.getData(ctx, "/api/v1/catalog/works/"+strconv.FormatInt(workID, 10), q)
-	if err != nil {
+	if err := c.appV2JSON(ctx, "/v2/catalog/works/"+strconv.FormatInt(workID, 10), q, &rec); err != nil {
 		return nil, err
 	}
-	var parsed struct {
-		Covers []CoverTally `json:"covers"`
+	_ = viewerUID
+	out := make([]CoverTally, 0, len(rec.Covers))
+	for _, it := range rec.Covers {
+		hash := it.Hash
+		if hash == "" {
+			hash = it.ImageHash
+		}
+		out = append(out, CoverTally{
+			ID: parseFlexID(it.ID), ImageHash: hash, VoteCount: it.VoteCount, Voted: it.Voted,
+		})
 	}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, ErrUpstream
-	}
-	return parsed.Covers, nil
+	return out, nil
 }

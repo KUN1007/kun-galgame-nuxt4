@@ -254,10 +254,15 @@ func catalogRosterToNextMoe(ctx context.Context, chars []catWorkCharacter) []dto
 func catalogCoversToNextMoe(d *catWorkDetail) []dto.NextMoeGalgameCover {
 	out := make([]dto.NextMoeGalgameCover, 0, len(d.Covers))
 	for i, c := range d.Covers {
+		hash := c.Hash
+		if hash == "" {
+			hash = hashFromURL(c.URL)
+		}
 		out = append(out, dto.NextMoeGalgameCover{
-			ImageHash: hashFromURL(c.URL), SortOrder: i,
+			ID: c.ID, ImageHash: hash, SortOrder: i,
 			Sexual: c.Sexual, Violence: c.Violence, Kind: c.Kind, Source: c.Source,
 			CDNURL: c.URL, Width: c.Width, Height: c.Height, Thumbhash: c.Thumbhash,
+			VoteCount: c.VoteCount,
 		})
 	}
 	return out

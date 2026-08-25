@@ -326,56 +326,46 @@ func TestDeclineEditProposalUser(t *testing.T) {
 }
 
 func TestRevertEditEntityUser(t *testing.T) {
-	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{`+
-		`"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},`+
-		`"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`)
+	srv, got := recordingServer(t, http.StatusCreated, `{"object":"proposal","id":"8","entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"merged","patch":{}}`)
 
-	res, err := userClient(srv.URL).RevertEditEntityUser(context.Background(), "user-jwt",
-		"catalog.work", 1000, 3, "回滚")
+	res, err := userClient(srv.URL).RevertEditEntityUser(context.Background(), "user-jwt", 101, "回滚")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodPost || got.path != "/api/v1/user/catalog/edit/revert" {
+	if got.method != http.MethodPost || got.path != "/v2/moderation/reverts" {
 		t.Fatalf("revert hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
-	if _, ok := got.body["actor"]; ok {
-		t.Fatalf("the user plane asserts no actor: %v", got.body)
-	}
-	if _, ok := got.body["site"]; ok {
-		t.Fatalf("the user plane asserts no site: %v", got.body)
-	}
-	if got.body["entity_type"] != "catalog.work" || got.body["entity_id"] != float64(1000) ||
-		got.body["to_seq"] != float64(3) || got.body["note"] != "回滚" {
+	if got.body["revision_id"] != "101" || got.body["reason"] != "回滚" {
 		t.Fatalf("revert body wrong: %v", got.body)
 	}
-	if res.Revision.Action != "reverted" || res.Proposal.ID != 8 {
+	if res.Proposal.ID != 8 || res.Proposal.Status != "merged" {
 		t.Fatalf("revert result decoded wrong: %+v", res)
 	}
 }
 
 func TestGetEditProposalUser(t *testing.T) {
-	srv, got := recordingServer(t, 0, `{"code":0,"message":"ok","data":{"id":7,`+
-		`"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,`+
+	srv, got := recordingServer(t, 0, `{"object":"proposal","id":"7",`+
+		`"entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"open","proposer_uid":"9",`+
 		`"patch":{"catalog.work.name_zh_cn":"新标题","catalog.work.vndb_id":"v1"},`+
 		`"effective_patch":{"catalog.work.name_zh_cn":"修正"},`+
-		`"amendments":[{"id":1,"seq":1,"amender_uid":42,"set":{"catalog.work.name_zh_cn":"修正"},`+
-		`"unset":["catalog.work.vndb_id"],"note":"来源存疑"}]}}`)
+		`"amendments":[{"id":"1","seq":1,"amender_uid":"42","set":{"catalog.work.name_zh_cn":"修正"},`+
+		`"unset":["catalog.work.vndb_id"],"note":"来源存疑"}]}`)
 
 	prop, err := userClient(srv.URL).GetEditProposalUser(context.Background(), "user-jwt", 7)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.method != http.MethodGet || got.path != "/api/v1/user/catalog/edit/proposals/7" {
+	if got.method != http.MethodGet || got.path != "/v2/moderation/proposals/7" {
 		t.Fatalf("detail hit %s %s", got.method, got.path)
 	}
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
-	if got.query != "" {
-		t.Fatalf("the detail read takes no parameters: %q", got.query)
+	if !strings.Contains(got.query, "include=") {
+		t.Fatalf("review detail must ask for patch+amendments: %q", got.query)
 	}
 	if len(prop.Amendments) != 1 || prop.Amendments[0].AmenderUID != 42 {
 		t.Fatalf("amendments decoded wrong: %+v", prop)
@@ -401,7 +391,7 @@ func TestUserEditAdjudicationErrorMapping(t *testing.T) {
 			return err
 		},
 		"revert": func(c *Client) error {
-			_, err := c.RevertEditEntityUser(context.Background(), "user-jwt", "catalog.work", 1000, 3, "")
+			_, err := c.RevertEditEntityUser(context.Background(), "user-jwt", 101, "")
 			return err
 		},
 		"detail": func(c *Client) error {
@@ -458,7 +448,7 @@ func TestUserEditAdjudicationWithoutTokenNeverCalls(t *testing.T) {
 	_, amend := c.AmendEditProposalUser(context.Background(), "", 7, map[string]any{"k": "v"}, nil, "")
 	_, merge := c.MergeEditProposalUser(context.Background(), "", 7, "")
 	_, decline := c.DeclineEditProposalUser(context.Background(), "", 7, "x")
-	_, revert := c.RevertEditEntityUser(context.Background(), "", "catalog.work", 1, 2, "")
+	_, revert := c.RevertEditEntityUser(context.Background(), "", 2, "")
 	_, detail := c.GetEditProposalUser(context.Background(), "", 7)
 	for name, err := range map[string]error{
 		"amend": amend, "merge": merge, "decline": decline, "revert": revert, "detail": detail,
@@ -477,7 +467,7 @@ func TestUserEditAdjudicationUnconfigured(t *testing.T) {
 	if _, err := c.MergeEditProposalUser(context.Background(), "user-jwt", 7, ""); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
-	if _, err := c.RevertEditEntityUser(context.Background(), "user-jwt", "catalog.work", 1, 2, ""); !errors.Is(err, ErrNotConfigured) {
+	if _, err := c.RevertEditEntityUser(context.Background(), "user-jwt", 2, ""); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 }

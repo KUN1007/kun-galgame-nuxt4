@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type v2Problem struct {
@@ -139,6 +140,7 @@ type v2Proposal struct {
 	ID             json.RawMessage `json:"id"`
 	State          string          `json:"state"`
 	Status         string          `json:"status"`
+	TargetObject   string          `json:"target_object"`
 	EntityType     string          `json:"entity_type"`
 	EntityID       json.RawMessage `json:"entity_id"`
 	Note           string          `json:"note"`
@@ -147,6 +149,7 @@ type v2Proposal struct {
 	EffectivePatch map[string]any  `json:"effective_patch"`
 	Amendments     []EditAmendment `json:"amendments"`
 	ProposerUID    json.RawMessage `json:"proposer_uid"`
+	Site           string          `json:"site"`
 	Merged         bool            `json:"merged"`
 }
 
@@ -158,9 +161,13 @@ func (p v2Proposal) proposal() EditProposal {
 	if status == "" {
 		status = "open"
 	}
+	entityType := p.EntityType
+	if entityType == "" {
+		entityType = entityTypeFromObject(p.TargetObject)
+	}
 	return EditProposal{
 		ID:             parseFlexID(p.ID),
-		EntityType:     p.EntityType,
+		EntityType:     entityType,
 		EntityID:       parseFlexID(p.EntityID),
 		Note:           p.Note,
 		DecisionNote:   p.DecisionNote,
@@ -168,8 +175,52 @@ func (p v2Proposal) proposal() EditProposal {
 		EffectivePatch: p.EffectivePatch,
 		Amendments:     p.Amendments,
 		ProposerUID:    parseFlexID(p.ProposerUID),
+		Site:           p.Site,
 		Status:         status,
 	}
+}
+
+type v2Revision struct {
+	ID            json.RawMessage `json:"id"`
+	TargetObject  string          `json:"target_object"`
+	EntityID      json.RawMessage `json:"entity_id"`
+	SiteWorkID    json.RawMessage `json:"site_work_id"`
+	Seq           int             `json:"seq"`
+	Action        string          `json:"action"`
+	ChangedFields []string        `json:"changed_fields"`
+	ActorUID      json.RawMessage `json:"actor_uid"`
+	AmenderUID    json.RawMessage `json:"amender_uid"`
+	ProposalID    json.RawMessage `json:"proposal_id"`
+	Site          string          `json:"site"`
+	CreatedAt     string          `json:"created_at"`
+	Diff          []EditFieldDiff `json:"diff"`
+}
+
+func (r v2Revision) time() time.Time {
+	t, err := time.Parse(time.RFC3339, r.CreatedAt)
+	if err != nil {
+		t, _ = time.Parse("2006-01-02T15:04:05Z", r.CreatedAt)
+	}
+	return t
+}
+
+func (r v2Revision) revision() EditRevision {
+	out := EditRevision{
+		ID:            parseFlexID(r.ID),
+		Seq:           r.Seq,
+		Action:        r.Action,
+		ChangedFields: r.ChangedFields,
+		ActorUID:      parseFlexID(r.ActorUID),
+		Site:          r.Site,
+		CreatedAt:     r.time(),
+	}
+	if n := parseFlexID(r.AmenderUID); n != 0 {
+		out.AmenderUID = &n
+	}
+	if n := parseFlexID(r.ProposalID); n != 0 {
+		out.ProposalID = &n
+	}
+	return out
 }
 
 type v2Claim struct {

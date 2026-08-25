@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,7 +25,11 @@ type revFeedStub struct {
 func (f *revFeedStub) server(t *testing.T) *catalogclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		since, _ := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
+		since := int64(0)
+		if cur := r.URL.Query().Get("cursor"); cur != "" {
+			raw, _ := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(cur, "cur_"))
+			since, _ = strconv.ParseInt(string(raw), 10, 64)
+		}
 		f.mu.Lock()
 		f.asked = append(f.asked, since)
 		f.mu.Unlock()
@@ -32,21 +37,14 @@ func (f *revFeedStub) server(t *testing.T) *catalogclient.Client {
 		items := []string{}
 		for id := since + 1; id <= f.total && len(items) < f.page; id++ {
 			items = append(items, fmt.Sprintf(
-				`{"id":%d,"entity_family":"galgame","entity_type":"galgame.game",`+
-					`"entity_id":%d,"seq":2,"action":1,"changed_fields":[],`+
-					`"actor_uid":5,"amender_uid":null,"proposal_id":null,`+
-					`"site":"kungal","created_at":"2026-07-30T10:00:00Z"}`, id, 1000+id))
+				`{"id":"%d","target_object":"work","entity_id":"%d","seq":2,"action":"merged","changed_fields":[],`+
+					`"actor_uid":"5","site":"kungal","created_at":"2026-07-30T10:00:00Z"}`, id, 1000+id))
 		}
-		next := since
-		if n := len(items); n > 0 {
-			next = since + int64(n)
-		}
-		_, _ = fmt.Fprintf(w, `{"code":0,"message":"成功","data":{"items":[%s],"next_since":%d}}`,
-			strings.Join(items, ","), next)
+		_, _ = fmt.Fprintf(w, `{"object":"list","items":[%s]}`, strings.Join(items, ","))
 	}))
 	t.Cleanup(srv.Close)
 	return catalogclient.New(catalogclient.Config{
-		BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec",
+		BaseURL: srv.URL, AppKey: "nmk_test",
 	})
 }
 

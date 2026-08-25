@@ -22,6 +22,7 @@ type NextMoeGalgameItem struct {
 }
 
 type NextMoeGalgameCover struct {
+	ID        int64  `json:"id,omitempty"`
 	ImageHash string `json:"image_hash"`
 	SortOrder int    `json:"sort_order"`
 	Sexual    int    `json:"sexual"`
@@ -33,6 +34,7 @@ type NextMoeGalgameCover struct {
 	Width     int    `json:"width,omitempty"`
 	Height    int    `json:"height,omitempty"`
 	Thumbhash string `json:"thumbhash,omitempty"`
+	VoteCount int    `json:"vote_count,omitempty"`
 }
 
 type NextMoeGalgameScreenshot struct {

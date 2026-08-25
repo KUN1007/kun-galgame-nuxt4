@@ -128,25 +128,25 @@ func TestWorkCoverVotes(t *testing.T) {
 	var gotAuth, gotPath, gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth, gotPath, gotQuery = r.Header.Get("Authorization"), r.URL.Path, r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"work":{"id":1000},"covers":[` +
-			`{"id":88,"image_hash":"aa","vote_count":3,"voted":true},` +
-			`{"id":89,"image_hash":"bb","vote_count":0}]}}`))
+		_, _ = w.Write([]byte(`{"id":"1000","covers":[` +
+			`{"id":"88","hash":"aa","vote_count":3},` +
+			`{"id":"89","hash":"bb","vote_count":0}]}`))
 	}))
 	defer srv.Close()
 
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL, AppKey: "nmk_test"})
 	tallies, err := c.WorkCoverVotes(context.Background(), 1000, 7)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotPath != "/api/v1/catalog/works/1000" || gotQuery != "uid=7" {
+	if gotPath != "/v2/catalog/works/1000" {
 		t.Fatalf("read hit %s?%s", gotPath, gotQuery)
 	}
-	if len(gotAuth) < 6 || gotAuth[:6] != "Basic " {
-		t.Fatalf("the tally read is S2S; auth = %q", gotAuth)
+	if gotAuth != "Bearer nmk_test" {
+		t.Fatalf("the tally read is the application key; auth = %q", gotAuth)
 	}
 	if len(tallies) != 2 || tallies[0].ID != 88 || tallies[0].ImageHash != "aa" ||
-		tallies[0].VoteCount != 3 || !tallies[0].Voted || tallies[1].Voted {
+		tallies[0].VoteCount != 3 || tallies[0].Voted || tallies[1].Voted {
 		t.Fatalf("tallies decoded wrong: %+v", tallies)
 	}
 }
@@ -155,14 +155,14 @@ func TestWorkCoverVotesAnonymousSendsNoUID(t *testing.T) {
 	var gotQuery string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"covers":[]}}`))
+		_, _ = w.Write([]byte(`{"id":"1000","covers":[]}`))
 	}))
 	defer srv.Close()
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL, AppKey: "nmk_test"})
 	if _, err := c.WorkCoverVotes(context.Background(), 1000, 0); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotQuery != "" {
+	if gotQuery != "include=covers" {
 		t.Fatalf("anonymous read sent %q", gotQuery)
 	}
 }

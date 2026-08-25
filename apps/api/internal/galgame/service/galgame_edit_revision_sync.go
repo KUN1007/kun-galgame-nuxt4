@@ -35,12 +35,12 @@ func NewGalgameEditRevisionSync(
 const (
 	editRevisionCursorKey  = "catalog:rev:cron:since"
 	editRevisionEntityType = catalogclient.EntityTypeWork
-	editRevisionBatch      = 1000
+	editRevisionBatch      = 100
 	editRevisionMaxPages   = 50
 )
 
 func (s *GalgameEditRevisionSync) Run() {
-	if s.catalog == nil || !s.catalog.Configured() {
+	if s.catalog == nil || !s.catalog.AppConfigured() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)

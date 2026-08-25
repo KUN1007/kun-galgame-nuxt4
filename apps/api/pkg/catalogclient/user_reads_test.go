@@ -152,7 +152,8 @@ func TestUploadEditImageUser_SendsNoActorUID(t *testing.T) {
 			}
 			gotFields[part.FormName()] = string(raw)
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"hash":"h1","url":"https://cdn/image/h1","width":1920,"height":1080,"size_bytes":4}}`))
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"object":"edit_image","hash":"h1","url":"https://cdn/image/h1","width":1920,"height":1080,"size_bytes":4,"is_deduplicated":false}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -161,7 +162,7 @@ func TestUploadEditImageUser_SendsNoActorUID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotPath != "/api/v1/user/catalog/edit/images" {
+	if gotPath != "/v2/me/edit-images" {
 		t.Fatalf("upload hit %s", gotPath)
 	}
 	if gotAuth != "Bearer user-jwt" {
@@ -173,7 +174,7 @@ func TestUploadEditImageUser_SendsNoActorUID(t *testing.T) {
 	if _, ok := gotFields["actor_uid"]; ok {
 		t.Fatalf("the upload asserts no actor: %v", gotFields)
 	}
-	if gotFields["preset"] != "galgame_banner" || string(gotFile) != "PNG!" {
+	if gotFields["preset"] != "cover" || string(gotFile) != "PNG!" {
 		t.Fatalf("upload body wrong: fields %v file %q", gotFields, gotFile)
 	}
 	if res.Hash != "h1" || res.Width != 1920 {

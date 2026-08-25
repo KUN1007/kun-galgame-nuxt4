@@ -184,46 +184,21 @@ func (e *EditAPIError) Error() string {
 	return fmt.Sprintf("catalog edit: status=%d code=%d %s", e.Status, e.Code, e.Message)
 }
 
-const editBase = "/api/v1/catalog/edit"
-
 const EntityTypeWork = "catalog.work"
 
 const FieldKeyPrefix = EntityTypeWork + "."
 
 func (c *Client) ListEditProposals(ctx context.Context, f EditProposalFilter) ([]EditProposal, error) {
-	page, err := c.listProposalsPage(ctx, proposalQuery(f))
+	page, err := c.listPublicProposals(ctx, f)
 	if err != nil {
 		return nil, err
 	}
 	return page.Items, nil
 }
 
-func proposalQuery(f EditProposalFilter) url.Values {
-	q := url.Values{}
-	if f.EntityType != "" {
-		q.Set("entity_type", f.EntityType)
-	}
-	if f.EntityID > 0 {
-		q.Set("entity_id", strconv.FormatInt(f.EntityID, 10))
-	}
-	if f.Site != "" {
-		q.Set("site", f.Site)
-	}
-	if f.ProposerUID > 0 {
-		q.Set("proposer_uid", strconv.FormatInt(f.ProposerUID, 10))
-	}
-	if f.Status != "" {
-		q.Set("status", f.Status)
-	}
-	if f.Limit > 0 {
-		q.Set("limit", strconv.Itoa(f.Limit))
-	}
-	return q
-}
-
 func (c *Client) CountEditProposals(ctx context.Context, f EditProposalFilter) (int64, error) {
 	f.Limit = 1
-	page, err := c.listProposalsPage(ctx, proposalQuery(f))
+	page, err := c.listPublicProposals(ctx, f)
 	if err != nil {
 		return 0, err
 	}
@@ -235,33 +210,81 @@ type proposalListPage struct {
 	Total int64          `json:"total"`
 }
 
-func (c *Client) listProposalsPage(ctx context.Context, q url.Values) (*proposalListPage, error) {
-	return editGet[proposalListPage](ctx, c, editBase+"/proposals?"+q.Encode())
+func (c *Client) listPublicProposals(ctx context.Context, f EditProposalFilter) (*proposalListPage, error) {
+	q := url.Values{}
+	q.Set("include_total", "true")
+	if object := objectFamily(f.EntityType); object != "" {
+		q.Set("object", object)
+	}
+	if f.EntityID > 0 {
+		q.Set("entity_id", strconv.FormatInt(f.EntityID, 10))
+	}
+	if f.Site != "" {
+		q.Set("site", f.Site)
+	}
+	if f.ProposerUID > 0 {
+		q.Set("proposer_uid", strconv.FormatInt(f.ProposerUID, 10))
+	}
+	if f.Status != "" {
+		q.Set("state", f.Status)
+	}
+	q.Set("limit", strconv.Itoa(clampV2Limit(f.Limit)))
+	var page v2List[v2Proposal]
+	if err := c.appV2JSON(ctx, "/v2/catalog/proposals", q, &page); err != nil {
+		return nil, err
+	}
+	out := &proposalListPage{Items: make([]EditProposal, 0, len(page.rows()))}
+	if page.Total != nil {
+		out.Total = *page.Total
+	}
+	for _, it := range page.rows() {
+		out.Items = append(out.Items, it.proposal())
+	}
+	return out, nil
 }
 
 func (c *Client) ListEditRevisions(ctx context.Context, entityType string, entityID int64, limit int) ([]EditRevision, error) {
 	q := url.Values{}
-	q.Set("entity_type", entityType)
-	q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	if limit > 0 {
-		q.Set("limit", strconv.Itoa(limit))
+	if object := objectFamily(entityType); object != "" {
+		q.Set("object", object)
 	}
-	data, err := editGet[struct {
-		Items []EditRevision `json:"items"`
-	}](ctx, c, editBase+"/revisions?"+q.Encode())
-	if err != nil {
+	q.Set("entity_id", strconv.FormatInt(entityID, 10))
+	q.Set("limit", strconv.Itoa(clampV2Limit(limit)))
+	var page v2List[v2Revision]
+	if err := c.appV2JSON(ctx, "/v2/catalog/revisions", q, &page); err != nil {
 		return nil, err
 	}
-	return data.Items, nil
+	rows := page.rows()
+	out := make([]EditRevision, 0, len(rows))
+	for _, it := range rows {
+		out = append(out, it.revision())
+	}
+	return out, nil
 }
 
 func (c *Client) DiffEditRevisions(ctx context.Context, entityType string, entityID int64, fromSeq, toSeq int) (*EditDiff, error) {
-	q := url.Values{}
-	q.Set("entity_type", entityType)
-	q.Set("entity_id", strconv.FormatInt(entityID, 10))
-	q.Set("from_seq", strconv.Itoa(fromSeq))
-	q.Set("to_seq", strconv.Itoa(toSeq))
-	return editGet[EditDiff](ctx, c, editBase+"/diff?"+q.Encode())
+	items, err := c.ListEditRevisions(ctx, entityType, entityID, 100)
+	if err != nil {
+		return nil, err
+	}
+	var fromID, toID int64
+	for i := range items {
+		switch items[i].Seq {
+		case fromSeq:
+			fromID = items[i].ID
+		case toSeq:
+			toID = items[i].ID
+		}
+	}
+	if fromID == 0 || toID == 0 {
+		return nil, ErrNotFound
+	}
+	q := url.Values{"include": {"diff"}, "diff_base": {strconv.FormatInt(fromID, 10)}}
+	var rec v2Revision
+	if err := c.appV2JSON(ctx, "/v2/catalog/revisions/"+strconv.FormatInt(toID, 10), q, &rec); err != nil {
+		return nil, err
+	}
+	return &EditDiff{FromSeq: fromSeq, ToSeq: toSeq, Fields: rec.Diff}, nil
 }
 
 func editGet[T any](ctx context.Context, c *Client, path string) (*T, error) {

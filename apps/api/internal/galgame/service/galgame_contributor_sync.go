@@ -34,13 +34,13 @@ const (
 	contributorSite          = client.ClaimSiteKungal
 	contributorMaxPerGalgame = 50
 
-	contributorFeedBatch    = 1000
+	contributorFeedBatch    = 100
 	contributorMaxPagesRun  = 50
 	contributorFeedPageWait = 10 * time.Minute
 )
 
 func (s *GalgameContributorSync) Run() {
-	if s.catalog == nil || !s.catalog.Configured() {
+	if s.catalog == nil || !s.catalog.AppConfigured() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), contributorFeedPageWait)

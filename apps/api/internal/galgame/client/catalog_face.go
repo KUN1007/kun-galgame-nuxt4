@@ -326,6 +326,8 @@ type catWorkDetail struct {
 	Intro  []CatalogIntro `json:"intro"`
 	Intros []CatalogIntro `json:"intros"`
 	Covers []struct {
+		ID        int64  `json:"id"`
+		Hash      string `json:"hash"`
 		URL       string `json:"url"`
 		Kind      string `json:"kind"`
 		Sexual    int    `json:"sexual"`
@@ -334,6 +336,7 @@ type catWorkDetail struct {
 		Width     int    `json:"width"`
 		Height    int    `json:"height"`
 		Thumbhash string `json:"thumbhash"`
+		VoteCount int    `json:"vote_count"`
 	} `json:"covers"`
 	CoverSlots  *catCoverSlots `json:"cover_slots"`
 	Screenshots []struct {

@@ -4,15 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 )
-
-const userEditBase = userBase + "/edit"
 
 type UserEditCreateRequest struct {
 	EntityType string         `json:"entity_type"`
@@ -72,8 +68,15 @@ func (c *Client) WithdrawEditProposalUser(ctx context.Context, accessToken strin
 }
 
 func (c *Client) GetEditProposalUser(ctx context.Context, accessToken string, id int64) (*EditProposal, error) {
-	return userEditDo[EditProposal](ctx, c, http.MethodGet, accessToken,
-		userEditBase+"/proposals/"+strconv.FormatInt(id, 10), nil)
+	var out v2Proposal
+	err := c.userV2JSON(ctx, http.MethodGet, accessToken,
+		"/v2/moderation/proposals/"+strconv.FormatInt(id, 10)+"?include=patch,amendments",
+		nil, &out, nil)
+	if err != nil {
+		return nil, err
+	}
+	prop := out.proposal()
+	return &prop, nil
 }
 
 func (c *Client) AmendEditProposalUser(ctx context.Context, accessToken string, id int64, set map[string]any, unset []string, note string) (*EditAmendment, error) {
@@ -143,10 +146,15 @@ func (c *Client) DeclineEditProposalUser(ctx context.Context, accessToken string
 	return &prop, nil
 }
 
-func (c *Client) RevertEditEntityUser(ctx context.Context, accessToken string, entityType string, entityID int64, toSeq int, note string) (*EditRevertResult, error) {
-	return userEditPost[EditRevertResult](ctx, c, accessToken, userEditBase+"/revert", map[string]any{
-		"entity_type": entityType, "entity_id": entityID, "to_seq": toSeq, "note": note,
-	})
+func (c *Client) RevertEditEntityUser(ctx context.Context, accessToken string, revisionID int64, note string) (*EditRevertResult, error) {
+	var out v2Proposal
+	err := c.userV2JSON(ctx, http.MethodPost, accessToken, "/v2/moderation/reverts",
+		map[string]any{"revision_id": strconv.FormatInt(revisionID, 10), "reason": note},
+		&out, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &EditRevertResult{Proposal: out.proposal()}, nil
 }
 
 func (c *Client) GetEditSchemaUser(ctx context.Context, accessToken, entityType string, entityID int64) (*EditSchema, error) {
@@ -272,71 +280,4 @@ func (c *Client) WorkCoversUser(ctx context.Context, accessToken string, workID 
 		out = append(out, CoverTally{ID: parseFlexID(it.ID), ImageHash: hash, VoteCount: it.VoteCount, Voted: it.Voted})
 	}
 	return out, nil
-}
-
-func userEditPost[T any](ctx context.Context, c *Client, accessToken, path string, body any) (*T, error) {
-	raw, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	return userEditDo[T](ctx, c, http.MethodPost, accessToken, path, raw)
-}
-
-func userEditDo[T any](ctx context.Context, c *Client, method, accessToken, path string, body []byte) (*T, error) {
-	if c.baseURL == "" {
-		return nil, ErrNotConfigured
-	}
-	if accessToken == "" {
-		return nil, ErrUnauthorized
-	}
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
-	if err != nil {
-		return nil, err
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-	defer resp.Body.Close()
-
-	var env struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
-	}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&env)
-
-	switch resp.StatusCode {
-	case http.StatusUnauthorized:
-		return nil, ErrUnauthorized
-	case http.StatusForbidden:
-		if isScopeDenial(env.Message) {
-			return nil, ErrInsufficientScope
-		}
-		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	case http.StatusNotFound:
-		return nil, ErrNotFound
-	}
-	if decodeErr != nil {
-		return nil, fmt.Errorf("%w: malformed envelope", ErrUpstream)
-	}
-	if resp.StatusCode != http.StatusOK || env.Code != 0 {
-		return nil, &UserAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	}
-	var out T
-	if len(env.Data) > 0 {
-		if err := json.Unmarshal(env.Data, &out); err != nil {
-			return nil, fmt.Errorf("%w: malformed data payload", ErrUpstream)
-		}
-	}
-	return &out, nil
 }

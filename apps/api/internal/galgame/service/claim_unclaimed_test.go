@@ -19,25 +19,38 @@ func (r *claimActionRecorder) catalog(t *testing.T) *catalogclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		action := req.URL.Path[strings.LastIndexByte(req.URL.Path, '/')+1:]
+		buf := make([]byte, req.ContentLength)
+		_, _ = req.Body.Read(buf)
+		body := string(buf)
 		switch {
 		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/claims":
 			action = "claim"
-		case strings.HasSuffix(req.URL.Path, "/claim-actions/publish"):
+		case req.Method == http.MethodPatch && strings.HasPrefix(req.URL.Path, "/v2/me/claims/"):
 			action = "publish"
+			if strings.Contains(body, `"pending"`) {
+				action = "submit"
+			}
+			if strings.Contains(body, `"withdrawn"`) {
+				action = "withdraw"
+			}
 		}
-		buf := make([]byte, req.ContentLength)
-		_, _ = req.Body.Read(buf)
 		r.actions = append(r.actions, action)
-		r.bodies = append(r.bodies, string(buf))
+		r.bodies = append(r.bodies, body)
 
 		w.Header().Set("Content-Type", "application/json")
 		if status, bad := r.fail[action]; bad {
 			w.WriteHeader(status)
-			_, _ = w.Write([]byte(`{"code":1,"message":"上游拒绝","data":null}`))
+			_, _ = w.Write([]byte(`{"code":"INVALID_STATE_TRANSITION","detail":"上游拒绝"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":
-		  {"work_id":4649,"from_state":"draft","to_state":"live","event_id":77}}`))
+		state := "live"
+		if action == "submit" {
+			state = "pending"
+		}
+		if action == "withdraw" {
+			state = "draft"
+		}
+		_, _ = w.Write([]byte(`{"object":"claim","id":"4649","state":"` + state + `"}`))
 	}))
 	t.Cleanup(srv.Close)
 	return catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})

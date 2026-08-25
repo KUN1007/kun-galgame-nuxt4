@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const userBase = "/api/v1/user/catalog"
-
 var ErrInsufficientScope = errors.New("catalogclient: access token lacks the scope the call needs")
 
 type UserAPIError struct {

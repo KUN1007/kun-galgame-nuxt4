@@ -293,6 +293,7 @@ func New(cfg *config.Config) *App {
 		BaseURL:      cfg.Catalog.BaseURL,
 		ClientID:     cfg.OAuth.ClientID,
 		ClientSecret: cfg.OAuth.ClientSecret,
+		AppKey:       cfg.NextMoeAPI.APIKey,
 	})
 	if catalogCli.Configured() {
 		slog.Info("catalog service client configured", "base_url", cfg.Catalog.BaseURL)

@@ -17,11 +17,13 @@ type Config struct {
 	BaseURL      string
 	ClientID     string
 	ClientSecret string
+	AppKey       string
 	HTTPClient   *http.Client
 }
 
 type Client struct {
 	basicAuth  string
+	appKey     string
 	baseURL    string
 	httpClient *http.Client
 }
@@ -37,12 +39,15 @@ func New(cfg Config) *Client {
 	}
 	return &Client{
 		basicAuth:  ba,
+		appKey:     strings.TrimSpace(cfg.AppKey),
 		baseURL:    strings.TrimRight(cfg.BaseURL, "/"),
 		httpClient: hc,
 	}
 }
 
 func (c *Client) Configured() bool { return c.baseURL != "" && c.basicAuth != "" }
+
+func (c *Client) AppConfigured() bool { return c.baseURL != "" && c.appKey != "" }
 
 var (
 	ErrNotConfigured = errors.New("catalogclient: not configured (empty base URL or credentials)")

@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-const userClaimBase = userBase
-
 type UserWorkSubmitRequest struct {
 	ProductWorkID int64           `json:"product_work_id,omitempty"`
 	Fields        map[string]any  `json:"fields"`
@@ -60,23 +58,39 @@ func (c *Client) ActOnClaimUser(ctx context.Context, accessToken string, workID 
 			return nil, err
 		}
 		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
-	case ClaimActionApprove, ClaimActionDecline:
-		decision := "approve"
-		if action == ClaimActionDecline {
-			decision = "decline"
+	case ClaimActionPublish:
+		var out v2Claim
+		if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+id,
+			map[string]any{"state": "live"}, &out, ifMatchStar()); err != nil {
+			return nil, err
+		}
+		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
+	case ClaimActionSubmit:
+		var out v2Claim
+		if err := c.userV2JSON(ctx, http.MethodPatch, accessToken, "/v2/me/claims/"+id,
+			map[string]any{"state": "pending"}, &out, ifMatchStar()); err != nil {
+			return nil, err
+		}
+		return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
+	case ClaimActionApprove, ClaimActionDecline, ClaimActionBan, ClaimActionUnban:
+		decision := action
+		if action == ClaimActionApprove {
+			decision = "approve"
 		}
 		if err := c.userV2JSON(ctx, http.MethodPost, accessToken, "/v2/moderation/claims/"+id+"/decisions",
 			map[string]any{"decision": decision, "note": req.Reason}, nil, ifMatchStar()); err != nil {
 			return nil, err
 		}
 		to := "live"
-		if action == ClaimActionDecline {
+		switch action {
+		case ClaimActionDecline:
 			to = "declined"
+		case ClaimActionBan:
+			to = "hidden"
 		}
 		return &ClaimActionResult{WorkID: workID, To: to}, nil
 	default:
-		return userEditPost[ClaimActionResult](ctx, c, accessToken,
-			userClaimBase+"/works/"+id+"/claim-actions/"+action, req)
+		return nil, &UserAPIError{Status: http.StatusBadRequest, Message: "unknown claim action"}
 	}
 }
 

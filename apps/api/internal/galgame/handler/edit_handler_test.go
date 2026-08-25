@@ -83,6 +83,11 @@ type recordedRequest struct {
 
 func s2sFace(path string) bool { return strings.HasPrefix(path, "/api/v1/catalog/edit/") }
 
+func appFace(path string) bool {
+	return strings.HasPrefix(path, "/v2/catalog/revisions") ||
+		strings.HasPrefix(path, "/v2/catalog/proposals")
+}
+
 func userFace(path string) bool {
 	return strings.HasPrefix(path, "/api/v1/user/catalog/") ||
 		strings.HasPrefix(path, "/v2/me/") ||
@@ -120,6 +125,9 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(f.userBody))
 			return
 		}
+		if appFace(r.URL.Path) {
+			face = "app"
+		}
 		schemaBody := func() string {
 			review := "false"
 			if f.userReviewable {
@@ -146,18 +154,24 @@ func (f *fakeEditFace) server(t *testing.T) *httptest.Server {
 				break
 			}
 			_, _ = w.Write([]byte(`{"object":"revision","id":"100","seq":2,"action":"merged","actor_uid":9,"amender_uid":42,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}`))
-		case r.Method == "POST" && r.URL.Path == "/api/v1/user/catalog/edit/revert":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"proposal":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"merged","patch":{}},"revision":{"id":101,"seq":3,"action":"reverted","actor_uid":7,"changed_fields":["catalog.work.name_zh_cn"],"snapshot":{}}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/7":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":7,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/8":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":8,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,"patch":{}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/9":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":9,"entity_type":"catalog.work","entity_id":1000,"site":"kungal","status":"open","proposer_uid":9,` +
+		case r.Method == "POST" && r.URL.Path == "/v2/moderation/reverts":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"8","entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"merged","patch":{}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/catalog/revisions":
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"object":"revision","id":"100","seq":1,"action":"created","actor_uid":"7","entity_id":"1000","target_object":"work","changed_fields":["catalog.work.name_zh_cn"]},{"object":"revision","id":"101","seq":3,"action":"merged","actor_uid":"7","entity_id":"1000","target_object":"work","changed_fields":["catalog.work.name_zh_cn"]}]}`))
+		case strings.HasPrefix(r.URL.Path, "/v2/catalog/revisions/"):
+			_, _ = w.Write([]byte(`{"object":"revision","id":"101","seq":3,"action":"merged","actor_uid":"7","entity_id":"1000","target_object":"work","diff":[{"key":"catalog.work.name_zh_cn","from":"旧","to":"新"}]}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/catalog/proposals":
+			_, _ = w.Write([]byte(`{"object":"list","items":[],"total":0}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/proposals/7":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"7","entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"open","proposer_uid":"9","patch":{"catalog.work.name_zh_cn":"新标题"}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/proposals/8":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"8","entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"open","proposer_uid":"9","patch":{}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/proposals/9":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"9","entity_type":"catalog.work","entity_id":"1000","site":"kungal","state":"open","proposer_uid":"9",` +
 				`"patch":{"catalog.work.name_zh_cn":"新标题","catalog.work.vndb_id":"v1"},` +
-				`"effective_patch":{"catalog.work.name_zh_cn":"新标题"}}}`))
-		case r.Method == "GET" && r.URL.Path == "/api/v1/user/catalog/edit/proposals/55":
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"id":55,"entity_type":"catalog.work","entity_id":1000,"site":"letmoe","status":"open","patch":{}}}`))
+				`"effective_patch":{"catalog.work.name_zh_cn":"新标题"}}`))
+		case r.Method == "GET" && r.URL.Path == "/v2/moderation/proposals/55":
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"55","entity_type":"catalog.work","entity_id":"1000","site":"letmoe","state":"open","patch":{}}`))
 		case r.Method == "GET" && r.URL.Path == "/v2/moderation/snapshots/work/1000":
 			_, _ = w.Write([]byte(`{"object":"snapshot","entity_type":"catalog.work","entity_id":"1000","field_values":{"catalog.work.name_zh_cn":"现值"}}`))
 		case r.Method == "GET" && r.URL.Path == "/api/v1/catalog/edit/schema/catalog.work":
@@ -185,7 +199,7 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 
 func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
-	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
+	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec", AppKey: "nmk_test"})
 	var galgameClient *client.GalgameClient
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")
@@ -330,12 +344,11 @@ func TestEditRevertRidesTheUserToken(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("revert: status = %d body %s", status, raw)
 	}
-	req := fake.callTo("/api/v1/user/catalog/edit/revert")
+	req := fake.callTo("/v2/moderation/reverts")
 	if req == nil {
 		t.Fatalf("revert must ride the user plane, got %+v", fake.requests)
 	}
-	if req.Body["to_seq"] != float64(3) || req.Body["entity_type"] != "catalog.work" ||
-		req.Body["entity_id"] != float64(1000) {
+	if req.Body["revision_id"] != "101" || req.Body["reason"] != "回滚测试" {
 		t.Fatalf("revert body: %v", req.Body)
 	}
 }
@@ -588,10 +601,13 @@ func TestEditGameProposals(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("game proposals: status = %d body %s", status, raw)
 	}
-	if len(fake.requests) != 1 || !strings.Contains(fake.requests[0].Query, "entity_id=1") {
+	if len(fake.requests) != 1 || !strings.Contains(fake.requests[0].Query, "entity_id=1000") {
 		t.Fatalf("list must filter to the game: %+v", fake.requests)
 	}
-	if !strings.Contains(fake.requests[0].Query, "state=open") && !strings.Contains(fake.requests[0].Query, "status=open") {
+	if !strings.Contains(fake.requests[0].Query, "object=work") {
+		t.Fatalf("list must name the family: %q", fake.requests[0].Query)
+	}
+	if !strings.Contains(fake.requests[0].Query, "state=open") {
 		t.Fatalf("list must default to open proposals: %q", fake.requests[0].Query)
 	}
 }

@@ -2,18 +2,9 @@ package catalogclient
 
 import (
 	"context"
-	"encoding/json"
 	"net/url"
 	"strconv"
 	"time"
-)
-
-const (
-	workRevisionsPath       = "/api/v1/catalog/edit-revisions/feed"
-	workRevisionsAfterParam = "since"
-	workRevisionsLimitParam = "limit"
-	workRevisionsSiteParam  = "site"
-	workRevisionsTypeParam  = "entity_type"
 )
 
 type WorkRevisionFeedItem struct {
@@ -36,20 +27,34 @@ func (c *Client) WorkRevisionsAfter(
 	site string,
 ) (*WorkRevisionFeedPage, error) {
 	q := url.Values{
-		workRevisionsAfterParam: {strconv.FormatInt(after, 10)},
-		workRevisionsLimitParam: {strconv.Itoa(limit)},
-		workRevisionsTypeParam:  {EntityTypeWork},
+		"sort":   {"recorded_asc"},
+		"object": {"work"},
+		"limit":  {strconv.Itoa(clampV2Limit(limit))},
 	}
 	if site != "" {
-		q.Set(workRevisionsSiteParam, site)
+		q.Set("site", site)
 	}
-	data, err := c.getData(ctx, workRevisionsPath, q)
-	if err != nil {
+	if cur := encodeWatermark(after); cur != "" {
+		q.Set("cursor", cur)
+	}
+	var page v2List[v2Revision]
+	if err := c.appV2JSON(ctx, "/v2/catalog/revisions", q, &page); err != nil {
 		return nil, err
 	}
-	var page WorkRevisionFeedPage
-	if err := json.Unmarshal(data, &page); err != nil {
-		return nil, err
+	rows := page.rows()
+	out := &WorkRevisionFeedPage{Items: make([]WorkRevisionFeedItem, 0, len(rows))}
+	for _, it := range rows {
+		item := WorkRevisionFeedItem{
+			ID: parseFlexID(it.ID), ActorUID: parseFlexID(it.ActorUID),
+			Site: it.Site, CreatedAt: it.time(),
+		}
+		if n := parseFlexID(it.AmenderUID); n != 0 {
+			item.AmenderUID = &n
+		}
+		if n := parseFlexID(it.SiteWorkID); n != 0 {
+			item.ProductWorkID = &n
+		}
+		out.Items = append(out.Items, item)
 	}
-	return &page, nil
+	return out, nil
 }

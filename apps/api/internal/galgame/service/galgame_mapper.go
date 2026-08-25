@@ -134,6 +134,8 @@ func coversFromNextMoe(rows []dto.NextMoeGalgameCover) []dto.GalgameCover {
 			Width:     r.Width,
 			Height:    r.Height,
 			Thumbhash: r.Thumbhash,
+			ID:        r.ID,
+			VoteCount: r.VoteCount,
 		}
 	}
 	return out

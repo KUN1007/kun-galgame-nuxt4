@@ -34,14 +34,13 @@ func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 		stale := r.staleToken
 		r.mu.Unlock()
 
-		if stale && strings.HasPrefix(req.Header.Get("Authorization"), "Bearer ") {
+		if stale && req.Header.Get("Authorization") == "Bearer pre-scope-jwt" {
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = w.Write([]byte(`{"code":"SCOPE_REQUIRED","title":"missing required scope: catalog:edit"}`))
 			return
 		}
-		if strings.HasPrefix(req.URL.Path, "/api/v1/catalog/works/") {
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"covers":[` +
-				`{"id":88,"image_hash":"abc","vote_count":3,"voted":true}]}}`))
+		if req.URL.Path == "/v2/catalog/works/1000" {
+			_, _ = w.Write([]byte(`{"id":"1000","covers":[{"id":"88","hash":"abc","vote_count":3}]}`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"object":"list","items":[` +
@@ -55,7 +54,7 @@ func (r *coverPlaneRecorder) service(t *testing.T) *GalgameService {
 	srv := r.server(t)
 	return &GalgameService{
 		galgameClient: client.New(srv.URL, "nm_test_key", ""),
-		catalog:       catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalog:       catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec", AppKey: "nmk_test"}),
 	}
 }
 
@@ -89,11 +88,11 @@ func TestCoverVotesFallBackToPublicCountsOnAStaleToken(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/catalog/works/1000" {
-		t.Errorf("stale-token covers read landed on %q, want the S2S fallback", rec.path)
+	if rec.path != "/v2/catalog/works/1000" {
+		t.Errorf("stale-token covers read landed on %q, want the public v2 work", rec.path)
 	}
-	if !strings.HasPrefix(rec.auth, "Basic ") {
-		t.Errorf("auth = %q, want the S2S credential after the fallback", rec.auth)
+	if rec.auth != "Bearer nmk_test" {
+		t.Errorf("auth = %q, want the application key after the fallback", rec.auth)
 	}
 	if covers[0].ID != 88 || covers[0].VoteCount != 3 {
 		t.Errorf("fallback lost the tally: %+v", covers[0])
@@ -108,14 +107,14 @@ func TestCoverVotesStayAnonymousWithoutAToken(t *testing.T) {
 
 	rec.mu.Lock()
 	defer rec.mu.Unlock()
-	if rec.path != "/api/v1/catalog/works/1000" {
-		t.Errorf("anonymous covers read hit %q, want the S2S face", rec.path)
+	if rec.path != "/v2/catalog/works/1000" {
+		t.Errorf("anonymous covers read hit %q, want the public v2 work", rec.path)
 	}
-	if !strings.HasPrefix(rec.auth, "Basic ") {
-		t.Errorf("auth = %q, want the S2S credential", rec.auth)
+	if rec.auth != "Bearer nmk_test" {
+		t.Errorf("auth = %q, want the application key", rec.auth)
 	}
-	if rec.query != "" {
-		t.Errorf("an anonymous read names nobody: %q", rec.query)
+	if rec.query != "include=covers" {
+		t.Errorf("an anonymous read sent %q", rec.query)
 	}
 	if covers[0].ID != 88 || covers[0].VoteCount != 3 {
 		t.Errorf("hydration lost the tally: %+v", covers[0])

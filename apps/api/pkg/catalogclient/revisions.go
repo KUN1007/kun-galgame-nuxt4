@@ -2,7 +2,6 @@ package catalogclient
 
 import (
 	"context"
-	"encoding/json"
 	"net/url"
 	"strconv"
 	"time"
@@ -42,19 +41,41 @@ func (c *Client) EditRevisionsSince(
 	entityType string,
 ) (*EditRevisionFeedPage, error) {
 	q := url.Values{
-		"since": {strconv.FormatInt(since, 10)},
-		"limit": {strconv.Itoa(limit)},
+		"sort":  {"recorded_asc"},
+		"limit": {strconv.Itoa(clampV2Limit(limit))},
 	}
-	if entityType != "" {
-		q.Set("entity_type", entityType)
+	if object := objectFamily(entityType); object != "" {
+		q.Set("object", object)
 	}
-	data, err := c.getData(ctx, "/api/v1/catalog/edit-revisions/feed", q)
-	if err != nil {
+	if cur := encodeWatermark(since); cur != "" {
+		q.Set("cursor", cur)
+	}
+	var page v2List[v2Revision]
+	if err := c.appV2JSON(ctx, "/v2/catalog/revisions", q, &page); err != nil {
 		return nil, err
 	}
-	var page EditRevisionFeedPage
-	if err := json.Unmarshal(data, &page); err != nil {
-		return nil, err
+	rows := page.rows()
+	out := &EditRevisionFeedPage{Items: make([]EditRevisionFeedItem, 0, len(rows))}
+	for _, it := range rows {
+		item := EditRevisionFeedItem{
+			ID: parseFlexID(it.ID), EntityType: entityTypeFromObject(it.TargetObject),
+			EntityID: parseFlexID(it.EntityID), Seq: it.Seq, Action: parseRevisionAction(it.Action),
+			ChangedFields: it.ChangedFields, ActorUID: parseFlexID(it.ActorUID),
+			Site: it.Site, CreatedAt: it.time(),
+		}
+		if n := parseFlexID(it.AmenderUID); n != 0 {
+			item.AmenderUID = &n
+		}
+		if n := parseFlexID(it.ProposalID); n != 0 {
+			item.ProposalID = &n
+		}
+		out.Items = append(out.Items, item)
+		if item.ID > out.NextSince {
+			out.NextSince = item.ID
+		}
 	}
-	return &page, nil
+	if out.NextSince == 0 {
+		out.NextSince = since
+	}
+	return out, nil
 }
