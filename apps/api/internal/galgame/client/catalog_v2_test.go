@@ -92,6 +92,21 @@ func TestLiveV2Adapter(t *testing.T) {
 	if !found || d == nil || d.DisplayName == "" {
 		t.Fatalf("detail missing: found=%v d=%+v", found, d)
 	}
+
+	labels, appErr := c.CatalogTaxonomyList(context.Background(), "labels", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+	if appErr != nil {
+		t.Fatalf("CatalogTaxonomyList labels: %v", appErr)
+	}
+	if len(labels.Items) == 0 {
+		t.Fatalf("company list empty: total=%d", labels.Total)
+	}
+	tags, appErr := c.CatalogTaxonomyList(context.Background(), "tags", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+	if appErr != nil {
+		t.Fatalf("CatalogTaxonomyList tags: %v", appErr)
+	}
+	if len(tags.Items) == 0 {
+		t.Fatalf("tag list empty: total=%d", tags.Total)
+	}
 }
 
 func TestV2CatalogPath(t *testing.T) {
