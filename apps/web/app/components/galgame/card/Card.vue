@@ -39,9 +39,10 @@ const gridClass = computed(() => {
 })
 
 // The image service pre-generates exactly one variant, `mini`, and it is a
-// fixed 460x259 16:9 crop whatever the source shape was (image_service preset
-// `galgame_banner`). Cropping that band again into the 5/7 poster box is a
-// double crop, which is why the portrait cards rendered a zoomed-in sliver.
+// fixed 460x259 16:9 crop whatever the source shape was (catalog covers use the
+// `catalog_cover` preset; `galgame_banner` is only its legacy wire name).
+// Cropping that band again into the 5/7 poster box is a double crop, which is
+// why the portrait cards rendered a zoomed-in sliver.
 const coverOf = (galgame: T) =>
   isPortrait.value
     ? getEffectivePortrait(galgame)
