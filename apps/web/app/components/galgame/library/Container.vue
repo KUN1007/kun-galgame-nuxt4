@@ -43,15 +43,15 @@ const releaseLabel = (galgame: GalgameCard) => {
   <div class="flex flex-col gap-3">
     <template v-if="data">
       <div class="z-10">
-        <KunHeader name="Galgame 资料库">
+        <KunHeader name="Galgame 信息资料数据库">
           <template #endContent>
             <GalgameLibraryNav />
           </template>
 
           <template #description>
             <p class="text-default-500">
-              资料库收录的全部 Galgame, 无论本站是否有下载资源。想找下载请前往
-              <KunLink to="/galgame">Galgame 资源</KunLink>。
+              数据库收录的全部 Galgame, 无论本站是否有下载资源。想找下载请前往
+              <KunLink to="/galgame">Galgame 资源资料库</KunLink>。
             </p>
           </template>
         </KunHeader>

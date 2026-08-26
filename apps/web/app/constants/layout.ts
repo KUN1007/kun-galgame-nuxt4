@@ -59,8 +59,8 @@ export const kunLayoutItem: KunLayoutItem[] = [
       {
         name: 'galgame-library',
         icon: 'lucide:library-big',
-        router: '/galgame/library',
-        label: 'Galgame 资料库',
+        router: '/gallib',
+        label: 'Galgame 数据库',
         hint: '新',
         hintColor: 'danger'
       },
@@ -396,8 +396,8 @@ export const kunSidebarRail: KunRailGroup[] = [
         items: [
           { label: 'Galgame', router: '/galgame', icon: 'lucide:box' },
           {
-            label: 'Galgame 资料库',
-            router: '/galgame/library',
+            label: 'Galgame 数据库',
+            router: '/gallib',
             icon: 'lucide:library-big'
           },
           {

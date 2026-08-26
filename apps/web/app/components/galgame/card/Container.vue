@@ -59,7 +59,7 @@ watch(
   <div class="flex flex-col gap-3">
     <template v-if="data">
       <div class="z-10">
-        <KunHeader name="Galgame 资源">
+        <KunHeader name="Galgame 资源资料库">
           <template #endContent>
             <GalgameCardNav :is-show-advanced="true" />
           </template>
@@ -67,7 +67,7 @@ watch(
           <template #description>
             <p class="text-default-500">
               本站已有下载资源的 Galgame。想浏览全部作品请前往
-              <KunLink to="/galgame/library">Galgame 资料库</KunLink>,
+              <KunLink to="/gallib">Galgame 信息资料数据库</KunLink>,
               打开任意作品即可发布资源。我们不是资源的提供者,
               我们只是资源的指路人。
             </p>
