@@ -197,6 +197,7 @@ export interface GalgameCard {
   effective_portrait_width?: number
   effective_portrait_height?: number
   effective_portrait_thumbhash?: string
+  company?: string
   via_official?: { id: number; name: string }
 }
 

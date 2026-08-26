@@ -8,8 +8,8 @@ export const usePersistGalgameCardStore = defineStore(
     const showRating = ref(true)
     const showViewLike = ref(true)
     const showLanguage = ref(true)
-    const showNsfwBadge = ref(true)
-    const showPublisher = ref(true)
+    const showNsfwBadge = ref(false)
+    const showCompany = ref(true)
     // Shows whichever title the reader did not pick under the one they did —
     // the work's own title by default, the Chinese one under 优先显示日语原名.
     // Still named for the Japanese title it used to be: the key is persisted,
@@ -22,8 +22,8 @@ export const usePersistGalgameCardStore = defineStore(
       showRating.value = true
       showViewLike.value = true
       showLanguage.value = true
-      showNsfwBadge.value = true
-      showPublisher.value = true
+      showNsfwBadge.value = false
+      showCompany.value = true
       showJapaneseName.value = false
       isOpenInNewTab.value = false
     }
@@ -34,7 +34,7 @@ export const usePersistGalgameCardStore = defineStore(
       showViewLike,
       showLanguage,
       showNsfwBadge,
-      showPublisher,
+      showCompany,
       showJapaneseName,
       isOpenInNewTab,
       reset

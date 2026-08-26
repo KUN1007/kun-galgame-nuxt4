@@ -380,6 +380,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 			EffectivePortraitThumbhash: b.EffectivePortraitThumbhash,
 			Platform:                   emptyStrSliceIfNil(platformMap[id]),
 			Language:                   emptyStrSliceIfNil(languageMap[id]),
+			Company:                    b.Company,
 		})
 	}
 	return cards, nil

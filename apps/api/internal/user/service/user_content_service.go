@@ -168,6 +168,14 @@ func (s *UserContentService) buildGalgameCards(
 			ReleaseDateTBA:      b.ReleaseDateTBA,
 			EffectiveBannerHash: b.EffectiveBannerHash,
 			EffectiveBannerURL:  b.EffectiveBannerURL,
+
+			EffectivePortraitHash:      b.EffectivePortraitHash,
+			EffectivePortraitURL:       b.EffectivePortraitURL,
+			EffectivePortraitWidth:     b.EffectivePortraitWidth,
+			EffectivePortraitHeight:    b.EffectivePortraitHeight,
+			EffectivePortraitThumbhash: b.EffectivePortraitThumbhash,
+
+			Company: b.Company,
 		})
 	}
 	return cards

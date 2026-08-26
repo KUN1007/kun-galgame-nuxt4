@@ -26,6 +26,7 @@ type GalgameCard struct {
 	EffectivePortraitThumbhash string         `json:"effective_portrait_thumbhash,omitempty"`
 	IsOnForum                  bool           `json:"is_on_forum"`
 	Status                     int            `json:"status,omitempty"`
+	Company                    string         `json:"company,omitempty"`
 	ViaOfficial                *OfficialBrief `json:"via_official,omitempty"`
 }
 

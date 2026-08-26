@@ -85,6 +85,7 @@ type GalgameListCard struct {
 	EffectivePortraitWidth     int       `json:"effective_portrait_width,omitempty"`
 	EffectivePortraitHeight    int       `json:"effective_portrait_height,omitempty"`
 	EffectivePortraitThumbhash string    `json:"effective_portrait_thumbhash,omitempty"`
+	Company                    string    `json:"company,omitempty"`
 }
 
 type GalgameListPage struct {

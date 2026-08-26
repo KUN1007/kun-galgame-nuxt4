@@ -208,6 +208,7 @@ type GalgameBrief struct {
 	EffectivePortraitHeight    int               `json:"effective_portrait_height,omitempty"`
 	EffectivePortraitThumbhash string            `json:"effective_portrait_thumbhash,omitempty"`
 	Refs                       map[string]string `json:"refs,omitempty"`
+	Company                    string            `json:"company,omitempty"`
 }
 
 func (b GalgameBrief) DlsiteWorkno() string { return b.Refs["dlsite"] }

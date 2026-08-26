@@ -16,9 +16,17 @@ type NextMoeGalgameItem struct {
 	EffectiveBannerWidth     int     `json:"effective_banner_width,omitempty"`
 	EffectiveBannerHeight    int     `json:"effective_banner_height,omitempty"`
 	EffectiveBannerThumbhash string  `json:"effective_banner_thumbhash,omitempty"`
-	UserID                   int     `json:"user_id"`
-	ReleasePrecision         string  `json:"release_precision"`
-	Status                   int     `json:"status"`
+
+	EffectivePortraitHash      string `json:"effective_portrait_hash,omitempty"`
+	EffectivePortraitURL       string `json:"effective_portrait_url,omitempty"`
+	EffectivePortraitWidth     int    `json:"effective_portrait_width,omitempty"`
+	EffectivePortraitHeight    int    `json:"effective_portrait_height,omitempty"`
+	EffectivePortraitThumbhash string `json:"effective_portrait_thumbhash,omitempty"`
+
+	Company          string `json:"company,omitempty"`
+	UserID           int    `json:"user_id"`
+	ReleasePrecision string `json:"release_precision"`
+	Status           int    `json:"status"`
 }
 
 type NextMoeGalgameCover struct {

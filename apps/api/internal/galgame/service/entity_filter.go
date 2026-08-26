@@ -54,6 +54,7 @@ func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {
 			EffectivePortraitHeight:    c.EffectivePortraitHeight,
 			EffectivePortraitThumbhash: c.EffectivePortraitThumbhash,
 			IsOnForum:                  c.IsOnForum,
+			Company:                    c.Company,
 		}
 	}
 	return out

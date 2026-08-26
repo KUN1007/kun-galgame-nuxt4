@@ -57,8 +57,16 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 			EffectiveBannerWidth:     g.EffectiveBannerWidth,
 			EffectiveBannerHeight:    g.EffectiveBannerHeight,
 			EffectiveBannerThumbhash: g.EffectiveBannerThumbhash,
-			Platform:                 emptyStrSliceIfNil(platformMap[g.ID]),
-			Language:                 emptyStrSliceIfNil(languageMap[g.ID]),
+
+			EffectivePortraitHash:      g.EffectivePortraitHash,
+			EffectivePortraitURL:       g.EffectivePortraitURL,
+			EffectivePortraitWidth:     g.EffectivePortraitWidth,
+			EffectivePortraitHeight:    g.EffectivePortraitHeight,
+			EffectivePortraitThumbhash: g.EffectivePortraitThumbhash,
+
+			Company:  g.Company,
+			Platform: emptyStrSliceIfNil(platformMap[g.ID]),
+			Language: emptyStrSliceIfNil(languageMap[g.ID]),
 			// Not "a local row exists" — since 068 the row is only an interaction
 			// container, minted by the first view of any catalog work, so that
 			// test called 124 unpublished entries "on the forum" and the card

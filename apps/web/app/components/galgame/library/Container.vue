@@ -58,11 +58,7 @@ const releaseLabel = (galgame: GalgameCard) => {
       </div>
 
       <KunLoading :loading="status === 'pending'">
-        <GalgameCard
-          v-if="data.galgames.length"
-          layout="portrait"
-          :galgames="data.galgames"
-        >
+        <GalgameCard v-if="data.galgames.length" :galgames="data.galgames">
           <template #meta="{ galgame }">
             <p class="text-default-500 mt-1 text-xs">
               {{ releaseLabel(galgame) }}

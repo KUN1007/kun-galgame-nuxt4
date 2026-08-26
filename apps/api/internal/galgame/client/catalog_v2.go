@@ -346,6 +346,16 @@ func rewriteV2Object(v map[string]any, cdnBase string) bool {
 			changed = true
 		}
 	}
+	// v1 sent one `kind` that meant developer/publisher; v2 split it into
+	// company_kind (what the company IS) and attribution_role (what it DID on
+	// this work). Only the first was ever mapped, so the detail page printed a
+	// raw "game_brand" as a role chip beside the 游戏品牌 category chip.
+	if role, ok := v["attribution_role"].(string); ok {
+		if _, has := v["role"]; !has {
+			v["role"] = role
+			changed = true
+		}
+	}
 	if kind, ok := v["tag_kind"].(string); ok {
 		if _, has := v["kind"]; !has {
 			v["kind"] = kind

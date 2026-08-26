@@ -5,7 +5,7 @@ const {
   showViewLike,
   showLanguage,
   showNsfwBadge,
-  showPublisher,
+  showCompany,
   showJapaneseName,
   isOpenInNewTab
 } = storeToRefs(usePersistGalgameCardStore())
@@ -43,20 +43,26 @@ watch(preferOriginalName, (value) => {
     </p>
 
     <div class="space-y-2.5">
-      <p class="text-default-700 text-sm font-semibold">卡片四角</p>
+      <p class="text-default-700 text-sm font-semibold">封面四角</p>
       <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <KunSwitch v-model="showPlatform" label="左上角 · 游戏平台" />
-        <KunSwitch v-model="showRating" label="右上角 · 总评分" />
+        <KunSwitch v-model="showNsfwBadge" label="右上角 · NSFW 角标" />
         <KunSwitch v-model="showViewLike" label="左下角 · 浏览 / 点赞" />
         <KunSwitch v-model="showLanguage" label="右下角 · 可用语言" />
       </div>
     </div>
 
     <div class="space-y-2.5">
+      <p class="text-default-700 text-sm font-semibold">卡片底部</p>
+      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <KunSwitch v-model="showCompany" label="左侧 · 制作会社" />
+        <KunSwitch v-model="showRating" label="右侧 · 总评分" />
+      </div>
+    </div>
+
+    <div class="space-y-2.5">
       <p class="text-default-700 text-sm font-semibold">其它</p>
       <div class="grid grid-cols-1 gap-2.5">
-        <KunSwitch v-model="showNsfwBadge" label="显示 NSFW 角标" />
-        <KunSwitch v-model="showPublisher" label="底部显示发布者与时间" />
         <KunSwitch v-model="showJapaneseName" label="标题下显示另一个名称" />
         <KunSwitch v-model="isOpenInNewTab" label="在新页面打开卡片" />
         <KunSwitch

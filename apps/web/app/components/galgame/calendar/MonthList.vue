@@ -134,7 +134,7 @@ const tileClass = (r: DayRow) => {
       </div>
 
       <div class="min-w-0 flex-1">
-        <GalgameCard :galgames="r.games" :columns="3" />
+        <GalgameCard :galgames="r.games" />
       </div>
     </div>
   </div>

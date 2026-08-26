@@ -21,6 +21,14 @@ type UserGalgameCard struct {
 	ReleaseDateTBA      bool      `json:"release_date_tba"`
 	EffectiveBannerHash string    `json:"effective_banner_hash,omitempty"`
 	EffectiveBannerURL  string    `json:"effective_banner_url,omitempty"`
+
+	EffectivePortraitHash      string `json:"effective_portrait_hash,omitempty"`
+	EffectivePortraitURL       string `json:"effective_portrait_url,omitempty"`
+	EffectivePortraitWidth     int    `json:"effective_portrait_width,omitempty"`
+	EffectivePortraitHeight    int    `json:"effective_portrait_height,omitempty"`
+	EffectivePortraitThumbhash string `json:"effective_portrait_thumbhash,omitempty"`
+
+	Company string `json:"company,omitempty"`
 }
 
 type UserGalgameComment struct {

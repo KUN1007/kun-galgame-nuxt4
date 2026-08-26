@@ -1,16 +1,15 @@
 <script setup lang="ts" generic="T extends GalgameCard">
 import { storeToRefs } from 'pinia'
 import { GALGAME_RESOURCE_PLATFORM_ICON_MAP } from '~/constants/galgameResource'
+import {
+  KUN_GALGAME_LOCAL_RATING_META,
+  kunGalgameRatingTierBadge
+} from '~/constants/galgame-rating'
 
-const props = withDefaults(
-  defineProps<{
-    galgames: T[]
-    isTransparent?: boolean
-    columns?: 3 | 4
-    layout?: 'landscape' | 'portrait'
-  }>(),
-  { columns: 4, layout: 'landscape' }
-)
+const props = defineProps<{
+  galgames: T[]
+  isTransparent?: boolean
+}>()
 
 defineSlots<{
   meta?: (props: { galgame: T }) => unknown
@@ -22,199 +21,183 @@ const {
   showViewLike,
   showLanguage,
   showNsfwBadge,
-  showPublisher,
+  showCompany,
   showJapaneseName,
   isOpenInNewTab
 } = storeToRefs(usePersistGalgameCardStore())
 
-const isPortrait = computed(() => props.layout === 'portrait')
-
-const gridClass = computed(() => {
-  if (isPortrait.value) {
-    return 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+const ratingOf = (galgame: T) => {
+  if (!galgame.rating || !galgame.rating_count) {
+    return null
   }
-  return props.columns === 3
-    ? 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-3'
-    : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
-})
+  return {
+    score: galgame.rating.toFixed(1),
+    color:
+      kunGalgameRatingTierBadge(
+        KUN_GALGAME_LOCAL_RATING_META,
+        galgame.rating,
+        galgame.rating_count
+      )?.color ?? 'default'
+  }
+}
 
-// The image service pre-generates exactly one variant, `mini`, and it is a
-// fixed 460x259 16:9 crop whatever the source shape was (catalog covers use the
-// `catalog_cover` preset; `galgame_banner` is only its legacy wire name).
-// Cropping that band again into the 5/7 poster box is a double crop, which is
-// why the portrait cards rendered a zoomed-in sliver.
-const coverOf = (galgame: T) =>
-  isPortrait.value
-    ? getEffectivePortrait(galgame)
-    : getEffectiveBanner(galgame, { variant: 'mini' })
-
-const thumbhashOf = (galgame: T) =>
-  isPortrait.value
-    ? resolvePortraitThumbhash(galgame)
-    : resolveBannerThumbhash(galgame)
-
-const coverRatio = computed(() => (isPortrait.value ? '5 / 7' : '16 / 9'))
-
-const cardHref = (galgame: GalgameCard) =>
-  galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
+const cards = computed(() =>
+  props.galgames.map((galgame) => {
+    const company = showCompany.value ? galgame.company : ''
+    const rating = showRating.value ? ratingOf(galgame) : null
+    return {
+      galgame,
+      // No `variant: 'mini'` here: the image service's only variant is a fixed
+      // 460x259 16:9 crop of whatever the source shape was, and cropping that
+      // band again into the 5/7 poster box rendered a zoomed-in sliver.
+      cover: getEffectivePortrait(galgame),
+      thumbhash: resolvePortraitThumbhash(galgame),
+      href: galgame.id > 0 ? `/galgame/${galgame.id}` : undefined,
+      languages: galgame.language
+        .map((lang) => lang.substring(0, 2).toUpperCase())
+        .join(' '),
+      company,
+      rating,
+      hasFooter: !!company || !!rating
+    }
+  })
+)
 </script>
 
 <template>
-  <div :class="gridClass">
-    <KunCard
-      :is-transparent="isTransparent"
-      v-for="galgame in galgames"
-      :key="galgame.catalog_id ?? galgame.id"
-      :href="cardHref(galgame)"
-      :target="isOpenInNewTab ? '_blank' : undefined"
-      class-name="p-0"
+  <!-- Container queries, not viewport ones: the calendar hangs this same grid
+       in a column beside the day tiles, and a viewport-sized `xl:grid-cols-6`
+       drew six ~115px thumbnails in it. -->
+  <div class="@container">
+    <div
+      class="grid grid-cols-2 gap-2 @lg:grid-cols-3 @lg:gap-3 @2xl:grid-cols-4 @4xl:grid-cols-5 @5xl:grid-cols-6"
     >
-      <div class="relative overflow-hidden">
-        <KunImage
-          v-if="coverOf(galgame)"
-          :src="coverOf(galgame)"
-          loading="lazy"
-          :alt="galgame.name"
-          :thumbhash="thumbhashOf(galgame)"
-          :aspect-ratio="coverRatio"
-        />
-        <div
-          v-else
-          class="bg-default-100 text-default-400 flex items-center justify-center"
-          :style="{ aspectRatio: coverRatio }"
-        >
-          <KunIcon
-            name="lucide:image-off"
-            :class="isPortrait ? 'size-6' : 'size-8'"
+      <KunCard
+        :is-transparent="isTransparent"
+        v-for="card in cards"
+        :key="card.galgame.catalog_id ?? card.galgame.id"
+        :href="card.href"
+        :target="isOpenInNewTab ? '_blank' : undefined"
+        class-name="p-0"
+      >
+        <div class="relative overflow-hidden">
+          <KunImage
+            v-if="card.cover"
+            :src="card.cover"
+            loading="lazy"
+            :alt="card.galgame.name"
+            :thumbhash="card.thumbhash"
+            aspect-ratio="5 / 7"
           />
-        </div>
+          <div
+            v-else
+            class="bg-default-100 text-default-400 flex items-center justify-center"
+            style="aspect-ratio: 5 / 7"
+          >
+            <KunIcon name="lucide:image-off" class="size-6" />
+          </div>
 
-        <div
-          v-if="
-            showPlatform ||
-            (showRating && galgame.rating_count) ||
-            showNsfwBadge
-          "
-          class="absolute top-2 right-2 left-2 flex items-start gap-1"
-        >
-          <div v-if="showPlatform" class="flex flex-wrap gap-1">
-            <template v-if="galgame.platform.length">
+          <div
+            v-if="showPlatform || showNsfwBadge"
+            class="absolute top-2 right-2 left-2 flex items-start gap-1"
+          >
+            <div v-if="showPlatform" class="flex flex-wrap gap-1">
               <span
-                v-for="(platform, i) in galgame.platform"
+                v-for="(platform, i) in card.galgame.platform"
                 :key="i"
-                class="bg-background flex items-center justify-center rounded-full p-1.5 text-xs backdrop-blur-sm"
-                :class="isPortrait ? 'size-6' : 'size-6 sm:size-8 sm:text-sm'"
+                class="bg-background flex size-6 items-center justify-center rounded-full p-1.5 text-xs backdrop-blur-sm"
               >
                 <KunIcon
                   :name="GALGAME_RESOURCE_PLATFORM_ICON_MAP[platform]"
                   class="h-4 w-4"
                 />
               </span>
-            </template>
-            <span
-              v-else-if="!isPortrait"
-              class="bg-background rounded-full px-3 py-1 text-xs backdrop-blur-sm sm:text-sm"
-            >
-              准备中
-            </span>
-          </div>
-
-          <div class="ml-auto flex flex-col items-end gap-1">
-            <span
-              v-if="showRating && galgame.rating_count"
-              class="bg-background flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium backdrop-blur-sm"
-              :class="!isPortrait && 'sm:text-sm'"
-            >
-              <KunIcon name="lucide:star" class="text-warning" />
-              {{ galgame.rating?.toFixed(1) }}
-            </span>
+            </div>
 
             <KunChip
               v-if="showNsfwBadge"
+              class-name="ml-auto"
               variant="solid"
-              :size="isPortrait ? 'xs' : undefined"
-              :color="galgame.content_limit === 'sfw' ? 'success' : 'danger'"
+              size="xs"
+              :color="
+                card.galgame.content_limit === 'sfw' ? 'success' : 'danger'
+              "
             >
-              {{ galgame.content_limit.toLocaleUpperCase() }}
+              {{ card.galgame.content_limit.toLocaleUpperCase() }}
+            </KunChip>
+          </div>
+
+          <!-- SANCTIONED EXCEPTION to 铁律 #1 (no gradients): a bottom-to-top
+             black scrim so the caption stays legible over an arbitrary cover.
+             Listed in CLAUDE.md; do NOT remove it in a no-gradient sweep. -->
+          <div
+            v-if="
+              (showViewLike || showLanguage) &&
+              card.galgame.is_on_forum !== false
+            "
+            class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300"
+          >
+            <div v-if="showViewLike" class="flex shrink-0 gap-3">
+              <span class="flex items-center gap-1">
+                <KunIcon class="text-white" name="lucide:eye" />
+                <span class="text-white">{{ card.galgame.view }}</span>
+              </span>
+
+              <span class="flex items-center gap-1">
+                <KunIcon class="text-white" name="lucide:thumbs-up" />
+                <span class="text-white">{{ card.galgame.like_count }}</span>
+              </span>
+            </div>
+
+            <span v-if="showLanguage" class="ml-auto truncate text-white">
+              {{ card.languages }}
+            </span>
+          </div>
+        </div>
+
+        <div class="flex flex-auto flex-col p-2">
+          <h2
+            class="hover:text-primary line-clamp-2 text-sm font-medium transition-colors"
+          >
+            {{ card.galgame.name }}
+          </h2>
+
+          <p
+            v-if="showJapaneseName && card.galgame.name_original"
+            class="text-default-500 mt-1 line-clamp-1 text-xs"
+          >
+            {{ card.galgame.name_original }}
+          </p>
+
+          <slot name="meta" :galgame="card.galgame" />
+
+          <div
+            v-if="card.hasFooter"
+            class="mt-auto flex min-w-0 items-center gap-1.5 pt-2"
+          >
+            <span
+              v-if="card.company"
+              class="text-default-500 truncate text-xs"
+              :title="card.company"
+            >
+              {{ card.company }}
+            </span>
+
+            <KunChip
+              v-if="card.rating"
+              class-name="ml-auto shrink-0 tabular-nums"
+              size="xs"
+              variant="flat"
+              :color="card.rating.color"
+            >
+              <template #start>
+                <KunIcon name="lucide:star" class="size-3" />
+              </template>
+              {{ card.rating.score }}
             </KunChip>
           </div>
         </div>
-
-        <!-- SANCTIONED EXCEPTION to 铁律 #1 (no gradients): a bottom-to-top
-             black scrim so the caption stays legible over an arbitrary cover.
-             Listed in CLAUDE.md; do NOT remove it in a no-gradient sweep. -->
-        <div
-          v-if="(showViewLike || showLanguage) && galgame.is_on_forum !== false"
-          class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300"
-          :class="!isPortrait && 'sm:text-sm'"
-        >
-          <div v-if="showViewLike" class="flex gap-3">
-            <span class="flex items-center gap-1">
-              <KunIcon class="text-white" name="lucide:eye" />
-              <span class="text-white">{{ galgame.view }}</span>
-            </span>
-
-            <span class="flex items-center gap-1">
-              <KunIcon class="text-white" name="lucide:thumbs-up" />
-              <span class="text-white">{{ galgame.like_count }}</span>
-            </span>
-          </div>
-
-          <div v-if="showLanguage" class="ml-auto flex gap-2">
-            <span
-              class="text-white"
-              v-for="(lang, i) in galgame.language"
-              :key="i"
-            >
-              {{ lang.substring(0, 2).toUpperCase() }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="flex flex-auto flex-col"
-        :class="isPortrait ? 'p-2' : 'p-2 sm:p-3'"
-      >
-        <h2
-          class="hover:text-primary line-clamp-2 font-medium transition-colors"
-          :class="isPortrait && 'text-sm'"
-        >
-          {{ galgame.name }}
-        </h2>
-
-        <p
-          v-if="showJapaneseName && galgame.name_original"
-          class="text-default-500 mt-1 line-clamp-1"
-          :class="isPortrait ? 'text-xs' : 'text-sm'"
-        >
-          {{ galgame.name_original }}
-        </p>
-
-        <slot name="meta" :galgame="galgame" />
-
-        <div
-          v-if="
-            showPublisher && galgame.is_on_forum !== false && galgame.user.id
-          "
-          class="text-default-600 mt-auto flex min-w-0 items-center gap-1 pt-3"
-          :class="isPortrait ? 'text-xs' : 'text-sm'"
-        >
-          <KunAvatar
-            :disable-floating="true"
-            :user="galgame.user"
-            size="xs"
-            :is-navigation="false"
-          />
-          <span class="truncate">{{ galgame.user.name }}</span>
-          <span v-if="!isPortrait">·</span>
-          <KunTime
-            v-if="!isPortrait"
-            class="shrink-0"
-            :time="galgame.resource_update_time"
-          />
-        </div>
-      </div>
-    </KunCard>
+      </KunCard>
+    </div>
   </div>
 </template>

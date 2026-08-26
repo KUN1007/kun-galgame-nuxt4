@@ -58,14 +58,14 @@ func CatalogDetailToFull(ctx context.Context, d *catWorkDetail, gid int) dto.Nex
 	labelAt := make(map[int64]int, len(d.Labels))
 	for _, l := range d.Labels {
 		if i, seen := labelAt[l.ID]; seen {
-			f.Official[i].Official.Roles = appendUniqueStr(f.Official[i].Official.Roles, l.Kind)
+			f.Official[i].Official.Roles = appendUniqueStr(f.Official[i].Official.Roles, l.AttributionRole())
 			continue
 		}
 		labelAt[l.ID] = len(f.Official)
 		f.Official = append(f.Official, dto.NextMoeOfficialRel{Official: dto.NextMoeOfficial{
 			ID: int(l.ID), Name: l.Name(ctx),
 			Category:     l.LabelKind,
-			Roles:        appendUniqueStr(nil, l.Kind),
+			Roles:        appendUniqueStr(nil, l.AttributionRole()),
 			Lang:         l.Lang,
 			Alias:        []dto.NextMoeAlias{},
 			GalgameCount: l.WorkCount,

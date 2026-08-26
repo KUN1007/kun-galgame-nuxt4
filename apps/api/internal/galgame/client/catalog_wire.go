@@ -91,12 +91,49 @@ type catWorkLabel struct {
 	Localized   map[string]catLocalizedName `json:"localized"`
 	LabelKind   string                      `json:"label_kind"`
 	Kind        string                      `json:"kind"`
+	Role        string                      `json:"role"`
 	Lang        string                      `json:"lang"`
 	WorkCount   int                         `json:"work_count"`
 }
 
 func (l *catWorkLabel) Name(ctx context.Context) string {
 	return CatalogEntityName(ctx, l.Localized, l.DisplayName, "")
+}
+
+// What the company DID on this work, never what it IS: v2 sends both and the
+// two look alike ("publisher" is a value of each).
+func (l *catWorkLabel) AttributionRole() string {
+	if l.Role != "" {
+		return l.Role
+	}
+	return l.Kind
+}
+
+// A doujin work's maker is its circle and a commercial one's is its developer,
+// so the card cannot just take the first company: works carry the publisher
+// first as often as not.
+var companyRoleRank = map[string]int{
+	"developer": 0,
+	"circle":    1,
+	"brand":     2,
+	"publisher": 3,
+}
+
+func makerName(ctx context.Context, labels []catWorkLabel) string {
+	best, bestRank := "", len(companyRoleRank)+1
+	for i := range labels {
+		rank, ok := companyRoleRank[labels[i].AttributionRole()]
+		if !ok {
+			rank = len(companyRoleRank)
+		}
+		if best != "" && rank >= bestRank {
+			continue
+		}
+		if name := labels[i].Name(ctx); name != "" {
+			best, bestRank = name, rank
+		}
+	}
+	return best
 }
 
 type catWorkEngine struct {
@@ -413,6 +450,7 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 		OriginalLanguage: productLocale(it.OLang),
 		ReleaseDate:      it.ReleaseDate,
 		Refs:             refsMap(it.Refs),
+		Company:          makerName(ctx, it.Labels),
 	}
 	if it.ClaimedBy != nil {
 		b.Status = statusFromClaimState(it.ClaimedBy.State)
@@ -461,15 +499,26 @@ func CatalogItemToNextMoeItem(ctx context.Context, it *CatalogWorkListItem) dto.
 		ReleaseDate:      it.ReleaseDate,
 		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
 		ReleasePrecision: releasePrecisionOf(it.ReleaseDate),
+		Company:          makerName(ctx, it.Labels),
 	}
 	if it.ClaimedBy != nil {
 		m.Status = statusFromClaimState(it.ClaimedBy.State)
 	} else {
 		m.Status = galgameStatusVndbDraft
 	}
+	// v2 fills cover_slots, never covers, so reading it.Covers alone left every
+	// calendar / tag / staff card on the flat `cover` fallback — which is the
+	// PORTRAIT image, drawn into a 16:9 box.
+	slots := it.CoverSlots
+	if slots == nil {
+		slots = it.Covers
+	}
 	m.EffectiveBannerHash, m.EffectiveBannerURL,
 		m.EffectiveBannerWidth, m.EffectiveBannerHeight,
-		m.EffectiveBannerThumbhash = coverFields(it.Covers, it.Cover)
+		m.EffectiveBannerThumbhash = coverFields(slots, it.Cover)
+	m.EffectivePortraitHash, m.EffectivePortraitURL,
+		m.EffectivePortraitWidth, m.EffectivePortraitHeight,
+		m.EffectivePortraitThumbhash = portraitFields(slots)
 	return m
 }
 
