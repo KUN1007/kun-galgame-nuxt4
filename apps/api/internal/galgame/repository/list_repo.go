@@ -73,7 +73,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	if !f.HasResourcePredicate() {
 		build := func() *gorm.DB {
-			q := applyPublished(r.db.Table("galgame g"), f)
+			q := applyContentLimit(applyPublished(r.db.Table("galgame g"), f), f)
 			if f.RestrictIDs != nil {
 				q = q.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
 			}
@@ -104,9 +104,9 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		return
 	}
 
-	inner := applyPublished(r.db.Table("galgame g").
+	inner := applyContentLimit(applyPublished(r.db.Table("galgame g").
 		Select("DISTINCT g.id").
-		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f)
+		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f), f)
 	if f.RestrictIDs != nil {
 		inner = inner.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
 	}
@@ -259,6 +259,16 @@ func applyPublished(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
 		return q
 	}
 	return q.Where("g.published")
+}
+
+// The gate that actually hides a work is catalog's, applied when the page is
+// hydrated — this only decides which ids get that far. NULL is "the sync has
+// not seen this row yet" and must pass, or a fresh column empties every list.
+func applyContentLimit(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
+	if !f.SFWOnly {
+		return q
+	}
+	return q.Where("g.content_limit IS NULL OR g.content_limit = 'sfw'")
 }
 
 func providerArrayLit(providers []string) string {

@@ -17,6 +17,7 @@ type GalgameLocal struct {
 	ResourceUpdateTime    time.Time  `gorm:"column:resource_update_time;autoCreateTime" json:"resource_update_time"`
 	ResourcePublishBanned bool       `gorm:"column:resource_publish_banned;default:false" json:"resource_publish_banned"`
 	Published             bool       `gorm:"column:published;not null" json:"published"`
+	ContentLimit          *string    `gorm:"column:content_limit" json:"content_limit"`
 	CreatorUserID         *int       `gorm:"column:creator_user_id" json:"creator_user_id"`
 }
 

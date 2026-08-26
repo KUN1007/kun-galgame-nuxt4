@@ -303,6 +303,23 @@ func (c *GalgameClient) CatalogRowsByGIDs(ctx context.Context, gids []int, inclu
 	return out, nil
 }
 
+// ContentLimitsByGIDs reads catalog's editorial display verdict for local rows.
+// Both gates are open on purpose: this syncs what the verdict IS, and asking
+// for it through a reader's own content_limit would only ever return rows that
+// already agree with it.
+func (c *GalgameClient) ContentLimitsByGIDs(ctx context.Context, gids []int) (map[int]string, *errors.AppError) {
+	rows, appErr := c.CatalogRowsByGIDs(ctx, gids, "", "all")
+	if appErr != nil {
+		return nil, appErr
+	}
+	out := make(map[int]string, len(rows))
+	for gid := range rows {
+		row := rows[gid]
+		out[gid] = contentLimitOf(row.ClaimedBy, row.ContentRating)
+	}
+	return out, nil
+}
+
 type catWorkDetail struct {
 	ID            int64                       `json:"id"`
 	DisplayName   string                      `json:"display_name"`

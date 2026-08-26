@@ -301,6 +301,7 @@ func (s *GalgameService) hydrateListCards(
 	if len(filter.RestrictIDs) > 0 && !entityUsesLocalList(filter) {
 		return s.hydrateIDPage(ctx, filter.RestrictIDs, filter.Page, filter.Limit, isSFW)
 	}
+	filter.SFWOnly = isSFW
 	ids, total := s.listRepo.ListIDs(filter)
 	if len(ids) == 0 {
 		return &dto.GalgameListPage{Galgames: []dto.GalgameListCard{}, Total: total}, nil
@@ -314,10 +315,11 @@ func (s *GalgameService) hydrateListCards(
 
 // Counts a taxonomy sub-set the way hydrateListCards lists it, or the chip ends
 // up counting resource-carrying rows against a list of every catalog member.
-func (s *GalgameService) countMembers(filter model.GalgameListFilter) int64 {
+func (s *GalgameService) countMembers(filter model.GalgameListFilter, isSFW bool) int64 {
 	if len(filter.RestrictIDs) > 0 && !entityUsesLocalList(filter) {
 		return int64(len(filter.RestrictIDs))
 	}
+	filter.SFWOnly = isSFW
 	filter.Page, filter.Limit = 1, 1
 	_, total := s.listRepo.ListIDs(filter)
 	return total

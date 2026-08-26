@@ -16,6 +16,7 @@ type GalgameListFilter struct {
 	MinRating            float64
 	ShowNoResource       bool
 	Indexed              bool
+	SFWOnly              bool
 	RestrictIDs          []int
 	Page                 int
 	Limit                int

@@ -407,6 +407,7 @@ func New(cfg *config.Config) *App {
 	galgameClaimSync := galgameService.NewGalgameClaimEventSync(catalogCli, galgameLocalRepo, rdb)
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
 	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
+	galgameContentLimitSync := galgameService.NewGalgameContentLimitSync(gc, galgameLocalRepo)
 
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
@@ -556,7 +557,13 @@ func New(cfg *config.Config) *App {
 		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),
 		ToolsetResourceHandler:     toolsetHandler.NewResourceHandler(toolsetResourceSvc),
 		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
-		CronStop:                   cronPkg.Start(db, rdb, imgCli, galgameClaimSync.Run, galgameRevisionSync.Run, galgameContributorSync.Run),
+		CronStop: cronPkg.Start(db, rdb, imgCli, cronPkg.Jobs{
+			GalgameClaimSync:         galgameClaimSync.Run,
+			GalgameRevisionSync:      galgameRevisionSync.Run,
+			GalgameContributorSync:   galgameContributorSync.Run,
+			GalgameContentLimitSweep: galgameContentLimitSync.RunAll,
+			GalgameContentLimitFill:  galgameContentLimitSync.RunPending,
+		}),
 	}
 
 	if err := adminPermSync.Load(context.Background()); err != nil {

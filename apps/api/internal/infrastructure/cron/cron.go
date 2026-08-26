@@ -15,13 +15,21 @@ import (
 
 const scheduleTZ = "Asia/Shanghai"
 
+// Every field is a bare func(), so positional arguments would put a job on
+// another job's schedule with nothing to notice it.
+type Jobs struct {
+	GalgameClaimSync         func()
+	GalgameRevisionSync      func()
+	GalgameContributorSync   func()
+	GalgameContentLimitSweep func()
+	GalgameContentLimitFill  func()
+}
+
 func Start(
 	db *gorm.DB,
 	rdb *redis.Client,
 	imgCli *imageclient.Client,
-	galgameClaimSync func(),
-	galgameRevisionSync func(),
-	galgameContributorSync func(),
+	jobs Jobs,
 ) func() {
 	loc, err := time.LoadLocation(scheduleTZ)
 	if err != nil {
@@ -59,16 +67,24 @@ func Start(
 		slog.Warn("image client 未配置, 跳过内容图 reference-ping —— 内容图存在被 image-gc 回收的风险")
 	}
 
-	if galgameClaimSync != nil {
-		schedule(c, "*/10 * * * *", "galgame claim 同步", galgameClaimSync)
+	if jobs.GalgameClaimSync != nil {
+		schedule(c, "*/10 * * * *", "galgame claim 同步", jobs.GalgameClaimSync)
 	}
 
-	if galgameRevisionSync != nil {
-		schedule(c, "*/10 * * * *", "galgame revision 同步", galgameRevisionSync)
+	if jobs.GalgameRevisionSync != nil {
+		schedule(c, "*/10 * * * *", "galgame revision 同步", jobs.GalgameRevisionSync)
 	}
 
-	if galgameContributorSync != nil {
-		schedule(c, "*/15 * * * *", "galgame contributor 同步", galgameContributorSync)
+	if jobs.GalgameContributorSync != nil {
+		schedule(c, "*/15 * * * *", "galgame contributor 同步", jobs.GalgameContributorSync)
+	}
+
+	if jobs.GalgameContentLimitSweep != nil {
+		schedule(c, "30 3 * * *", "galgame content_limit 全量同步", jobs.GalgameContentLimitSweep)
+	}
+
+	if jobs.GalgameContentLimitFill != nil {
+		schedule(c, "*/10 * * * *", "galgame content_limit 增量同步", jobs.GalgameContentLimitFill)
 	}
 
 	c.Start()

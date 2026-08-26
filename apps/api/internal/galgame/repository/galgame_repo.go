@@ -92,6 +92,40 @@ func (r *GalgameRepository) PublishLocal(tx *gorm.DB, galgameID int) error {
 	}).Create(&model.GalgameLocal{ID: galgameID, Published: true}).Error
 }
 
+// ids the content-limit sync has to ask catalog about. onlyMissing keeps the
+// frequent pass cheap — it is normally empty, and non-empty only right after a
+// row is created.
+func (r *GalgameRepository) ContentLimitSyncIDs(onlyMissing bool, limit int) []int {
+	q := r.db.Table("galgame").Order("id")
+	if onlyMissing {
+		q = q.Where("content_limit IS NULL")
+	}
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	var ids []int
+	q.Pluck("id", &ids)
+	return ids
+}
+
+func (r *GalgameRepository) SetContentLimits(idsByLimit map[string][]int) (int64, error) {
+	var affected int64
+	for limit, ids := range idsByLimit {
+		if len(ids) == 0 {
+			continue
+		}
+		res := r.db.Exec(
+			"UPDATE galgame SET content_limit = ? WHERE id = ANY(?::int[]) AND content_limit IS DISTINCT FROM ?",
+			limit, intArrayLit(ids), limit,
+		)
+		if res.Error != nil {
+			return affected, res.Error
+		}
+		affected += res.RowsAffected
+	}
+	return affected, nil
+}
+
 func (r *GalgameRepository) UnpublishLocal(galgameID int) error {
 	return r.db.Model(&model.GalgameLocal{}).Where("id = ?", galgameID).
 		UpdateColumn("published", false).Error
