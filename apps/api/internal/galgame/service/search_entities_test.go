@@ -12,11 +12,11 @@ import (
 
 func TestSearchCatalogEntities_MapsPublicHits(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/v2/catalog/search" {
-			t.Errorf("path = %q, want /v2/catalog/search", req.URL.Path)
+		if req.URL.Path != "/v1/catalog/search" {
+			t.Errorf("path = %q, want /v1/catalog/search", req.URL.Path)
 		}
-		if got := req.URL.Query().Get("object"); got != "credit_name" {
-			t.Errorf("object = %q, want credit_name", got)
+		if got := req.URL.Query().Get("type"); got != "names" {
+			t.Errorf("type = %q, want names", got)
 		}
 		if got := req.URL.Query().Get("q"); got != "丸戸" {
 			t.Errorf("q = %q, want 丸戸", got)

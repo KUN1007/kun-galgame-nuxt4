@@ -45,8 +45,8 @@ func TestMultiTag_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 		url.Values{"tag_ids": {"5,7"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
-	if rec.path != "/v2/catalog/works" {
-		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
+	if rec.path != "/v1/catalog/works/search" {
+		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent — the tag page is the catalog membership", got)
@@ -69,8 +69,8 @@ func TestQuizPicker_OffersTheCatalogWithoutAClaimGate(t *testing.T) {
 	if got := svc.SearchGalgameOptions(context.Background(), "恋爱", true); len(got) != 0 {
 		t.Fatalf("stubbed empty upstream returned %d options", len(got))
 	}
-	if rec.path != "/v2/catalog/works" {
-		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
+	if rec.path != "/v1/catalog/works/search" {
+		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent — the picker is the catalog", got)

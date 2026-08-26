@@ -34,8 +34,8 @@ type gidLookupEntry struct {
 // because nothing reads that block any more leaves every list row with only
 // display_name, so every Chinese title on the site reverts to the original.
 const (
-	catalogBriefInclude       = "titles,covers,refs,companies"
-	catalogDetailBriefInclude = "titles,intros,companies,covers,refs"
+	catalogBriefInclude       = "names,covers,refs,labels"
+	catalogDetailBriefInclude = "names,intros,labels,covers,refs"
 )
 
 func openPopulation(q url.Values) url.Values {
@@ -453,11 +453,9 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 	// demand, so it needs the rows to filter: asking for spoilers=0 here made
 	// levels 1 and 2 match nothing, forever. SEO text must still cut back to
 	// level 0 — see pages/galgame/[gid]/index.vue.
-	// v2 gates the company block behind include=companies; asking for credits
-	// alone left the detail page's 制作方 heading standing over nothing.
 	q := url.Values{
 		"spoilers": {strconv.Itoa(catalogSpoilerCeiling)},
-		"include":  {"credits,companies"},
+		"include":  {"credits"},
 	}
 	openPopulation(q)
 	data, appErr := c.GetV1(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)

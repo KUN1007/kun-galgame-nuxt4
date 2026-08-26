@@ -28,9 +28,9 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 		r.mu.Lock()
 		body := `{"code":0,"message":"ok","data":{"items":[],"total":0}}`
 		switch {
-		case req.URL.Path == "/v2/catalog/works":
+		case req.URL.Path == "/v1/catalog/works/search":
 			r.catalogQ = req.URL.Query()
-			body = `{"object":"list","total":2,"items":[
+			body = `{"code":0,"message":"ok","data":{"total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
 			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
 			   "localized":{"zh-Hans":{"value":"白恋樱","kind":"official"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
@@ -47,7 +47,7 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":0,"state":"live"}},
 			  {"id":18,"display_name":"foreign","cover":"",
 			   "claimed_by":{"site":"moyu","work_id":700,"state":"live"}}
-			]}`
+			]}}`
 		case strings.Contains(req.URL.Path, "/v2/me/claims") || strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
 			r.claimsPath = req.URL.Path

@@ -78,7 +78,7 @@ func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, wo
 			}
 			_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(rows, ",") + `],"missing":[]}`))
 
-		case req.URL.Path == "/v2/catalog/works":
+		case req.URL.Path == "/v1/catalog/works":
 			var rows []string
 			for _, raw := range strings.Split(req.URL.Query().Get("ids"), ",") {
 				id := atoi64(raw)
@@ -86,14 +86,24 @@ func catalogStub(t *testing.T, rec *catalogRecorder, lookup map[string]int64, wo
 					rows = append(rows, frag)
 				}
 			}
-			_, _ = w.Write([]byte(`{"object":"list","items":[` + strings.Join(rows, ",") + `],"next_cursor":null}`))
+			_, _ = w.Write([]byte(v1Envelope(http.StatusOK,
+				`{"items":[`+strings.Join(rows, ",")+`],"next_cursor":null}`)))
 
 		default:
-			_, _ = w.Write([]byte(`{"object":"list","items":[]}`))
+			_, _ = w.Write([]byte(v1Envelope(http.StatusOK, `{"items":[]}`)))
 		}
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// The v1 catalog wraps every read in {code,message,data}; a fixture that writes
+// the record bare decodes as an empty envelope and the assertions all read zero.
+func v1Envelope(status int, body string) string {
+	if status < 200 || status >= 300 {
+		return body
+	}
+	return `{"code":0,"message":"成功","data":` + body + `}`
 }
 
 func itoa(v int64) string {
@@ -174,8 +184,8 @@ func TestCatalogBridge_TwoHopAndGIDKeying(t *testing.T) {
 	if rec.queryAt(0).Get("refs") == "" {
 		t.Errorf("first call missing refs=")
 	}
-	if p := rec.pathAt(1); p != "/v2/catalog/works" {
-		t.Errorf("second call = %q, want /v2/catalog/works", p)
+	if p := rec.pathAt(1); p != "/v1/catalog/works" {
+		t.Errorf("second call = %q, want /v1/catalog/works", p)
 	}
 	if ids := rec.queryAt(1).Get("ids"); ids != "4242" {
 		t.Errorf("works ids = %q, want 4242 (the catalog id, not the gid)", ids)
@@ -388,41 +398,41 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	c := New(srv.URL, "nm_test_key", "")
 	ctx := context.Background()
 
-	t.Run("taxonomy list → /v2/catalog + key", func(t *testing.T) {
+	t.Run("taxonomy list → /v1/catalog + key", func(t *testing.T) {
 		if _, err := c.CatalogTaxonomyList(ctx, "tags", nil); err != nil {
 			t.Fatalf("CatalogTaxonomyList: %v", err)
 		}
-		if rec.path != "/v2/catalog/tags" {
-			t.Errorf("path = %q, want /v2/catalog/tags", rec.path)
+		if rec.path != "/v1/catalog/tags" {
+			t.Errorf("path = %q, want /v1/catalog/tags", rec.path)
 		}
 		if rec.apiKey != "nm_test_key" {
 			t.Errorf("Authorization bearer = %q, want nm_test_key", rec.apiKey)
 		}
 	})
 
-	t.Run("entity search → /v2/catalog/search", func(t *testing.T) {
+	t.Run("entity search → /v1/catalog/search", func(t *testing.T) {
 		if _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 10); err != nil {
 			t.Fatalf("CatalogEntitySearch: %v", err)
 		}
-		if rec.path != "/v2/catalog/search" {
-			t.Errorf("path = %q, want /v2/catalog/search", rec.path)
+		if rec.path != "/v1/catalog/search" {
+			t.Errorf("path = %q, want /v1/catalog/search", rec.path)
 		}
 	})
 
-	t.Run("works search → /v2/catalog/works", func(t *testing.T) {
+	t.Run("works search → /v1/catalog/works/search", func(t *testing.T) {
 		if _, err := c.CatalogWorksSearch(ctx, url.Values{"q": {"kun"}}); err != nil {
 			t.Fatalf("CatalogWorksSearch: %v", err)
 		}
-		if rec.path != "/v2/catalog/works" {
-			t.Errorf("path = %q, want /v2/catalog/works", rec.path)
+		if rec.path != "/v1/catalog/works/search" {
+			t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 		}
 	})
 
-	t.Run("calendar buckets → /v2/catalog/calendar*", func(t *testing.T) {
+	t.Run("calendar buckets → /v1/catalog/calendar*", func(t *testing.T) {
 		for bucket, want := range map[string]string{
-			"":         "/v2/catalog/calendar",
-			"/pending": "/v2/catalog/calendar",
-			"/tba":     "/v2/catalog/calendar",
+			"":         "/v1/catalog/calendar",
+			"/pending": "/v1/catalog/calendar/pending",
+			"/tba":     "/v1/catalog/calendar/tba",
 		} {
 			if _, err := c.CatalogCalendar(ctx, bucket, nil); err != nil {
 				t.Fatalf("CatalogCalendar(%q): %v", bucket, err)
@@ -450,8 +460,8 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 				url.Values{filter: {"5"}}, true, 200); err != nil {
 				t.Fatalf("CatalogMemberGIDs: %v", err)
 			}
-			if p := rec.pathAt(0); p != "/v2/catalog/works" {
-				t.Fatalf("path = %q, want /v2/catalog/works", p)
+			if p := rec.pathAt(0); p != "/v1/catalog/works" {
+				t.Fatalf("path = %q, want /v1/catalog/works", p)
 			}
 			q := rec.queryAt(0)
 			if got := q.Get("claim_state"); got != "" {
@@ -460,12 +470,8 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 			if got := q.Get("claimed"); got != "" {
 				t.Errorf("claimed = %q, want it absent", got)
 			}
-			wantFilter := filter
-			if filter == "label_id" {
-				wantFilter = "company_id"
-			}
-			if got := q.Get(wantFilter); got != "5" {
-				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", wantFilter, got)
+			if got := q.Get(filter); got != "5" {
+				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", filter, got)
 			}
 			if got := q.Get("nsfw"); got != "true" {
 				t.Errorf("nsfw = %q, want true — the age gate is never a population cut", got)
@@ -613,11 +619,11 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	}
 
 	q := rec.queryAt(0)
-	if got := q.Get("company_rollup"); got != "true" {
-		t.Errorf("company_rollup = %q, want true — without it a holding company's page is empty", got)
+	if got := q.Get("label_rollup"); got != "1" {
+		t.Errorf("label_rollup = %q, want 1 — without it a holding company's page is empty", got)
 	}
-	if got := q.Get("company_id"); got != "993" {
-		t.Errorf("company_id = %q, want 993", got)
+	if got := q.Get("label_id"); got != "993" {
+		t.Errorf("label_id = %q, want 993", got)
 	}
 	if got := q.Get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent", got)

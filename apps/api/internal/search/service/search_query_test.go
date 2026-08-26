@@ -45,8 +45,8 @@ func TestSearchGalgames_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	if _, appErr := svc.SearchGalgames(context.Background(), "恋爱", 1, 24, true); appErr != nil {
 		t.Fatalf("SearchGalgames: %v", appErr)
 	}
-	if rec.path != "/v2/catalog/works" {
-		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
+	if rec.path != "/v1/catalog/works/search" {
+		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent — catalog is the existence layer", got)

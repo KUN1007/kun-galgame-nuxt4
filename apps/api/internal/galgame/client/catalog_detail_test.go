@@ -24,7 +24,7 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) (*httptest.
 		case req.URL.Path == "/v2/catalog/works" && strings.Contains(req.URL.Query().Get("ids"), itoa(catalogID)):
 			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
 				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"}}]}`))
-		case req.URL.Path == "/v2/catalog/works/"+itoa(catalogID):
+		case req.URL.Path == "/v1/catalog/works/"+itoa(catalogID):
 			seen = req.URL.Query()
 			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":` + body + `}`))
 		default:

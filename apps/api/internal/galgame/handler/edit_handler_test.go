@@ -47,10 +47,10 @@ func fakeGalgame(t *testing.T) *httptest.Server {
 				return
 			}
 			_, _ = w.Write([]byte(`{"object":"list","items":[],"missing":[]}`))
-		case r.URL.Path == "/v2/catalog/works":
-			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000",` +
+		case r.URL.Path == "/v1/catalog/works":
+			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[{"id":1000,` +
 				`"claimed_by":{"site":"kungal","work_id":1,"state":"live"},` +
-				`"localized":{"zh-Hans":{"value":"测试游戏","kind":"official"}}}]}`))
+				`"localized":{"zh-Hans":{"value":"测试游戏","kind":"official"}}}]}}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":233,"message":"not found"}`))

@@ -34,6 +34,38 @@ func catalogOrigin(raw string) string {
 	return u
 }
 
+// Catalog reads answer from /v1. The v2 read faces are a strict subset and the
+// cutover to them took the galgame detail page, every entity page and the whole
+// site's request budget with it:
+//
+//   - The entity repr is id + name and nothing else. No intros, aliases, links,
+//     logo_hash, traits, has_nsfw, engine description, series work_count, or tag
+//     `sexual` — collect.CompanySpec/TagSpec/SeriesSpec/EngineSpec/CharacterSpec
+//     declare no include tokens at all, so there is no query that asks for them.
+//     The missing tag flag silently opened the NSFW tag gate: 3080 tags listed
+//     for an SFW reader where v1 lists 2339.
+//   - The work detail types covers[].sexual as "safe" where v1 sends 0, so
+//     include=covers makes the whole detail fail to decode, and its ratings
+//     block carries no distribution.
+//   - The companies list dropped has_works=, and /v2 rate-limits on CLIENT IP at
+//     100/min ignoring the key's tier (apiv2/protocol/limit.go) where /v1 limits
+//     per key and this one is unlimited. Paging 38,317 companies instead of
+//     2,985 spent the backend's whole minute on one page view, and every read on
+//     the site then answered "Short-window rate limit exceeded." The same ceiling
+//     is fatal to every fan-out the forum runs: a tag with 7,465 works is 75
+//     member pages, and the series card index is 1,562 searches.
+//
+// refs= is the exception and the reason this is a predicate rather than a
+// deletion: only v2 resolves the source:external_id batch lane, and that lane is
+// how a legacy gid finds its catalog work. v1 accepts the parameter and ignores
+// it, which would answer page 1 of the whole catalogue.
+func catalogReadsV1(path string, query url.Values) bool {
+	if !strings.HasPrefix(strings.TrimPrefix(path, "/v1"), "/catalog") {
+		return false
+	}
+	return query.Get("refs") == ""
+}
+
 func v2CatalogPath(path string) string {
 	path = strings.TrimPrefix(path, "/v1")
 	switch {
@@ -181,6 +213,38 @@ func (c *GalgameClient) doV2(ctx context.Context, method, path string, query url
 		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
 	}
 	return resp.StatusCode, rewriteV2JSON(respBody, c.imageCDNBase), nil
+}
+
+func (c *GalgameClient) doV1(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
+	reqURL := c.origin + "/v1" + strings.TrimPrefix(path, "/v1")
+	if len(query) > 0 {
+		reqURL += "?" + query.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return 0, nil, errors.ErrInternal("创建请求失败")
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		slog.Error("Galgame 服务请求失败 (传输层)",
+			"method", req.Method, "url", req.URL.String(), "error", err)
+		return 0, nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
+	}
+	var env apiResponse
+	if len(bytes.TrimSpace(raw)) > 0 {
+		if err := json.Unmarshal(raw, &env); err != nil {
+			return resp.StatusCode, nil, errors.ErrInternal("解析 Galgame 响应失败")
+		}
+	}
+	return resp.StatusCode, &env, nil
 }
 
 func (c *GalgameClient) v2Error(status int, raw []byte) (int, *apiResponse, *errors.AppError) {

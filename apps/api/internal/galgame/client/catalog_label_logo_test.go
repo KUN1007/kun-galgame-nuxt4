@@ -15,14 +15,14 @@ func logoCatalog(t *testing.T) *GalgameClient {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v2/catalog/companies/107":
+		case "/v1/catalog/labels/107":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":107,` +
 				`"display_name":"Purple SOFTWARE","logo_hash":"abcd1234ef"}}`))
-		case "/v2/catalog/companies/309":
+		case "/v1/catalog/labels/309":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":309,"display_name":"无标社","logo_hash":""}}`))
-		case "/v2/catalog/companies/409":
+		case "/v1/catalog/labels/409":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":409,"display_name":"旧契约社"}}`))
-		case "/v2/catalog/companies":
+		case "/v1/catalog/labels":
 			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"items":[` +
 				`{"id":107,"display_name":"Purple SOFTWARE","work_count":42,"logo_hash":"abcd1234ef"},` +
 				`{"id":309,"display_name":"无标社","work_count":3}],` +

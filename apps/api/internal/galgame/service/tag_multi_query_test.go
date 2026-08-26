@@ -69,14 +69,14 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
 
-	if got := rec.urlPath(); got != "/v2/catalog/works" {
-		t.Errorf("path = %q, want /v2/catalog/works", got)
+	if got := rec.urlPath(); got != "/v1/catalog/works/search" {
+		t.Errorf("path = %q, want /v1/catalog/works/search", got)
 	}
 	if got := rec.all("tag_id"); len(got) != 1 || got[0] != "638,41" {
 		t.Errorf("tag_id = %v, want exactly one param valued \"638,41\"", got)
 	}
-	if rec.get("page") != "" && rec.get("cursor") == "" {
-		t.Errorf("page=%q cursor=%q, want a v2 cursor for page 3", rec.get("page"), rec.get("cursor"))
+	if got := rec.get("page"); got != "3" {
+		t.Errorf("page = %q, want 3 — the v1 search face pages by number", got)
 	}
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want %q", got, "24")

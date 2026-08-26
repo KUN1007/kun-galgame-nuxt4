@@ -341,7 +341,7 @@ func (s *SubmissionService) listClaims(
 	return page, nil
 }
 
-const wizardSearchInclude = "titles,covers,refs"
+const wizardSearchInclude = "names,covers,refs"
 
 const wizardDefaultLimit = 12
 

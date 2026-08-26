@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -143,6 +144,16 @@ type apiResponse struct {
 }
 
 func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
+	if catalogReadsV1(path, query) {
+		status, env, appErr := c.doV1(ctx, path, query)
+		if appErr != nil {
+			return nil, appErr
+		}
+		if status >= 200 && status < 300 && env.Code == 0 {
+			return rewriteBanners(env.Data, c.imageCDNBase), nil
+		}
+		return nil, errors.New(errors.CodeBiz, cmp.Or(env.Message, "Galgame 资源不存在"), status)
+	}
 	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
 	if appErr != nil {
 		return nil, appErr
@@ -160,6 +171,16 @@ func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values
 const catalogMovedCode = 12
 
 func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
+	if catalogReadsV1(path, query) {
+		status, env, appErr := c.doV1(ctx, path, query)
+		if appErr != nil {
+			return 0, nil, appErr
+		}
+		if status >= 200 && status < 300 {
+			env.Data = rewriteBanners(env.Data, c.imageCDNBase)
+		}
+		return status, env, nil
+	}
 	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
 	if appErr != nil {
 		return 0, nil, appErr

@@ -13,7 +13,7 @@ func graphService(t *testing.T) *OfficialService {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path != "/v2/catalog/companies/24/graph" {
+		if r.URL.Path != "/v1/catalog/labels/24/relation-graph" {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
 			return
