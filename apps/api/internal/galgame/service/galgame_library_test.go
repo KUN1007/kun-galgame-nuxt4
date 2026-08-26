@@ -11,24 +11,6 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-func TestCatalogLibraryRequest_DefaultBrowseUsesTheCatalog(t *testing.T) {
-	if !catalogLibraryRequest(&dto.GalgameListRequest{Page: 1, Limit: 24}) {
-		t.Fatal("default /galgame must be the catalog library")
-	}
-	if catalogLibraryRequest(&dto.GalgameListRequest{Indexed: true}) {
-		t.Fatal("indexed=1 is the sitemap, not the library")
-	}
-	if catalogLibraryRequest(&dto.GalgameListRequest{Type: "game"}) {
-		t.Fatal("a resource-type filter is the local resource list")
-	}
-	if catalogLibraryRequest(&dto.GalgameListRequest{SortField: "view"}) {
-		t.Fatal("view sort is local")
-	}
-	if !catalogLibraryRequest(&dto.GalgameListRequest{SortField: "popularity"}) {
-		t.Fatal("popularity is the catalog library sort")
-	}
-}
-
 type libraryRecorder struct {
 	mu    sync.Mutex
 	path  string
@@ -48,6 +30,32 @@ func (r *libraryRecorder) get(key string) string {
 	return v[0]
 }
 
+// /galgame is the resource list and never reaches catalog; only library=true does.
+func TestCatalogLibrary_OnlyTheLibraryFlagLeavesTheForum(t *testing.T) {
+	rec := &libraryRecorder{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		rec.mu.Lock()
+		rec.path = req.URL.Path
+		rec.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := NewGalgameService(nil, nil, nil, nil, nil, nil, nil,
+		client.New(srv.URL, "nm_test_key", ""), nil, nil, "", "")
+	func() {
+		// The local branch dereferences a repository this unit test has no
+		// database for. Panicking there IS the assertion: it can only be reached
+		// by not taking the catalog branch.
+		defer func() { _ = recover() }()
+		_, _ = svc.GetList(context.Background(), &dto.GalgameListRequest{Page: 1, Limit: 24}, true)
+	}()
+	if rec.path != "" {
+		t.Errorf("plain /galgame called catalog at %q", rec.path)
+	}
+}
+
 func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	rec := &libraryRecorder{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -63,7 +71,7 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	svc := NewGalgameService(nil, nil, nil, nil, nil, nil, nil,
 		client.New(srv.URL, "nm_test_key", ""), nil, nil, "", "")
 	page, appErr := svc.GetList(context.Background(), &dto.GalgameListRequest{
-		Page: 1, Limit: 24, SortField: "popularity", SortOrder: "desc",
+		Page: 1, Limit: 24, SortField: "popularity", SortOrder: "desc", Library: true,
 	}, true)
 	if appErr != nil {
 		t.Fatalf("GetList: %v", appErr)

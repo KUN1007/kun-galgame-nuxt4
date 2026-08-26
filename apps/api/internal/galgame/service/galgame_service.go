@@ -286,7 +286,7 @@ func (s *GalgameService) GetList(
 		Limit:                req.Limit,
 	}
 
-	if !req.Indexed && catalogLibraryRequest(req) {
+	if req.Library {
 		return s.catalogLibrary(ctx, req, releasedFrom, releasedTo, isSFW)
 	}
 
@@ -312,7 +312,12 @@ func (s *GalgameService) hydrateListCards(
 	return &dto.GalgameListPage{Galgames: cards, Total: total}, nil
 }
 
-func (s *GalgameService) countLocalMembers(filter model.GalgameListFilter) int64 {
+// Counts a taxonomy sub-set the way hydrateListCards lists it, or the chip ends
+// up counting resource-carrying rows against a list of every catalog member.
+func (s *GalgameService) countMembers(filter model.GalgameListFilter) int64 {
+	if len(filter.RestrictIDs) > 0 && !entityUsesLocalList(filter) {
+		return int64(len(filter.RestrictIDs))
+	}
 	filter.Page, filter.Limit = 1, 1
 	_, total := s.listRepo.ListIDs(filter)
 	return total
@@ -348,25 +353,30 @@ func (s *GalgameService) HydrateCardsByIDs(
 			continue
 		}
 		cards = append(cards, dto.GalgameListCard{
-			ID:                       id,
-			Name:                     b.Name,
-			NameOriginal:             b.NameOriginal,
-			User:                     frozenCreatorBrief(localMap[id], userMap),
-			ContentLimit:             b.ContentLimit,
-			View:                     localMap[id].View,
-			LikeCount:                localMap[id].LikeCount,
-			Rating:                   ratingMap[id].Score,
-			RatingCount:              ratingMap[id].Count,
-			ResourceUpdateTime:       utils.RFC3339OrEmpty(localMap[id].ResourceUpdateTime),
-			ReleaseDate:              b.ReleaseDate,
-			ReleaseDateTBA:           b.ReleaseDateTBA,
-			EffectiveBannerHash:      b.EffectiveBannerHash,
-			EffectiveBannerURL:       b.EffectiveBannerURL,
-			EffectiveBannerWidth:     b.EffectiveBannerWidth,
-			EffectiveBannerHeight:    b.EffectiveBannerHeight,
-			EffectiveBannerThumbhash: b.EffectiveBannerThumbhash,
-			Platform:                 emptyStrSliceIfNil(platformMap[id]),
-			Language:                 emptyStrSliceIfNil(languageMap[id]),
+			ID:                         id,
+			Name:                       b.Name,
+			NameOriginal:               b.NameOriginal,
+			User:                       frozenCreatorBrief(localMap[id], userMap),
+			ContentLimit:               b.ContentLimit,
+			View:                       localMap[id].View,
+			LikeCount:                  localMap[id].LikeCount,
+			Rating:                     ratingMap[id].Score,
+			RatingCount:                ratingMap[id].Count,
+			ResourceUpdateTime:         utils.RFC3339OrEmpty(localMap[id].ResourceUpdateTime),
+			ReleaseDate:                b.ReleaseDate,
+			ReleaseDateTBA:             b.ReleaseDateTBA,
+			EffectiveBannerHash:        b.EffectiveBannerHash,
+			EffectiveBannerURL:         b.EffectiveBannerURL,
+			EffectiveBannerWidth:       b.EffectiveBannerWidth,
+			EffectiveBannerHeight:      b.EffectiveBannerHeight,
+			EffectiveBannerThumbhash:   b.EffectiveBannerThumbhash,
+			EffectivePortraitHash:      b.EffectivePortraitHash,
+			EffectivePortraitURL:       b.EffectivePortraitURL,
+			EffectivePortraitWidth:     b.EffectivePortraitWidth,
+			EffectivePortraitHeight:    b.EffectivePortraitHeight,
+			EffectivePortraitThumbhash: b.EffectivePortraitThumbhash,
+			Platform:                   emptyStrSliceIfNil(platformMap[id]),
+			Language:                   emptyStrSliceIfNil(languageMap[id]),
 		})
 	}
 	return cards, nil

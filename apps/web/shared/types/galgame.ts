@@ -192,6 +192,11 @@ export interface GalgameCard {
   effective_banner_width?: number
   effective_banner_height?: number
   effective_banner_thumbhash?: string
+  effective_portrait_hash?: string
+  effective_portrait_url?: string
+  effective_portrait_width?: number
+  effective_portrait_height?: number
+  effective_portrait_thumbhash?: string
   via_official?: { id: number; name: string }
 }
 
@@ -236,14 +241,6 @@ export interface UserClaimList {
   next_before: number
   total: number
 }
-
-export const GalgameStatus = {
-  Published: 0,
-  Banned: 1,
-  VndbDraft: 2,
-  Pending: 3,
-  Declined: 4
-} as const
 
 export interface GalgameCalendarMeta {
   prev_month: string

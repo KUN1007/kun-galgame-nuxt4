@@ -21,7 +21,6 @@ export interface GalgameSeriesDetail {
   description: string
   galgame: GalgameCard[]
   galgame_count: number
-  unpublished_galgame: GalgameCard[]
 }
 
 export interface GalgameDetailSeriesRef {

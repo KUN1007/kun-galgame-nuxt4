@@ -11,39 +11,6 @@ import (
 	"kun-galgame-api/pkg/errors"
 )
 
-func catalogLibraryRequest(req *dto.GalgameListRequest) bool {
-	if req.Indexed {
-		return false
-	}
-	if req.Type != "" && req.Type != "all" {
-		return false
-	}
-	if req.Language != "" && req.Language != "all" {
-		return false
-	}
-	if req.Platform != "" && req.Platform != "all" {
-		return false
-	}
-	if len(splitCSV(req.IncludeProviders)) > 0 || len(splitCSV(req.ExcludeOnlyProviders)) > 0 {
-		return false
-	}
-	if req.GameType != "" && req.GameType != "all" {
-		return false
-	}
-	if req.ReleasedMonths != "" {
-		return false
-	}
-	if req.MinRatingCount > 0 || req.MinRating > 0 {
-		return false
-	}
-	switch req.SortField {
-	case "", "time", "popularity", "release_date", "updated", "relevance":
-		return true
-	default:
-		return false
-	}
-}
-
 func entityUsesLocalList(f model.GalgameListFilter) bool {
 	if f.HasResourcePredicate() {
 		return true

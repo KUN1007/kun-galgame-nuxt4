@@ -1,27 +1,32 @@
 package dto
 
 type GalgameCard struct {
-	ID                       int            `json:"id"`
-	Name                     string         `json:"name"`
-	NameOriginal             string         `json:"name_original"`
-	User                     UserBrief      `json:"user"`
-	ContentLimit             string         `json:"content_limit"`
-	View                     int            `json:"view"`
-	LikeCount                int            `json:"like_count"`
-	ResourceUpdateTime       string         `json:"resource_update_time"`
-	Platform                 []string       `json:"platform"`
-	Language                 []string       `json:"language"`
-	ReleaseDate              *string        `json:"release_date"`
-	ReleaseDateTBA           bool           `json:"release_date_tba"`
-	ReleasePrecision         string         `json:"release_precision,omitempty"`
-	EffectiveBannerHash      string         `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string         `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int            `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int            `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string         `json:"effective_banner_thumbhash,omitempty"`
-	IsOnForum                bool           `json:"is_on_forum"`
-	Status                   int            `json:"status,omitempty"`
-	ViaOfficial              *OfficialBrief `json:"via_official,omitempty"`
+	ID                         int            `json:"id"`
+	Name                       string         `json:"name"`
+	NameOriginal               string         `json:"name_original"`
+	User                       UserBrief      `json:"user"`
+	ContentLimit               string         `json:"content_limit"`
+	View                       int            `json:"view"`
+	LikeCount                  int            `json:"like_count"`
+	ResourceUpdateTime         string         `json:"resource_update_time"`
+	Platform                   []string       `json:"platform"`
+	Language                   []string       `json:"language"`
+	ReleaseDate                *string        `json:"release_date"`
+	ReleaseDateTBA             bool           `json:"release_date_tba"`
+	ReleasePrecision           string         `json:"release_precision,omitempty"`
+	EffectiveBannerHash        string         `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL         string         `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth       int            `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight      int            `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash   string         `json:"effective_banner_thumbhash,omitempty"`
+	EffectivePortraitHash      string         `json:"effective_portrait_hash,omitempty"`
+	EffectivePortraitURL       string         `json:"effective_portrait_url,omitempty"`
+	EffectivePortraitWidth     int            `json:"effective_portrait_width,omitempty"`
+	EffectivePortraitHeight    int            `json:"effective_portrait_height,omitempty"`
+	EffectivePortraitThumbhash string         `json:"effective_portrait_thumbhash,omitempty"`
+	IsOnForum                  bool           `json:"is_on_forum"`
+	Status                     int            `json:"status,omitempty"`
+	ViaOfficial                *OfficialBrief `json:"via_official,omitempty"`
 }
 
 type OfficialBrief struct {
@@ -147,12 +152,11 @@ type SeriesCardPage struct {
 }
 
 type SeriesDetail struct {
-	ID                 int           `json:"id"`
-	Name               string        `json:"name"`
-	Description        string        `json:"description"`
-	Galgame            []GalgameCard `json:"galgame"`
-	GalgameCount       int64         `json:"galgame_count"`
-	UnpublishedGalgame []GalgameCard `json:"unpublished_galgame"`
+	ID           int           `json:"id"`
+	Name         string        `json:"name"`
+	Description  string        `json:"description"`
+	Galgame      []GalgameCard `json:"galgame"`
+	GalgameCount int64         `json:"galgame_count"`
 }
 
 type TagListItem struct {

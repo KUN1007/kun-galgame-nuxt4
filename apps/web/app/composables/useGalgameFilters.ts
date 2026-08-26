@@ -33,7 +33,9 @@ export const GALGAME_FILTER_QUERY_KEYS = [
   'minRating'
 ] as const
 
-export const useGalgameFilters = () => {
+// popularity is a catalog sort and the local list cannot answer it, so only the
+// library page may ask for it as its default.
+export const useGalgameFilters = (defaultSortField: SortField = 'time') => {
   const opts = { mode: 'replace' as const }
 
   const page = useRouteQuery('page', 1, { ...opts, transform: Number })
@@ -50,7 +52,11 @@ export const useGalgameFilters = () => {
     opts
   )
   const gameType = useRouteQuery<string>('gameType', 'all', opts)
-  const sortField = useRouteQuery<SortField>('sortField', 'popularity', opts)
+  const sortField = useRouteQuery<SortField>(
+    'sortField',
+    defaultSortField,
+    opts
+  )
   const sortOrder = useRouteQuery<KunOrder>('sortOrder', 'desc', opts)
 
   const releasedFrom = useRouteQuery<string>('releasedFrom', '', opts)

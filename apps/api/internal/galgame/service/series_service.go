@@ -176,12 +176,11 @@ func (s *SeriesService) GetDetail(
 	}
 
 	return &dto.SeriesDetail{
-		ID:                 int(rec.ID),
-		Name:               rec.Label(ctx),
-		Description:        seriesIntro(rec),
-		Galgame:            listCardsToEntityCards(page.Galgames),
-		GalgameCount:       page.Total,
-		UnpublishedGalgame: []dto.GalgameCard{},
+		ID:           int(rec.ID),
+		Name:         rec.Label(ctx),
+		Description:  seriesIntro(rec),
+		Galgame:      listCardsToEntityCards(page.Galgames),
+		GalgameCount: page.Total,
 	}, nil
 }
 

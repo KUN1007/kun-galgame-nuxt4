@@ -73,7 +73,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	if !f.HasResourcePredicate() {
 		build := func() *gorm.DB {
-			q := applyIndexability(r.db.Table("galgame g"), f)
+			q := applyPublished(r.db.Table("galgame g"), f)
 			if f.RestrictIDs != nil {
 				q = q.Where("g.id = ANY(?::int[])", intArrayLit(f.RestrictIDs))
 			}
@@ -104,7 +104,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		return
 	}
 
-	inner := applyIndexability(r.db.Table("galgame g").
+	inner := applyPublished(r.db.Table("galgame g").
 		Select("DISTINCT g.id").
 		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f)
 	if f.RestrictIDs != nil {
@@ -140,7 +140,7 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 
 	r.db.Table("(?) AS sub", inner).Select("COUNT(*)").Scan(&total)
 
-	main := applyIndexability(r.db.Table("galgame g").
+	main := applyPublished(r.db.Table("galgame g").
 		Select("g.id").
 		Joins("JOIN galgame_resource gr ON gr.galgame_id = g.id"), f)
 	groupBy := "g.id, " + sortCol
@@ -251,11 +251,14 @@ func applyGameTypeFilter(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
 	}
 }
 
-func applyIndexability(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
-	if f.Indexed {
-		return q.Where("g.published")
+// `published` is sticky since 078, so on a list that already requires a resource
+// it filters exactly one thing: the rows a hide/ban unpublished. Dropping it put
+// banned Galgame back on /galgame — since 070 a ban stops deleting resources.
+func applyPublished(q *gorm.DB, f model.GalgameListFilter) *gorm.DB {
+	if f.ShowNoResource && !f.Indexed {
+		return q
 	}
-	return q
+	return q.Where("g.published")
 }
 
 func providerArrayLit(providers []string) string {

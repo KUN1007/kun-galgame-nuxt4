@@ -61,7 +61,7 @@ watch(preferOriginalName, (value) => {
         <KunSwitch v-model="isOpenInNewTab" label="在新页面打开卡片" />
         <KunSwitch
           v-model="showKUNGalgameNoResource"
-          label="显示没有下载资源的 Galgame"
+          label="排行与动态包含无资源的 Galgame"
         />
       </div>
     </div>

@@ -477,6 +477,48 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 	}
 }
 
+// The portrait card reads its own slot, so it must not be filled from the
+// banner here: the fallback belongs on the client, where a landscape banner is
+// cropped rather than shown at the wrong ratio.
+func TestCoverSlots_PortraitRidesSeparately(t *testing.T) {
+	for name, tc := range map[string]struct {
+		covers       string
+		wantPortrait string
+		wantW, wantH int
+	}{
+		"portrait present": {
+			`{"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"},` +
+				`"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B"}}`,
+			"https://cdn.example/ab/cd/portrait.webp", 600, 800,
+		},
+		"banner only": {
+			`{"portrait":null,"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B"}}`,
+			"", 0, 0,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			row := strings.Replace(liveRow(4242, 777, "Kun"),
+				`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null}`,
+				`"covers":`+tc.covers, 1)
+			rec := &catalogRecorder{}
+			srv := catalogStub(t, rec, map[string]int64{"777": 4242}, map[int64]string{4242: row})
+			c := New(srv.URL, "nm_test_key", "")
+
+			got, err := c.GetBatch(context.Background(), []int{777})
+			if err != nil {
+				t.Fatalf("GetBatch: %v", err)
+			}
+			b := got[777]
+			if b.EffectivePortraitURL != tc.wantPortrait {
+				t.Errorf("effective portrait = %q, want %q", b.EffectivePortraitURL, tc.wantPortrait)
+			}
+			if b.EffectivePortraitWidth != tc.wantW || b.EffectivePortraitHeight != tc.wantH {
+				t.Errorf("portrait dims = %dx%d, want %dx%d", b.EffectivePortraitWidth, b.EffectivePortraitHeight, tc.wantW, tc.wantH)
+			}
+		})
+	}
+}
+
 func TestCoverSlots_BannerWinsPortraitFallsBack(t *testing.T) {
 	const (
 		portraitSlot = `"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"}`

@@ -195,11 +195,19 @@ type GalgameBrief struct {
 	// rewriteBanners injects effective_banner_url into the raw JSON BEFORE this
 	// struct is unmarshalled. The field must be declared or Go silently drops
 	// the walker's work and every downstream DTO is left with only the hash.
-	EffectiveBannerURL       string            `json:"effective_banner_url"`
-	EffectiveBannerWidth     int               `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int               `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string            `json:"effective_banner_thumbhash,omitempty"`
-	Refs                     map[string]string `json:"refs,omitempty"`
+	EffectiveBannerURL       string `json:"effective_banner_url"`
+	EffectiveBannerWidth     int    `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight    int    `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash string `json:"effective_banner_thumbhash,omitempty"`
+	// cover_slots.portrait, kept apart from the banner because the two slots can
+	// be the same image: catalog fills portrait from any cover when the work has
+	// no portrait-shaped one, so a card must crop rather than trust the ratio.
+	EffectivePortraitHash      string            `json:"effective_portrait_hash,omitempty"`
+	EffectivePortraitURL       string            `json:"effective_portrait_url,omitempty"`
+	EffectivePortraitWidth     int               `json:"effective_portrait_width,omitempty"`
+	EffectivePortraitHeight    int               `json:"effective_portrait_height,omitempty"`
+	EffectivePortraitThumbhash string            `json:"effective_portrait_thumbhash,omitempty"`
+	Refs                       map[string]string `json:"refs,omitempty"`
 }
 
 func (b GalgameBrief) DlsiteWorkno() string { return b.Refs["dlsite"] }

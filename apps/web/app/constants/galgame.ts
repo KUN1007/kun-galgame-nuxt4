@@ -146,7 +146,6 @@ export const KUN_RESOURCE_PLATFORM_CONST = [
 ] as const
 
 export const KUN_GALGAME_RESOURCE_SORT_FIELD_MAP: Record<string, string> = {
-  popularity: '热度',
   views: '总浏览数',
   time: '更新顺序',
   created: '创建顺序',
@@ -155,6 +154,14 @@ export const KUN_GALGAME_RESOURCE_SORT_FIELD_MAP: Record<string, string> = {
   view_30d: '月浏览数',
   release_date: '发售日期',
   rating: '评分'
+}
+
+// The library reads the catalog, which sorts by its own popularity, its own
+// updated_at and the release date — none of the forum-side counters.
+export const KUN_GALGAME_LIBRARY_SORT_FIELD_MAP: Record<string, string> = {
+  popularity: '热度',
+  release_date: '发售日期',
+  time: '资料更新'
 }
 
 export const KUN_GALGAME_INTRO_LANGUAGE_MAP: Record<string, string> = {

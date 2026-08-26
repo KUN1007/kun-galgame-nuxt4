@@ -90,7 +90,7 @@ func (s *OfficialService) GetDetail(
 	}
 	var imprintCount int64
 	if len(viaIDs) > 0 {
-		imprintCount = s.galgameSvc.countLocalMembers(buildEntityFilter(rawQuery, viaIDs))
+		imprintCount = s.galgameSvc.countMembers(buildEntityFilter(rawQuery, viaIDs))
 	}
 	cards := listCardsToEntityCards(page.Galgames)
 	for i := range cards {

@@ -378,6 +378,14 @@ func isVndbWorkID(s string) bool {
 	return true
 }
 
+func portraitFields(covers *catCoverSlots) (hash, url string, w, h int, thumb string) {
+	if covers == nil || covers.Portrait == nil {
+		return "", "", 0, 0, ""
+	}
+	s := covers.Portrait
+	return hashFromURL(s.URL), s.URL, s.Width, s.Height, s.Thumbhash
+}
+
 func coverFields(covers *catCoverSlots, fallbackURL string) (hash, url string, w, h int, thumb string) {
 	slot := (*catCoverSlot)(nil)
 	if covers != nil {
@@ -421,6 +429,9 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 	b.EffectiveBannerHash, b.EffectiveBannerURL,
 		b.EffectiveBannerWidth, b.EffectiveBannerHeight,
 		b.EffectiveBannerThumbhash = coverFields(slots, it.Cover)
+	b.EffectivePortraitHash, b.EffectivePortraitURL,
+		b.EffectivePortraitWidth, b.EffectivePortraitHeight,
+		b.EffectivePortraitThumbhash = portraitFields(slots)
 	return b
 }
 

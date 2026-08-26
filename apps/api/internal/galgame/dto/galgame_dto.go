@@ -25,6 +25,7 @@ type GalgameListRequest struct {
 	MinRating            float64 `query:"min_rating" validate:"omitempty,min=0,max=10"`
 	ShowNoResource       bool    `query:"show_no_resource"`
 	Indexed              bool    `query:"indexed"`
+	Library              bool    `query:"library"`
 }
 
 type GalgameCover struct {
@@ -59,25 +60,30 @@ type GalgameScreenshot struct {
 }
 
 type GalgameListCard struct {
-	ID                       int       `json:"id"`
-	Name                     string    `json:"name"`
-	NameOriginal             string    `json:"name_original"`
-	User                     UserBrief `json:"user"`
-	ContentLimit             string    `json:"content_limit"`
-	View                     int       `json:"view"`
-	LikeCount                int       `json:"like_count"`
-	Rating                   float64   `json:"rating"`
-	RatingCount              int       `json:"rating_count"`
-	ResourceUpdateTime       string    `json:"resource_update_time"`
-	Platform                 []string  `json:"platform"`
-	Language                 []string  `json:"language"`
-	ReleaseDate              *string   `json:"release_date"`
-	ReleaseDateTBA           bool      `json:"release_date_tba"`
-	EffectiveBannerHash      string    `json:"effective_banner_hash,omitempty"`
-	EffectiveBannerURL       string    `json:"effective_banner_url,omitempty"`
-	EffectiveBannerWidth     int       `json:"effective_banner_width,omitempty"`
-	EffectiveBannerHeight    int       `json:"effective_banner_height,omitempty"`
-	EffectiveBannerThumbhash string    `json:"effective_banner_thumbhash,omitempty"`
+	ID                         int       `json:"id"`
+	Name                       string    `json:"name"`
+	NameOriginal               string    `json:"name_original"`
+	User                       UserBrief `json:"user"`
+	ContentLimit               string    `json:"content_limit"`
+	View                       int       `json:"view"`
+	LikeCount                  int       `json:"like_count"`
+	Rating                     float64   `json:"rating"`
+	RatingCount                int       `json:"rating_count"`
+	ResourceUpdateTime         string    `json:"resource_update_time"`
+	Platform                   []string  `json:"platform"`
+	Language                   []string  `json:"language"`
+	ReleaseDate                *string   `json:"release_date"`
+	ReleaseDateTBA             bool      `json:"release_date_tba"`
+	EffectiveBannerHash        string    `json:"effective_banner_hash,omitempty"`
+	EffectiveBannerURL         string    `json:"effective_banner_url,omitempty"`
+	EffectiveBannerWidth       int       `json:"effective_banner_width,omitempty"`
+	EffectiveBannerHeight      int       `json:"effective_banner_height,omitempty"`
+	EffectiveBannerThumbhash   string    `json:"effective_banner_thumbhash,omitempty"`
+	EffectivePortraitHash      string    `json:"effective_portrait_hash,omitempty"`
+	EffectivePortraitURL       string    `json:"effective_portrait_url,omitempty"`
+	EffectivePortraitWidth     int       `json:"effective_portrait_width,omitempty"`
+	EffectivePortraitHeight    int       `json:"effective_portrait_height,omitempty"`
+	EffectivePortraitThumbhash string    `json:"effective_portrait_thumbhash,omitempty"`
 }
 
 type GalgameListPage struct {

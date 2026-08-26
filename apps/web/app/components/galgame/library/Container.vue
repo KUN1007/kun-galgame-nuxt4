@@ -1,21 +1,6 @@
 <script setup lang="ts">
-const {
-  page,
-  limit,
-  type,
-  language,
-  platform,
-  gameType,
-  sortField,
-  sortOrder,
-  releasedFrom,
-  releasedTo,
-  releasedMonths,
-  includeProviders,
-  excludeOnlyProviders,
-  minRatingCount,
-  minRating
-} = useGalgameFilters()
+const { page, limit, sortField, sortOrder, releasedFrom, releasedTo } =
+  useGalgameFilters('popularity')
 
 const route = useRoute()
 
@@ -25,21 +10,13 @@ const { data, status, refresh } = await useKunFetch<{
 }>(`/galgame`, {
   method: 'GET',
   query: {
+    library: 'true',
     page,
     limit,
-    type,
-    language,
-    platform,
-    game_type: gameType,
     sort_field: sortField,
     sort_order: sortOrder,
     released_from: releasedFrom,
-    released_to: releasedTo,
-    released_months: releasedMonths,
-    include_providers: includeProviders,
-    exclude_only_providers: excludeOnlyProviders,
-    min_rating_count: minRatingCount,
-    min_rating: minRating
+    released_to: releasedTo
   },
   watch: false
 })
@@ -53,30 +30,45 @@ watch(
     }
   }
 )
+
+const releaseLabel = (galgame: GalgameCard) => {
+  if (galgame.release_date_tba) {
+    return '发售日期待定'
+  }
+  return galgame.release_date?.slice(0, 10) || '发售日期未知'
+}
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
     <template v-if="data">
       <div class="z-10">
-        <KunHeader name="Galgame 资源">
+        <KunHeader name="Galgame 资料库">
           <template #endContent>
-            <GalgameCardNav :is-show-advanced="true" />
+            <GalgameLibraryNav />
           </template>
 
           <template #description>
             <p class="text-default-500">
-              本站已有下载资源的 Galgame。想浏览全部作品请前往
-              <KunLink to="/galgame/library">Galgame 资料库</KunLink>,
-              打开任意作品即可发布资源。我们不是资源的提供者,
-              我们只是资源的指路人。
+              资料库收录的全部 Galgame, 无论本站是否有下载资源。想找下载请前往
+              <KunLink to="/galgame">Galgame 资源</KunLink>。
             </p>
           </template>
         </KunHeader>
       </div>
 
       <KunLoading :loading="status === 'pending'">
-        <GalgameCard v-if="data.galgames.length" :galgames="data.galgames" />
+        <GalgameCard
+          v-if="data.galgames.length"
+          layout="portrait"
+          :galgames="data.galgames"
+        >
+          <template #meta="{ galgame }">
+            <p class="text-default-500 mt-1 text-xs">
+              {{ releaseLabel(galgame) }}
+            </p>
+          </template>
+        </GalgameCard>
         <KunNull v-else description="没有找到符合条件的 Galgame" />
       </KunLoading>
 
