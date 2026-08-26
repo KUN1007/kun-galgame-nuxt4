@@ -9,6 +9,9 @@ import {
 const props = defineProps<{
   galgames: T[]
   isTransparent?: boolean
+  // A company's own page otherwise repeats its name under all 31 of its
+  // games; works listed there through an imprint keep theirs.
+  hideCompany?: string
 }>()
 
 defineSlots<{
@@ -19,7 +22,7 @@ const {
   showPlatform,
   showRating,
   showViewLike,
-  showLanguage,
+  showUpdateTime,
   showNsfwBadge,
   showCompany,
   showJapaneseName,
@@ -43,7 +46,10 @@ const ratingOf = (galgame: T) => {
 
 const cards = computed(() =>
   props.galgames.map((galgame) => {
-    const company = showCompany.value ? galgame.company : ''
+    const company =
+      showCompany.value && galgame.company !== props.hideCompany
+        ? galgame.company
+        : ''
     const rating = showRating.value ? ratingOf(galgame) : null
     return {
       galgame,
@@ -53,9 +59,8 @@ const cards = computed(() =>
       cover: getEffectivePortrait(galgame),
       thumbhash: resolvePortraitThumbhash(galgame),
       href: galgame.id > 0 ? `/galgame/${galgame.id}` : undefined,
-      languages: galgame.language
-        .map((lang) => lang.substring(0, 2).toUpperCase())
-        .join(' '),
+      updateTime: showUpdateTime.value ? galgame.resource_update_time : '',
+      isSfw: galgame.content_limit === 'sfw',
       company,
       rating,
       hasFooter: !!company || !!rating
@@ -98,41 +103,35 @@ const cards = computed(() =>
           </div>
 
           <div
-            v-if="showPlatform || showNsfwBadge"
-            class="absolute top-2 right-2 left-2 flex items-start gap-1"
+            v-if="showPlatform && card.galgame.platform.length"
+            class="absolute top-2 left-2 flex flex-wrap gap-1"
+            :class="showNsfwBadge ? 'right-7' : 'right-2'"
           >
-            <div v-if="showPlatform" class="flex flex-wrap gap-1">
-              <span
-                v-for="(platform, i) in card.galgame.platform"
-                :key="i"
-                class="bg-background flex size-6 items-center justify-center rounded-full p-1.5 text-xs backdrop-blur-sm"
-              >
-                <KunIcon
-                  :name="GALGAME_RESOURCE_PLATFORM_ICON_MAP[platform]"
-                  class="h-4 w-4"
-                />
-              </span>
-            </div>
-
-            <KunChip
-              v-if="showNsfwBadge"
-              class-name="ml-auto"
-              variant="solid"
-              size="xs"
-              :color="
-                card.galgame.content_limit === 'sfw' ? 'success' : 'danger'
-              "
+            <span
+              v-for="(platform, i) in card.galgame.platform"
+              :key="i"
+              class="bg-background flex size-6 items-center justify-center rounded-full p-1.5 text-xs backdrop-blur-sm"
             >
-              {{ card.galgame.content_limit.toLocaleUpperCase() }}
-            </KunChip>
+              <KunIcon
+                :name="GALGAME_RESOURCE_PLATFORM_ICON_MAP[platform]"
+                class="h-4 w-4"
+              />
+            </span>
           </div>
+
+          <div
+            v-if="showNsfwBadge"
+            class="absolute top-0 right-0 size-5 [clip-path:polygon(100%_0,100%_100%,0_0)]"
+            :class="card.isSfw ? 'bg-success' : 'bg-danger'"
+            :title="card.galgame.content_limit.toLocaleUpperCase()"
+          />
 
           <!-- SANCTIONED EXCEPTION to 铁律 #1 (no gradients): a bottom-to-top
              black scrim so the caption stays legible over an arbitrary cover.
              Listed in CLAUDE.md; do NOT remove it in a no-gradient sweep. -->
           <div
             v-if="
-              (showViewLike || showLanguage) &&
+              (showViewLike || card.updateTime) &&
               card.galgame.is_on_forum !== false
             "
             class="absolute right-0 bottom-0 left-0 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent p-2 text-xs transition-opacity duration-300"
@@ -149,9 +148,11 @@ const cards = computed(() =>
               </span>
             </div>
 
-            <span v-if="showLanguage" class="ml-auto truncate text-white">
-              {{ card.languages }}
-            </span>
+            <KunTime
+              v-if="card.updateTime"
+              class="ml-auto shrink-0 text-white!"
+              :time="card.updateTime"
+            />
           </div>
         </div>
 

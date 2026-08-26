@@ -7,7 +7,7 @@ export const usePersistGalgameCardStore = defineStore(
     const showPlatform = ref(true)
     const showRating = ref(true)
     const showViewLike = ref(true)
-    const showLanguage = ref(true)
+    const showUpdateTime = ref(true)
     const showNsfwBadge = ref(false)
     const showCompany = ref(true)
     // Shows whichever title the reader did not pick under the one they did —
@@ -21,7 +21,7 @@ export const usePersistGalgameCardStore = defineStore(
       showPlatform.value = true
       showRating.value = true
       showViewLike.value = true
-      showLanguage.value = true
+      showUpdateTime.value = true
       showNsfwBadge.value = false
       showCompany.value = true
       showJapaneseName.value = false
@@ -32,7 +32,7 @@ export const usePersistGalgameCardStore = defineStore(
       showPlatform,
       showRating,
       showViewLike,
-      showLanguage,
+      showUpdateTime,
       showNsfwBadge,
       showCompany,
       showJapaneseName,

@@ -45,23 +45,20 @@ const showCategory = (item: GalgameOfficialItem) =>
 
         <div class="mt-1 flex items-center justify-between">
           <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <KunChip
+            <KunTooltip
               v-for="role in item.roles ?? []"
               :key="role"
-              size="xs"
-              class-name="rounded-md"
-              color="primary"
+              text="该会社在本作中担任的角色"
             >
-              {{ getRoleText(role) }}
-            </KunChip>
-            <KunChip
-              v-if="showCategory(item)"
-              size="xs"
-              class-name="rounded-md"
-              color="default"
-            >
-              {{ getCategoryText(item.category) }}
-            </KunChip>
+              <KunChip size="xs" class-name="rounded-md" color="primary">
+                {{ getRoleText(role) }}
+              </KunChip>
+            </KunTooltip>
+            <KunTooltip v-if="showCategory(item)" text="该会社自身的类型">
+              <KunChip size="xs" class-name="rounded-md" color="default">
+                {{ getCategoryText(item.category) }}
+              </KunChip>
+            </KunTooltip>
             <span class="text-default-500 dark:text-default-400 text-xs">
               {{ KUN_GALGAME_OFFICIAL_LANGUAGE_MAP[item.lang] || item.lang }}
             </span>

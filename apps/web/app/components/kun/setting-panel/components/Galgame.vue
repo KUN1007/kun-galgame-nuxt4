@@ -3,7 +3,7 @@ const {
   showPlatform,
   showRating,
   showViewLike,
-  showLanguage,
+  showUpdateTime,
   showNsfwBadge,
   showCompany,
   showJapaneseName,
@@ -48,7 +48,7 @@ watch(preferOriginalName, (value) => {
         <KunSwitch v-model="showPlatform" label="左上角 · 游戏平台" />
         <KunSwitch v-model="showNsfwBadge" label="右上角 · NSFW 角标" />
         <KunSwitch v-model="showViewLike" label="左下角 · 浏览 / 点赞" />
-        <KunSwitch v-model="showLanguage" label="右下角 · 可用语言" />
+        <KunSwitch v-model="showUpdateTime" label="右下角 · 更新时间" />
       </div>
     </div>
 

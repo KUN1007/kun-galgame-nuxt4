@@ -135,6 +135,7 @@ if (official && !official.moved_to) {
         v-if="data.galgame.length"
         :is-transparent="false"
         :galgames="data.galgame"
+        :hide-company="data.name"
       >
         <template #meta="{ galgame }">
           <GalgameOfficialViaImprint
