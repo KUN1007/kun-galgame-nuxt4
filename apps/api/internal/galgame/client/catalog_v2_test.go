@@ -66,12 +66,15 @@ func TestV2CatalogQuery_PageBecomesCursor(t *testing.T) {
 	}
 }
 
+// Its own variables, never the application's: internal/testdb/rule_test.go
+// fails the whole suite on os.Getenv("KUN_ in a test, so that a smoke run can
+// never silently inherit a live catalog from a stray .env.
 func TestLiveV2Adapter(t *testing.T) {
-	base, key := os.Getenv("KUN_NEXTMOE_API_BASE"), os.Getenv("KUN_NEXTMOE_API_KEY")
+	base, key := os.Getenv("SMOKE_CATALOG_BASE"), os.Getenv("SMOKE_CATALOG_KEY")
 	if base == "" || key == "" || os.Getenv("SMOKE_CATALOG_V2") == "" {
-		t.Skip("set SMOKE_CATALOG_V2=1 with KUN_NEXTMOE_API_BASE and KUN_NEXTMOE_API_KEY")
+		t.Skip("set SMOKE_CATALOG_V2=1 with SMOKE_CATALOG_BASE and SMOKE_CATALOG_KEY")
 	}
-	c := New(base, key, os.Getenv("KUN_IMAGE_PUBLIC_BASE_URL"))
+	c := New(base, key, os.Getenv("SMOKE_IMAGE_PUBLIC_BASE_URL"))
 	q := url.Values{"limit": {"2"}, "include": {"titles,covers,refs"}}
 	OpenPopulation(q)
 	page, appErr := c.CatalogWorksSearch(context.Background(), q)
