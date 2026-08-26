@@ -8,6 +8,8 @@ type GalgameCard struct {
 	ContentLimit               string         `json:"content_limit"`
 	View                       int            `json:"view"`
 	LikeCount                  int            `json:"like_count"`
+	Rating                     float64        `json:"rating"`
+	RatingCount                int            `json:"rating_count"`
 	ResourceUpdateTime         string         `json:"resource_update_time"`
 	Platform                   []string       `json:"platform"`
 	Language                   []string       `json:"language"`

@@ -383,7 +383,9 @@ func New(cfg *config.Config) *App {
 	galgameResourceMetaRepo := galgameRepo.NewGalgameResourceMetaRepository(db)
 	galgameDetailRatingRepo := galgameRepo.NewGalgameDetailRatingRepository(db)
 	galgameContributorRepo := galgameRepo.NewGalgameContributorRepository(db)
-	galgameEnricher := galgameService.NewGalgameEnricher(galgameLocalRepo, galgameResourceMetaRepo, uc)
+	galgameEnricher := galgameService.NewGalgameEnricher(
+		galgameLocalRepo, galgameResourceMetaRepo, galgameListRepo, uc,
+	)
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, galgameContributorRepo,

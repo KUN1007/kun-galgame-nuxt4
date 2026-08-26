@@ -231,6 +231,7 @@ type catWorksListData struct {
 	Items      []CatalogWorkListItem `json:"items"`
 	NextCursor *string               `json:"next_cursor"`
 	Count      int64                 `json:"count"`
+	Total      int64                 `json:"total"`
 	Month      string                `json:"month"`
 	Year       string                `json:"year"`
 	Meta       catCalendarMeta       `json:"meta"`

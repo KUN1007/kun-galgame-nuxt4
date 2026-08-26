@@ -598,8 +598,12 @@ func (c *GalgameClient) CatalogCalendar(ctx context.Context, bucket string, q ur
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		return nil, errors.ErrInternal("解析 Catalog 月历响应失败")
 	}
+	count := parsed.Count
+	if count == 0 {
+		count = parsed.Total
+	}
 	page := &CatalogWorksPage{
-		Items: parsed.Items, Count: parsed.Count,
+		Items: parsed.Items, Count: count,
 		Month: parsed.Month, Year: parsed.Year, Meta: parsed.Meta,
 	}
 	if parsed.NextCursor != nil {

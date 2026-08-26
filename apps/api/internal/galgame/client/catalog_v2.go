@@ -101,11 +101,20 @@ func v2CatalogQuery(path string, query url.Values) url.Values {
 			}
 		}
 	}
+	// v2 folded v1's three calendar routes into one windowed face, and both
+	// "announced" and "unknown" resolve to the SAME undated bucket there — so
+	// 年内待定 and 发售日期未定 served identical rows. The year-known bucket is
+	// selected by precision, not by a status.
 	switch path {
 	case "/catalog/calendar/pending":
-		out.Set("status", "unknown")
+		out.Set("precision", "year")
 	case "/catalog/calendar/tba":
-		out.Set("status", "announced")
+		out.Set("status", "unknown")
+	}
+	// v2's calendar answers with items and next_cursor only, so the month
+	// header's 共 N 部 has no source unless the total is asked for.
+	if strings.HasPrefix(path, "/catalog/calendar") && out.Get("include_total") == "" {
+		out.Set("include_total", "true")
 	}
 	return out
 }

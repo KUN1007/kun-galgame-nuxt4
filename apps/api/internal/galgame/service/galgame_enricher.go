@@ -12,15 +12,20 @@ import (
 type GalgameEnricher struct {
 	galgameRepo *repository.GalgameRepository
 	metaRepo    *repository.GalgameResourceMetaRepository
+	listRepo    *repository.GalgameListRepository
 	userClient  *userclient.Client
 }
 
 func NewGalgameEnricher(
 	galgameRepo *repository.GalgameRepository,
 	metaRepo *repository.GalgameResourceMetaRepository,
+	listRepo *repository.GalgameListRepository,
 	userClient *userclient.Client,
 ) *GalgameEnricher {
-	return &GalgameEnricher{galgameRepo: galgameRepo, metaRepo: metaRepo, userClient: userClient}
+	return &GalgameEnricher{
+		galgameRepo: galgameRepo, metaRepo: metaRepo,
+		listRepo: listRepo, userClient: userClient,
+	}
 }
 
 func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgameItem) []dto.GalgameCard {
@@ -36,6 +41,7 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 	localMap := e.galgameRepo.FindLocalBatch(galgameIDs)
 	userMap := e.userClient.Hydrate(ctx, frozenCreatorIDs(galgameIDs, localMap))
 	platformMap, languageMap := groupResourceMeta(e.metaRepo.FindResourceMetaBatch(galgameIDs))
+	ratingMap := e.listRepo.BayesianRatings(galgameIDs)
 
 	cards := make([]dto.GalgameCard, len(items))
 	for i, g := range items {
@@ -47,6 +53,8 @@ func (e *GalgameEnricher) ToCards(ctx context.Context, items []dto.NextMoeGalgam
 			ContentLimit:             g.ContentLimit,
 			View:                     localMap[g.ID].View,
 			LikeCount:                localMap[g.ID].LikeCount,
+			Rating:                   ratingMap[g.ID].Score,
+			RatingCount:              ratingMap[g.ID].Count,
 			ResourceUpdateTime:       utils.RFC3339OrEmpty(localMap[g.ID].ResourceUpdateTime),
 			ReleaseDate:              g.ReleaseDate,
 			ReleaseDateTBA:           g.ReleaseDateTBA,

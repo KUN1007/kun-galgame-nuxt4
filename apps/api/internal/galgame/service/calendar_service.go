@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/dto"
@@ -17,6 +18,30 @@ const upcomingMonthCap = 24
 const upcomingFetchConcurrency = 8
 
 const calendarPageLimit = 100
+
+// v2's calendar face answers with items and a cursor and nothing else — no
+// month, no today, no min/max month. Month.vue lays the day grid out from
+// `month`, so an empty one drew "0 年 0 月" and put day 1 under whatever
+// weekday NaN produced. Reconstruct the two the page cannot do without, in
+// the JST the month boundaries are cut on.
+var calendarLocation = func() *time.Location {
+	loc, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}()
+
+func calendarNow(layout string) string {
+	return time.Now().In(calendarLocation).Format(layout)
+}
+
+func orElse(value, fallback string) string {
+	if value != "" {
+		return value
+	}
+	return fallback
+}
 
 type CalendarService struct {
 	galgameClient *client.GalgameClient
@@ -53,14 +78,16 @@ func (s *CalendarService) GetMonth(
 	rawQuery url.Values,
 	isSFW bool,
 ) (*dto.CalendarMonthPage, *errors.AppError) {
-	page, appErr := s.fetchMonthRaw(ctx, rawQuery.Get("month"), isSFW)
+	month := orElse(rawQuery.Get("month"), calendarNow("2006-01"))
+	page, appErr := s.fetchMonthRaw(ctx, month, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
+	page.Month = orElse(page.Month, month)
 
 	return &dto.CalendarMonthPage{
 		Month: page.Month,
-		Today: page.Meta.Today,
+		Today: orElse(page.Meta.Today, calendarNow("2006-01-02")),
 		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, page.Items)),
 		Meta: dto.CalendarMeta{
 			PrevMonth: shiftMonth(page.Month, -1),
@@ -88,7 +115,7 @@ func (s *CalendarService) GetPending(
 		return nil, appErr
 	}
 	return &dto.CalendarPendingPage{
-		Year:  page.Year,
+		Year:  orElse(page.Year, calendarNow("2006")),
 		Items: s.enricher.ToCards(ctx, catalogItemsToNextMoe(ctx, page.Items)),
 		Count: int(page.Count),
 	}, nil
@@ -117,8 +144,10 @@ func (s *CalendarService) GetUpcoming(
 	if appErr != nil {
 		return nil, appErr
 	}
-	today := base.Meta.Today
-	months := monthRange(base.Month, base.Meta.MaxMonth, upcomingMonthCap)
+	today := orElse(base.Meta.Today, calendarNow("2006-01-02"))
+	start := orElse(base.Month, calendarNow("2006-01"))
+	last := orElse(base.Meta.MaxMonth, shiftMonth(start, upcomingMonthCap))
+	months := monthRange(start, last, upcomingMonthCap)
 
 	rawByMonth := make([][]client.CatalogWorkListItem, len(months))
 	rawByMonth[0] = base.Items

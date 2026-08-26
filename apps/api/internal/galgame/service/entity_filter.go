@@ -38,6 +38,8 @@ func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {
 			ContentLimit:               c.ContentLimit,
 			View:                       c.View,
 			LikeCount:                  c.LikeCount,
+			Rating:                     c.Rating,
+			RatingCount:                c.RatingCount,
 			ResourceUpdateTime:         c.ResourceUpdateTime,
 			Platform:                   c.Platform,
 			Language:                   c.Language,
