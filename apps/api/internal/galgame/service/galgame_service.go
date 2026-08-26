@@ -363,6 +363,7 @@ func (s *GalgameService) HydrateCardsByIDs(
 			Rating:                     ratingMap[id].Score,
 			RatingCount:                ratingMap[id].Count,
 			ResourceUpdateTime:         utils.RFC3339OrEmpty(localMap[id].ResourceUpdateTime),
+			IsOnForum:                  localMap[id].Published,
 			ReleaseDate:                b.ReleaseDate,
 			ReleaseDateTBA:             b.ReleaseDateTBA,
 			EffectiveBannerHash:        b.EffectiveBannerHash,

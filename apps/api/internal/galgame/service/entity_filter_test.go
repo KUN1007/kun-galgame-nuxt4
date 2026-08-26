@@ -58,12 +58,21 @@ func TestBuildEntityFilterDefaults(t *testing.T) {
 	}
 }
 
+// Entity pages list every catalog member since 方案③, so this may not assert
+// true: a member with no forum resource drew a "0 浏览 0 点赞" strip and an
+// empty byline, the same card defect galgame_enricher.go records.
 func TestListCardsToEntityCardsIsOnForum(t *testing.T) {
-	out := listCardsToEntityCards([]dto.GalgameListCard{{ID: 1, View: 10}})
-	if len(out) != 1 || out[0].ID != 1 || out[0].View != 10 {
+	out := listCardsToEntityCards([]dto.GalgameListCard{
+		{ID: 1, View: 10, IsOnForum: true},
+		{ID: 2},
+	})
+	if len(out) != 2 || out[0].ID != 1 || out[0].View != 10 {
 		t.Fatalf("field copy wrong: %+v", out)
 	}
 	if !out[0].IsOnForum {
-		t.Error("IsOnForum should be true for local-subset cards")
+		t.Error("IsOnForum should survive the copy for a card that has a resource")
+	}
+	if out[1].IsOnForum {
+		t.Error("a catalog member with no forum resource must not claim IsOnForum")
 	}
 }

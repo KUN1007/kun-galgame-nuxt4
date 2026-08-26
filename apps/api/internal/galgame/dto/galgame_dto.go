@@ -70,6 +70,7 @@ type GalgameListCard struct {
 	Rating                     float64   `json:"rating"`
 	RatingCount                int       `json:"rating_count"`
 	ResourceUpdateTime         string    `json:"resource_update_time"`
+	IsOnForum                  bool      `json:"is_on_forum"`
 	Platform                   []string  `json:"platform"`
 	Language                   []string  `json:"language"`
 	ReleaseDate                *string   `json:"release_date"`

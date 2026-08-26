@@ -38,15 +38,21 @@ const gridClass = computed(() => {
     : 'grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4'
 })
 
+// The image service pre-generates exactly one variant, `mini`, and it is a
+// fixed 460x259 16:9 crop whatever the source shape was (image_service preset
+// `galgame_banner`). Cropping that band again into the 5/7 poster box is a
+// double crop, which is why the portrait cards rendered a zoomed-in sliver.
 const coverOf = (galgame: T) =>
   isPortrait.value
-    ? getEffectivePortrait(galgame, { variant: 'mini' })
+    ? getEffectivePortrait(galgame)
     : getEffectiveBanner(galgame, { variant: 'mini' })
 
 const thumbhashOf = (galgame: T) =>
   isPortrait.value
     ? resolvePortraitThumbhash(galgame)
     : resolveBannerThumbhash(galgame)
+
+const coverRatio = computed(() => (isPortrait.value ? '5 / 7' : '16 / 9'))
 
 const cardHref = (galgame: GalgameCard) =>
   galgame.id > 0 ? `/galgame/${galgame.id}` : undefined
@@ -64,14 +70,23 @@ const cardHref = (galgame: GalgameCard) =>
     >
       <div class="relative overflow-hidden">
         <KunImage
+          v-if="coverOf(galgame)"
           :src="coverOf(galgame)"
           loading="lazy"
           :alt="galgame.name"
-          placeholder="/placeholder.webp"
           :thumbhash="thumbhashOf(galgame)"
-          class="h-full w-full object-cover transition-transform duration-300"
-          :style="{ aspectRatio: isPortrait ? '5/7' : '16/9' }"
+          :aspect-ratio="coverRatio"
         />
+        <div
+          v-else
+          class="bg-default-100 text-default-400 flex items-center justify-center"
+          :style="{ aspectRatio: coverRatio }"
+        >
+          <KunIcon
+            name="lucide:image-off"
+            :class="isPortrait ? 'size-6' : 'size-8'"
+          />
+        </div>
 
         <div
           v-if="
