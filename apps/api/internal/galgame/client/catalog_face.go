@@ -45,15 +45,17 @@ func openPopulation(q url.Values) url.Values {
 
 func OpenPopulation(q url.Values) url.Values { return openPopulation(q) }
 
+// openPopulation is unconditional: content_rating is how old you must be to
+// play the game, content_limit is the entry's own display verdict, and only the
+// second one is kungal's gate. Leaving the age gate closed for an SFW reader
+// left 493 of the 7,781 listed games visible, because 93% of them are r18. The
+// v2 cutover dropped this call and rewrote the assertions that pinned it, so a
+// green suite is not evidence here — 4b669e54 is.
 func applyWorksGate(q url.Values, contentLimit string) url.Values {
+	openPopulation(q)
 	switch contentLimit {
-	case "sfw":
-		q.Set("content_limit", "sfw")
-	case "nsfw":
-		q.Set("nsfw", "true")
-		q.Set("content_limit", "nsfw")
-	default:
-		q.Set("nsfw", "true")
+	case "sfw", "nsfw":
+		q.Set("content_limit", contentLimit)
 	}
 	return q
 }

@@ -263,8 +263,8 @@ func TestCatalogBridge_GatesAreParametersNotPostFilters(t *testing.T) {
 	if _, err := c.GetBatchPublic(context.Background(), []int{777}, true); err != nil {
 		t.Fatalf("GetBatchPublic sfw: %v", err)
 	}
-	if v := rec.queryAt(1).Get("nsfw"); v != "" {
-		t.Errorf("sfw caller sent nsfw=%q, want it absent", v)
+	if v := rec.queryAt(1).Get("nsfw"); v != "true" {
+		t.Errorf("sfw caller sent nsfw=%q, want true — closing the age gate drops 94.5%% of the registry", v)
 	}
 	if v := rec.queryAt(1).Get("content_limit"); v != "sfw" {
 		t.Errorf("sfw caller sent content_limit=%q, want sfw — the setting must reach the wire as the editorial gate", v)
@@ -467,8 +467,8 @@ func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 			if got := q.Get(wantFilter); got != "5" {
 				t.Errorf("%s = %q, want 5 — an unscoped walk lists the whole registry", wantFilter, got)
 			}
-			if got := q.Get("nsfw"); got != "" {
-				t.Errorf("nsfw = %q, want it absent for an SFW member walk", got)
+			if got := q.Get("nsfw"); got != "true" {
+				t.Errorf("nsfw = %q, want true — the age gate is never a population cut", got)
 			}
 			if got := q.Get("content_limit"); got != "sfw" {
 				t.Errorf("content_limit = %q, want sfw for an SFW caller", got)

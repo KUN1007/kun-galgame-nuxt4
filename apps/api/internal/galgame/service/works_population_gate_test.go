@@ -54,8 +54,8 @@ func TestMultiTag_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	if got := rec.query["tag_id"]; len(got) != 1 || got[0] != "5,7" {
 		t.Errorf("tag_id = %v, want one param valued \"5,7\"", got)
 	}
-	if got := rec.get("nsfw"); got != "" {
-		t.Errorf("nsfw = %q, want it absent for an SFW caller", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true — the age gate is never a population cut", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)

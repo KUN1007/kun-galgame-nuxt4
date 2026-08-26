@@ -100,8 +100,8 @@ func TestGetByMultiTag_SFWGateStaysClosed(t *testing.T) {
 		url.Values{"tag_ids": {"41"}}, true); appErr != nil {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
-	if got := rec.get("nsfw"); got != "" {
-		t.Errorf("nsfw = %q, want it absent for an SFW caller", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true — the age gate is never a population cut", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw for an SFW caller", got)

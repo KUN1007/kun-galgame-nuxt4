@@ -88,8 +88,8 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	if got := rec.get("sort"); got != "popularity" {
 		t.Errorf("sort = %q, want popularity", got)
 	}
-	if got := rec.get("nsfw"); got != "" {
-		t.Errorf("nsfw = %q, want it absent on the SFW library", got)
+	if got := rec.get("nsfw"); got != "true" {
+		t.Errorf("nsfw = %q, want true — the SFW library still spans the whole age range", got)
 	}
 	if got := rec.get("content_limit"); got != "sfw" {
 		t.Errorf("content_limit = %q, want sfw", got)
