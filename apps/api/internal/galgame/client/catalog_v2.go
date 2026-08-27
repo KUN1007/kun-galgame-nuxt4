@@ -34,26 +34,23 @@ func catalogOrigin(raw string) string {
 	return u
 }
 
-// Catalog reads answer from /v1. The v2 read faces are a strict subset and the
-// cutover to them took the galgame detail page, every entity page and the whole
-// site's request budget with it:
+// Catalog reads still answer from /v1. Everything below this line is the v2
+// translation, kept complete and verified against a live catalog so the flip is
+// this one predicate — but seven fields and filters still answer less on v2
+// than on v1, and one of them is a content gate:
 //
-//   - The entity repr is id + name and nothing else. No intros, aliases, links,
-//     logo_hash, traits, has_nsfw, engine description, series work_count, or tag
-//     `sexual` — collect.CompanySpec/TagSpec/SeriesSpec/EngineSpec/CharacterSpec
-//     declare no include tokens at all, so there is no query that asks for them.
-//     The missing tag flag silently opened the NSFW tag gate: 3080 tags listed
-//     for an SFW reader where v1 lists 2339.
-//   - The work detail types covers[].sexual as "safe" where v1 sends 0, so
-//     include=covers makes the whole detail fail to decode, and its ratings
-//     block carries no distribution.
-//   - The companies list dropped has_works=, and /v2 rate-limits on CLIENT IP at
-//     100/min ignoring the key's tier (apiv2/protocol/limit.go) where /v1 limits
-//     per key and this one is unlimited. Paging 38,317 companies instead of
-//     2,985 spent the backend's whole minute on one page view, and every read on
-//     the site then answered "Short-window rate limit exceeded." The same ceiling
-//     is fatal to every fan-out the forum runs: a tag with 7,465 works is 75
-//     member pages, and the series card index is 1,562 searches.
+//   - /v2/catalog/calendar does not declare content_limit at all. It answers 200
+//     to content_limit=bogus where v1 answers 400, so an SFW reader is served the
+//     full month: 45 rows where v1 serves 30.
+//   - The work roster carries no voices and no identity, and covers carry no
+//     kind, so every character card loses its 声优 and the cover gallery loses
+//     its grouping.
+//   - A rollup work list carries no via_label, which is both the 旗下品牌
+//     attribution on a company page and the divisor behind its imprint counts.
+//   - The tags list silently ignores has_works= (companies honours it): 3,463
+//     rows instead of 1,630, filling the tag index with zero-work tags.
+//   - The calendar answers no meta block, so min_month / max_month / has_prev /
+//     has_next have no source and month navigation dies.
 //
 // refs= is the exception and the reason this is a predicate rather than a
 // deletion: only v2 resolves the source:external_id batch lane, and that lane is
@@ -64,6 +61,20 @@ func catalogReadsV1(path string, query url.Values) bool {
 		return false
 	}
 	return query.Get("refs") == ""
+}
+
+// v2CatalogDetailInclude is the full include vocabulary of each detail face.
+// v1 returned every block by default; v2 returns nothing that was not asked for,
+// so a face reached with no include= answers a bare id+name row and the page
+// renders empty without erroring. The tokens are the faces' own enums — an
+// unknown one is a 400, so this list has to track catalog's collect specs.
+var v2CatalogDetailInclude = map[string]string{
+	"works":        "titles,refs,relations,credits,releases,popularity,ratings,tags,playtimes,series,platforms,intros,covers,screenshots,characters,companies,engines,links",
+	"characters":   "gender,birthday,height_cm,weight_kg,measurements,blood_type,instance_of_id,image,figure,traits,aliases,intros,refs",
+	"companies":    "aliases,logo,intros,links",
+	"credit-names": "aliases,photo,siblings,intros,links,refs",
+	"tags":         "intros",
+	"series":       "intros,refs",
 }
 
 func v2CatalogPath(path string) string {
@@ -92,16 +103,34 @@ func v2CatalogQuery(path string, query url.Values) url.Values {
 	for k, vs := range query {
 		out[k] = append([]string(nil), vs...)
 	}
-	switch nsfw := out.Get("nsfw"); nsfw {
-	case "1", "on", "yes":
-		out.Set("nsfw", "true")
-	case "0", "off", "no":
-		out.Del("nsfw")
+	for _, flag := range []string{"nsfw", "has_works"} {
+		switch out.Get(flag) {
+		case "1", "on", "yes":
+			out.Set(flag, "true")
+		case "0", "off", "no":
+			out.Del(flag)
+		}
 	}
-	if inc := out.Get("include"); inc != "" {
+	if entity, ok := v2DetailEntity(v2CatalogPath(path)); ok {
+		out.Set("include", v2CatalogDetailInclude[entity])
+	} else if inc, ok := v2CatalogListInclude[v2ListEntity(v2CatalogPath(path))]; ok {
+		out.Set("include", inc)
+	} else if inc := out.Get("include"); inc != "" {
 		inc = strings.ReplaceAll(inc, "names", "titles")
 		inc = strings.ReplaceAll(inc, "labels", "companies")
 		out.Set("include", inc)
+	}
+	// v1 took a numeric ceiling named `spoilers`; v2 takes a closed enum named
+	// `spoiler`, and only on the three faces that have a spoiler axis. Leaving
+	// the v1 name behind would not fail — huma drops unknown query parameters
+	// silently — it would just answer the default `none` and hide every
+	// spoilered tag and trait, which is the bug the ceiling exists to avoid.
+	if ceiling := out.Get("spoilers"); ceiling != "" {
+		out.Del("spoilers")
+		if v2HasSpoilerAxis(v2CatalogPath(path)) {
+			n, _ := strconv.Atoi(ceiling)
+			out.Set("spoiler", v2SpoilerCeiling(n))
+		}
 	}
 	if lid := out.Get("label_id"); lid != "" {
 		out.Del("label_id")
@@ -176,6 +205,31 @@ func encodePageCursor(page int) string {
 	return "cur_" + base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(page)))
 }
 
+// The sub-faces page by opaque cursor and drop `offset` silently, but their
+// cursor is the next offset in base64 — verified against a live catalog, where
+// cursor=cur_Mw skips exactly three rows and a limit=50 page answers cur_NTA to
+// v1's next_offset=50. Reading it back is what keeps next_offset exact for a
+// credits page, whose items are grouped by work and so never number the rows.
+func encodeOffsetCursor(offset int) string {
+	return "cur_" + base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(offset)))
+}
+
+func decodeOffsetCursor(cursor string) (int, bool) {
+	rest, ok := strings.CutPrefix(cursor, "cur_")
+	if !ok {
+		return 0, false
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(rest)
+	if err != nil {
+		return 0, false
+	}
+	offset, err := strconv.Atoi(string(raw))
+	if err != nil || offset < 0 {
+		return 0, false
+	}
+	return offset, true
+}
+
 func (c *GalgameClient) doV2(ctx context.Context, method, path string, query url.Values, body any) (int, []byte, *errors.AppError) {
 	v2Path := v2CatalogPath(path)
 	q := v2CatalogQuery(path, query)
@@ -212,7 +266,112 @@ func (c *GalgameClient) doV2(ctx context.Context, method, path string, query url
 	if err != nil {
 		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
 	}
-	return resp.StatusCode, rewriteV2JSON(respBody, c.imageCDNBase), nil
+	out := rewriteV2JSON(respBody, c.imageCDNBase)
+	if method == http.MethodGet && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		out = c.spliceV2Subface(ctx, path, v2Path, query, out)
+	}
+	return resp.StatusCode, out, nil
+}
+
+// v2 moved the character's works and the credit name's credits off their detail
+// records onto their own cursor-paged sub-faces. They are spliced back into the
+// parent here so the decoders and the thirteen call sites keep speaking v1's
+// embedded block plus next_offset.
+func (c *GalgameClient) spliceV2Subface(
+	ctx context.Context, path, v2Path string, query url.Values, doc []byte,
+) []byte {
+	entity, ok := v2DetailEntity(v2Path)
+	if !ok {
+		return doc
+	}
+	var subface, block string
+	switch {
+	case entity == "characters" && includeHasToken(query, "works"):
+		subface, block = "appearances", "works"
+	case entity == "credit-names" && includeHasToken(query, "credits"):
+		subface, block = "credits", "credits"
+	default:
+		return doc
+	}
+
+	// The sub-face applies the population gate itself, so it has to inherit the
+	// parent's: a credits page fetched without nsfw=true answered 14 works where
+	// the staff page shows 50, silently cutting every r18 credit off the roster.
+	q := v2CatalogQuery(path, query)
+	q.Del("include")
+	q.Del("offset")
+	q.Del("page")
+	offset, _ := strconv.Atoi(query.Get("offset"))
+	if offset > 0 {
+		q.Set("cursor", encodeOffsetCursor(offset))
+	}
+	raw, appErr := c.getV2Raw(ctx, v2Path+"/"+subface, q)
+	if appErr != nil {
+		return doc
+	}
+
+	var page struct {
+		Items      []json.RawMessage `json:"items"`
+		NextCursor string            `json:"next_cursor"`
+	}
+	if json.Unmarshal(raw, &page) != nil {
+		return doc
+	}
+	parent := map[string]json.RawMessage{}
+	if json.Unmarshal(doc, &parent) != nil {
+		return doc
+	}
+	items, err := json.Marshal(page.Items)
+	if err != nil {
+		return doc
+	}
+	parent[block] = items
+	if next, ok := decodeOffsetCursor(page.NextCursor); ok {
+		parent["next_offset"] = json.RawMessage(strconv.Itoa(next))
+	}
+	out, err := json.Marshal(parent)
+	if err != nil {
+		return doc
+	}
+	return out
+}
+
+func (c *GalgameClient) getV2Raw(ctx context.Context, v2Path string, q url.Values) ([]byte, *errors.AppError) {
+	reqURL := c.origin + v2Path
+	if len(q) > 0 {
+		reqURL += "?" + q.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, errors.ErrInternal("创建请求失败")
+	}
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		slog.Error("Galgame 服务请求失败 (传输层)",
+			"method", req.Method, "url", req.URL.String(), "error", err)
+		return nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.ErrInternal("读取 Galgame 响应失败")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, errors.New(errors.CodeBiz, "Galgame 资源不存在", resp.StatusCode)
+	}
+	return rewriteV2JSON(body, c.imageCDNBase), nil
+}
+
+func includeHasToken(query url.Values, token string) bool {
+	for _, want := range strings.Split(query.Get("include"), ",") {
+		if strings.TrimSpace(want) == token {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *GalgameClient) doV1(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
@@ -409,6 +568,12 @@ func rewriteV2Object(v map[string]any, cdnBase string) bool {
 			changed = true
 		}
 	}
+	if lie, ok := v["is_lie"]; ok {
+		if _, has := v["lie"]; !has {
+			v["lie"] = lie
+			changed = true
+		}
+	}
 	if kind, ok := v["company_kind"].(string); ok {
 		if _, has := v["kind"]; !has {
 			v["kind"] = kind
@@ -481,6 +646,63 @@ func rewriteV2Object(v map[string]any, cdnBase string) bool {
 	if spoiler, ok := v["spoiler"].(string); ok {
 		v["spoiler"] = spoilerLevel(spoiler)
 		changed = true
+	}
+	// The work's tag rows are the one place v2 names the canonical tag `id`
+	// while every forum reader calls it canonical_id — and catalog_detail.go
+	// drops a row whose canonical_id is 0, so the mismatch empties the tag
+	// panel instead of degrading it. A tag row is the only object carrying
+	// both a kind and a spoiler; the standalone tag list row has no spoiler.
+	if _, hasKind := v["tag_kind"]; hasKind {
+		if _, hasSpoiler := v["spoiler"]; hasSpoiler {
+			if _, has := v["canonical_id"]; !has {
+				if id, ok := v["id"]; ok && id != nil {
+					v["canonical_id"] = id
+					changed = true
+				}
+			}
+		}
+	}
+	if sexual, ok := v["sexual"].(string); ok {
+		v["sexual"] = json.Number(strconv.Itoa(sexualLevel(sexual)))
+		changed = true
+	}
+	for _, pair := range [][2]string{{"logo", "logo_hash"}, {"photo", "photo_hash"}} {
+		if img, ok := v[pair[0]].(map[string]any); ok {
+			if hash, _ := img["hash"].(string); hash != "" {
+				if _, has := v[pair[1]]; !has {
+					v[pair[1]] = hash
+					changed = true
+				}
+			}
+		}
+	}
+	if kind, ok := v["alias_kind"].(string); ok {
+		if _, has := v["kind"]; !has {
+			v["kind"] = kind
+			changed = true
+		}
+	}
+	if gender, ok := v["gender"].(string); ok {
+		if code, known := genderCode(gender); known {
+			v["gender"] = json.Number(strconv.Itoa(code))
+		} else {
+			v["gender"] = nil
+		}
+		changed = true
+	}
+	for _, pair := range [][2]string{{"birth_year", "birth_y"}, {"birth_month", "birth_m"}, {"birth_day", "birth_d"}} {
+		if n, ok := v[pair[0]]; ok {
+			if _, has := v[pair[1]]; !has {
+				v[pair[1]] = n
+				changed = true
+			}
+		}
+	}
+	if name, ok := v["character_name"]; ok {
+		if _, has := v["character"]; !has {
+			v["character"] = name
+			changed = true
+		}
 	}
 	if obj, ok := v["object"].(string); ok && obj == "search_result" {
 		if t, ok := v["target_object"].(string); ok {
@@ -574,12 +796,38 @@ func imageToSlot(v any, cdnBase string) map[string]any {
 
 func spoilerLevel(s string) int {
 	switch s {
-	case "minimum":
+	case "minimum", "minor":
 		return 1
 	case "spoilered", "major":
 		return 2
 	default:
 		return 0
+	}
+}
+
+// sexualLevel maps the image grading enum back onto v1's integer scale, which
+// is what the cover gate compares against. Decoding it as a string is not an
+// option: the cover block is typed int, so one "safe" made the WHOLE work
+// detail fail to decode rather than just that field.
+func sexualLevel(s string) int {
+	switch s {
+	case "suggestive":
+		return 1
+	case "explicit":
+		return 2
+	default:
+		return 0
+	}
+}
+
+func genderCode(s string) (int, bool) {
+	switch s {
+	case "male":
+		return 1, true
+	case "female":
+		return 2, true
+	default:
+		return 0, false
 	}
 }
 
@@ -591,5 +839,68 @@ func searchEntityType(object string) string {
 		return "name"
 	default:
 		return object
+	}
+}
+
+// v2CatalogListInclude is what a browse row has to ask for to match the row v1
+// answered with. Deliberately narrower than the detail vocabulary: the company
+// index pages hundreds of rows and has never rendered an intro or a link.
+var v2CatalogListInclude = map[string]string{
+	"companies": "aliases,logo",
+}
+
+func v2ListEntity(v2Path string) string {
+	rest, ok := strings.CutPrefix(v2Path, "/v2/catalog/")
+	if !ok || strings.Contains(rest, "/") {
+		return ""
+	}
+	return rest
+}
+
+// v2DetailEntity names the entity whose single-record face this path is, if it
+// is one. /v2/catalog/works is the list; /v2/catalog/works/{id} is the detail;
+// /v2/catalog/works/{id}/tags is a sub-face and keeps its own vocabulary.
+func v2DetailEntity(v2Path string) (string, bool) {
+	rest, ok := strings.CutPrefix(v2Path, "/v2/catalog/")
+	if !ok {
+		return "", false
+	}
+	parts := strings.Split(rest, "/")
+	if len(parts) == 3 && parts[2] == "graph" {
+		parts = parts[:2]
+	}
+	if len(parts) != 2 || parts[1] == "" {
+		return "", false
+	}
+	if _, has := v2CatalogDetailInclude[parts[0]]; !has {
+		return "", false
+	}
+	return parts[0], true
+}
+
+func v2HasSpoilerAxis(v2Path string) bool {
+	rest, ok := strings.CutPrefix(v2Path, "/v2/catalog/")
+	if !ok {
+		return false
+	}
+	switch parts := strings.Split(rest, "/"); {
+	case len(parts) == 2 && parts[0] == "characters":
+		return true
+	case len(parts) == 2 && parts[0] == "works":
+		return true
+	case len(parts) == 3 && parts[0] == "works" && parts[2] == "tags":
+		return true
+	}
+	return false
+}
+
+func v2SpoilerCeiling(n int) string {
+	switch {
+	case n <= 0:
+		return "none"
+	case n == 1:
+		return "minor"
+	default:
+		return "major"
 	}
 }
