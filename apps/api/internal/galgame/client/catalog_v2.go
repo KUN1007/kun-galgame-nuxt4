@@ -45,13 +45,15 @@ func catalogOrigin(raw string) string {
 // identity, covers carry cover_kind, a rollup row carries via_company, and the
 // tags list honours has_works= (3,463 -> 1,630, same as v1).
 //
-// What is NOT closed is the reason to flip rather than a reason not to: v1's
-// works list, when reached with ids=, hard-pins olang to ja+zh and IGNORES an
-// explicit olang= (olang=en with ids= answers the same 26 ja/zh rows; without
-// ids= it answers en rows fine). v2's ids= arm has no such floor. That costs
-// 128 published forum galgames — 心跳文学部 and Monika After Story among them —
-// which HydrateCardsByIDs drops on the floor, so they are absent from every
-// list, ranking, collection and feed while their detail pages render fine.
+// An eighth gap was ours to find, and it was on /v1: for three days from
+// 2026-08-24 every v1 works lane floored olang to ja+zh, because a shared
+// filter grew an OLang field whose zero value is the calendar's local-population
+// predicate and only the v2 handler was taught to pass All. v1 declares no
+// olang=, so no caller could compensate. 128 published galgames — 心跳文学部
+// among them — left every list while their detail pages rendered fine, and the
+// nightly content_limit sweep could not resolve them either, so their cached
+// column stayed NULL and they kept falling out of SFW pages one day longer.
+// Closed by infra PR #87; the two ids= arms now agree exactly, 7,881 to 7,881.
 //
 // refs= is the exception and the reason this is a predicate rather than a
 // deletion: only v2 resolves the source:external_id batch lane, and that lane is
