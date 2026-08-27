@@ -36,21 +36,22 @@ func catalogOrigin(raw string) string {
 
 // Catalog reads still answer from /v1. Everything below this line is the v2
 // translation, kept complete and verified against a live catalog so the flip is
-// this one predicate — but seven fields and filters still answer less on v2
-// than on v1, and one of them is a content gate:
+// this one predicate.
 //
-//   - /v2/catalog/calendar does not declare content_limit at all. It answers 200
-//     to content_limit=bogus where v1 answers 400, so an SFW reader is served the
-//     full month: 45 rows where v1 serves 30.
-//   - The work roster carries no voices and no identity, and covers carry no
-//     kind, so every character card loses its 声优 and the cover gallery loses
-//     its grouping.
-//   - A rollup work list carries no via_label, which is both the 旗下品牌
-//     attribution on a company page and the divisor behind its imprint counts.
-//   - The tags list silently ignores has_works= (companies honours it): 3,463
-//     rows instead of 1,630, filling the tag index with zero-work tags.
-//   - The calendar answers no meta block, so min_month / max_month / has_prev /
-//     has_next have no source and month navigation dies.
+// The seven gaps that blocked the flip are closed upstream (infra PR #86,
+// deployed 2026-08-27) and re-verified against the running production catalog,
+// not the report: calendar declares content_limit and 400s on a bogus value,
+// answers a meta block on the month window, the roster carries voices and
+// identity, covers carry cover_kind, a rollup row carries via_company, and the
+// tags list honours has_works= (3,463 -> 1,630, same as v1).
+//
+// What is NOT closed is the reason to flip rather than a reason not to: v1's
+// works list, when reached with ids=, hard-pins olang to ja+zh and IGNORES an
+// explicit olang= (olang=en with ids= answers the same 26 ja/zh rows; without
+// ids= it answers en rows fine). v2's ids= arm has no such floor. That costs
+// 128 published forum galgames — 心跳文学部 and Monika After Story among them —
+// which HydrateCardsByIDs drops on the floor, so they are absent from every
+// list, ranking, collection and feed while their detail pages render fine.
 //
 // refs= is the exception and the reason this is a predicate rather than a
 // deletion: only v2 resolves the source:external_id batch lane, and that lane is
@@ -603,6 +604,23 @@ func rewriteV2Object(v map[string]any, cdnBase string) bool {
 	if kind, ok := v["title_kind"].(string); ok {
 		if _, has := v["kind"]; !has {
 			v["kind"] = kind
+			changed = true
+		}
+	}
+	// v2 spec gate G8 forbids a bare `kind`, so the cover's grouping travels as
+	// cover_kind and the gallery renders one flat pile without this alias.
+	if kind, ok := v["cover_kind"].(string); ok {
+		if _, has := v["kind"]; !has {
+			v["kind"] = kind
+			changed = true
+		}
+	}
+	// The rollup lane's one-hop attribution: v1 named it via_label, v2 names it
+	// via_company. Absent, every rollup row reads as directly attributed, which
+	// collapsed a company's own/imprint split to 52/0 where it is 39/13.
+	if via, ok := v["via_company"]; ok {
+		if _, has := v["via_label"]; !has {
+			v["via_label"] = via
 			changed = true
 		}
 	}

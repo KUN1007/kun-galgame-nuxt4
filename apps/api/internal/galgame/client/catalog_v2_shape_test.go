@@ -178,3 +178,35 @@ func TestIncludeHasToken(t *testing.T) {
 		t.Error("an absent include matched")
 	}
 }
+
+func TestRewriteV2JSON_CoverKindIsTheCoverGrouping(t *testing.T) {
+	// Captured from work 3 on the running catalog: v2 spec gate G8 forbids a
+	// bare `kind`, so #86 shipped the grouping as cover_kind and a cover with
+	// no grouping sends "" where v1 omitted the field entirely.
+	got := rewriteOne(t, `{"id":"6689","cover_kind":"main","portrait_pinned":false,"url":"u","hash":"h","sexual":"safe","violence":null,"source":"vndb"}`)
+	if got["kind"] != "main" {
+		t.Errorf("kind = %v, want main — the gallery groups on it", got["kind"])
+	}
+	blank := rewriteOne(t, `{"id":"6688","cover_kind":"","url":"u","sexual":"safe"}`)
+	if blank["kind"] != "" {
+		t.Errorf("kind = %v, want the empty grouping v1 sent as absent", blank["kind"])
+	}
+}
+
+func TestRewriteV2JSON_RollupViaCompanyIsViaLabel(t *testing.T) {
+	// Captured from company 1's rollup: 13 of its rows arrive one hop away, and
+	// without the alias every one of them reads as directly attributed — the
+	// 39/13 own/imprint split the company page prints becomes 52/0.
+	got := rewriteOne(t, `{"id":"671","via_company":{"object":"company","id":"713","display_name":"Sweets","localized":{}}}`)
+	via, ok := got["via_label"].(map[string]any)
+	if !ok {
+		t.Fatalf("via_label = %v, want the via_company object", got["via_label"])
+	}
+	if via["id"] != float64(713) || via["display_name"] != "Sweets" {
+		t.Errorf("via_label = %v, want id 713 / Sweets with the id coerced off v2's string", via)
+	}
+	// A directly attributed row must not grow one.
+	if direct := rewriteOne(t, `{"id":"672"}`); direct["via_label"] != nil {
+		t.Error("a directly attributed rollup row grew a via_label")
+	}
+}
