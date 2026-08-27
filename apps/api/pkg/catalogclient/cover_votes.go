@@ -15,7 +15,10 @@ type CoverTally struct {
 }
 
 func (c *Client) WorkCoverVotes(ctx context.Context, workID int64) ([]CoverTally, error) {
-	q := url.Values{"include": {"covers"}}
+	// Without the population gate catalog answers 404 "work not found" for every
+	// r18 work, and the tallies silently vanished on ~94% of detail pages while
+	// logging 11.5k WARNs an hour. The age gate is never a population cut.
+	q := url.Values{"include": {"covers"}, "nsfw": {"true"}}
 	var rec struct {
 		Covers []struct {
 			ID        json.RawMessage `json:"id"`

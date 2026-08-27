@@ -267,7 +267,7 @@ func (c *Client) WorkCoversUser(ctx context.Context, accessToken string, workID 
 		Voted     bool            `json:"voted"`
 	}]
 	err := c.userV2JSON(ctx, http.MethodGet, accessToken,
-		"/v2/catalog/works/"+strconv.FormatInt(workID, 10)+"/covers", nil, &page, nil)
+		"/v2/catalog/works/"+strconv.FormatInt(workID, 10)+"/covers?nsfw=true", nil, &page, nil)
 	if err != nil {
 		return nil, err
 	}

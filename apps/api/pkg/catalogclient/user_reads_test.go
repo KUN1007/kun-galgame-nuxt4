@@ -146,8 +146,11 @@ func TestWorkCoversUser_BallotFromTheToken(t *testing.T) {
 	if got.auth != "Bearer user-jwt" {
 		t.Fatalf("auth = %q, want the user's bearer", got.auth)
 	}
-	if got.query != "" {
+	if strings.Contains(got.query, "uid") || strings.Contains(got.query, "user") {
 		t.Fatalf("the viewer is the token, not a query parameter: %q", got.query)
+	}
+	if !strings.Contains(got.query, "nsfw=true") {
+		t.Fatalf("query = %q, want the population gate open — without it every r18 work is a 404", got.query)
 	}
 	if len(covers) != 1 || covers[0].ID != 88 || !covers[0].Voted || covers[0].VoteCount != 3 {
 		t.Fatalf("covers decoded wrong: %+v", covers)

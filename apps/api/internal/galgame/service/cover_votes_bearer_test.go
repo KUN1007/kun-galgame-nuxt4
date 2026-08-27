@@ -113,8 +113,11 @@ func TestCoverVotesStayAnonymousWithoutAToken(t *testing.T) {
 	if rec.auth != "Bearer nmk_test" {
 		t.Errorf("auth = %q, want the application key", rec.auth)
 	}
-	if rec.query != "include=covers" {
-		t.Errorf("an anonymous read sent %q", rec.query)
+	if strings.Contains(rec.query, "uid") || strings.Contains(rec.query, "user") {
+		t.Errorf("an anonymous read sent an identity: %q", rec.query)
+	}
+	if !strings.Contains(rec.query, "include=covers") || !strings.Contains(rec.query, "nsfw=true") {
+		t.Errorf("an anonymous read sent %q, want include=covers with the population gate open", rec.query)
 	}
 	if covers[0].ID != 88 || covers[0].VoteCount != 3 {
 		t.Errorf("hydration lost the tally: %+v", covers[0])

@@ -27,7 +27,10 @@ func (s *GalgameService) hydrateCoverVotes(ctx context.Context, gid int, accessT
 	)
 	if accessToken != "" {
 		tallies, err = s.catalog.WorkCoversUser(ctx, accessToken, workID)
-		if errors.Is(err, catalogclient.ErrInsufficientScope) {
+		// The user lane answers 401 for every reader, not the 403 SCOPE_REQUIRED
+		// this fallback was written for, so signed-in readers saw no tallies at all
+		// while signed-out readers saw them. Degrading loses only the `voted` flag.
+		if errors.Is(err, catalogclient.ErrInsufficientScope) || errors.Is(err, catalogclient.ErrUnauthorized) {
 			tallies, err = s.catalog.WorkCoverVotes(ctx, workID)
 		}
 	} else {

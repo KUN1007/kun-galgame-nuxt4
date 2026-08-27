@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -162,7 +163,10 @@ func TestWorkCoverVotesAnonymousSendsNoUID(t *testing.T) {
 	if _, err := c.WorkCoverVotes(context.Background(), 1000); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotQuery != "include=covers" {
-		t.Fatalf("anonymous read sent %q", gotQuery)
+	if strings.Contains(gotQuery, "uid") || strings.Contains(gotQuery, "user") {
+		t.Fatalf("anonymous read sent an identity: %q", gotQuery)
+	}
+	if !strings.Contains(gotQuery, "include=covers") || !strings.Contains(gotQuery, "nsfw=true") {
+		t.Fatalf("anonymous read sent %q, want include=covers with the population gate open", gotQuery)
 	}
 }
