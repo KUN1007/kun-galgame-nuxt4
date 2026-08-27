@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -238,26 +237,12 @@ func (c *GalgameClient) CatalogNameDetail(
 	}
 	openPopulation(q)
 
-	status, env, appErr := c.getV1Envelope(ctx, "/catalog/names/"+strconv.FormatInt(id, 10), q)
-	if appErr != nil {
-		return nil, false, 0, appErr
-	}
-	switch {
-	case status == http.StatusNotFound:
-		return nil, false, 0, nil
-	case status == http.StatusMovedPermanently && env.Code == catalogMovedCode:
-		var moved struct {
-			CurrentID int64 `json:"current_id"`
-		}
-		if err := json.Unmarshal(env.Data, &moved); err != nil || moved.CurrentID == 0 {
-			return nil, false, 0, nil
-		}
-		return nil, false, moved.CurrentID, nil
-	case env.Code != 0:
-		return nil, false, 0, errors.New(env.Code, env.Message, status)
+	data, found, movedTo, appErr := c.catalogGetRecord(ctx, "/catalog/names/"+strconv.FormatInt(id, 10), q)
+	if appErr != nil || !found {
+		return nil, false, movedTo, appErr
 	}
 	var n CatalogName
-	if err := json.Unmarshal(env.Data, &n); err != nil {
+	if err := json.Unmarshal(data, &n); err != nil {
 		return nil, false, 0, errors.ErrInternal("解析 Catalog 名义详情响应失败")
 	}
 	return &n, true, 0, nil

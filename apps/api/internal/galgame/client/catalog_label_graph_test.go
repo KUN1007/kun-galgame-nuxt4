@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 )
@@ -21,16 +22,16 @@ func graphCatalog(t *testing.T) (*GalgameClient, func() (string, string)) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels/24/relation-graph":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
-				`{"id":24,"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo_hash":"aabbccdd","work_count":33},` +
-				`{"id":993,"display_name":"VisualArt's","localized":{},"logo_hash":"","work_count":120},` +
-				`{"id":994,"name":"Na-Ga","logo_hash":"11223344","work_count":0}],` +
+		case "/v2/catalog/companies/24/graph":
+			_, _ = w.Write([]byte(`{"nodes":[` +
+				`{"id":"24","display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo":{"url":"https://cdn.example/aabbccdd.webp","hash":"aabbccdd","width":200,"height":60},"work_count":33},` +
+				`{"id":"993","display_name":"VisualArt's","localized":{},"logo":null,"work_count":120},` +
+				`{"id":"994","name":"Na-Ga","logo":{"url":"https://cdn.example/11223344.webp","hash":"11223344","width":200,"height":60},"work_count":0}],` +
 				`"edges":[{"from":24,"to":993,"relation":"parent"},` +
-				`{"from":994,"to":993,"relation":"parent"}]}}`))
-		case "/v1/catalog/labels/309/relation-graph":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
-				`{"id":309,"display_name":"无关系社","logo_hash":"","work_count":2}],"edges":[]}}`))
+				`{"from":994,"to":993,"relation":"parent"}]}`))
+		case "/v2/catalog/companies/309/graph":
+			_, _ = w.Write([]byte(`{"nodes":[` +
+				`{"id":"309","display_name":"无关系社","logo":null,"work_count":2}],"edges":[]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
@@ -76,11 +77,13 @@ func TestCatalogLabelRelationGraphReadsTheContractShape(t *testing.T) {
 	}
 
 	path, query := asked()
-	if path != "/v1/catalog/labels/24/relation-graph" {
+	if path != "/v2/catalog/companies/24/graph" {
 		t.Errorf("path = %q", path)
 	}
-	if query != "nsfw=true" {
-		t.Errorf("query = %q, want nsfw=true", query)
+	// The graph face takes the company include vocabulary: without it the nodes
+	// come back as id+name and every logo on the relation map disappears.
+	if want := "include=" + url.QueryEscape(v2CatalogDetailInclude["companies"]) + "&nsfw=true"; query != want {
+		t.Errorf("query = %q, want %q", query, want)
 	}
 }
 

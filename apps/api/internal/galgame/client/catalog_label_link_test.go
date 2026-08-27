@@ -20,18 +20,18 @@ func labelCatalog(t *testing.T) (*GalgameClient, func(string) int) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels/107":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":107,` +
+		case "/v2/catalog/companies/107":
+			_, _ = w.Write([]byte(`{"id":"107",` +
 				`"display_name":"Purple SOFTWARE","links":[` +
 				`{"source":"twitter","url":"https://x.com/purplesoftware"},` +
-				`{"source":"official_site","url":"https://www.purplesoftware.jp"}]}}`))
-		case "/v1/catalog/labels/208":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":208,` +
+				`{"source":"official_site","url":"https://www.purplesoftware.jp"}]}`))
+		case "/v2/catalog/companies/208":
+			_, _ = w.Write([]byte(`{"id":"208",` +
 				`"display_name":"同人サークル","links":[` +
 				`{"source":"twitter","url":"https://x.com/doujin_circle"},` +
-				`{"source":"cien","url":"https://ci-en.dlsite.com/creator/12345"}]}}`))
-		case "/v1/catalog/labels/309":
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":309,"display_name":"无官网社","links":[]}}`))
+				`{"source":"cien","url":"https://ci-en.dlsite.com/creator/12345"}]}`))
+		case "/v2/catalog/companies/309":
+			_, _ = w.Write([]byte(`{"id":"309","display_name":"无官网社","links":[]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
@@ -83,10 +83,10 @@ func TestHydrateOfficialLinksMemoizesPerLabel(t *testing.T) {
 			t.Fatalf("second view lost the link: %q", g.Official[0].Official.Link)
 		}
 	}
-	if n := hits("/v1/catalog/labels/107"); n != 1 {
+	if n := hits("/v2/catalog/companies/107"); n != 1 {
 		t.Fatalf("label 107 fetched %d times, want 1", n)
 	}
-	if n := hits("/v1/catalog/labels/309"); n != 1 {
+	if n := hits("/v2/catalog/companies/309"); n != 1 {
 		t.Fatalf("linkless label 309 fetched %d times, want 1 (negative not cached)", n)
 	}
 }

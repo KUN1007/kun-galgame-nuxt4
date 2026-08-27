@@ -18,17 +18,20 @@ func movedCatalog(t *testing.T, survivor string) (*GalgameClient, *[]string) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
-		case "/v1/catalog/labels/" + survivor:
+		case "/v2/catalog/companies/" + survivor:
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"id":6935,"display_name":"生存ブランド","kind":"game_brand","work_count":12}}`))
-		case "/v1/catalog/labels/13323", "/v1/catalog/labels/13324":
-			w.Header().Set("Location", "/v1/catalog/labels/"+survivor)
-			w.WriteHeader(http.StatusMovedPermanently)
-			_, _ = w.Write([]byte(`{"code":12,"message":"this id was merged away; use current_id",` +
-				`"data":{"entity_type":"label","id":13323,"current_id":6935}}`))
+			_, _ = w.Write([]byte(`{"id":"6935","display_name":"生存ブランド","company_kind":"game_brand","work_count":12}`))
+		case "/v2/catalog/companies/13323", "/v2/catalog/companies/13324":
+			// Captured from company 15845 on the running catalog: v2 announces a
+			// merge as a 404 whose code is ENTITY_MERGED, where v1 sent 301 +
+			// Location. Reading the status alone turns every merge into "absent".
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"type":"https://developer.nextmoe.dev/problems/catalog/entity-merged",` +
+				`"title":"Entity merged","status":404,"code":"ENTITY_MERGED",` +
+				`"object":"company","current_id":"` + survivor + `"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
+			_, _ = w.Write([]byte(`{"title":"Not found","status":404,"code":"NOT_FOUND"}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -51,7 +54,7 @@ func TestCatalogLabelMergedIDReportsSurvivor(t *testing.T) {
 	if rec.DisplayName != "" {
 		t.Fatalf("the survivor's content must never travel under the dead id, got %q", rec.DisplayName)
 	}
-	if len(*seen) != 1 || (*seen)[0] != "/v1/catalog/labels/13323" {
+	if len(*seen) != 1 || (*seen)[0] != "/v2/catalog/companies/13323" {
 		t.Fatalf("client followed the redirect: %v", *seen)
 	}
 }

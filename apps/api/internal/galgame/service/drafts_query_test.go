@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 
@@ -25,7 +26,7 @@ func (r *draftsRecorder) service(t *testing.T) *DraftsService {
 		r.query = req.URL.Query()
 		r.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
 	return NewDraftsService(client.New(srv.URL, "nm_test_key", ""), &GalgameEnricher{})
@@ -44,14 +45,19 @@ func TestDrafts_AsksForUnclaimedWorksOnly(t *testing.T) {
 	if _, appErr := svc.GetDrafts(context.Background(), 2, 24, DraftFilters{}); appErr != nil {
 		t.Fatalf("GetDrafts: %v", appErr)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claimed"); got != "false" {
 		t.Errorf("claimed = %q, want false — anything else lists games kungal already has", got)
 	}
-	if got := rec.get("page"); got != "2" {
-		t.Errorf("page = %q, want 2 — the v1 search face pages by number", got)
+	// v2 pages by an opaque cursor; page= is not in its vocabulary and huma drops
+	// it silently, which would serve page 1 forever under a page-2 URL.
+	if rec.get("page") != "" {
+		t.Errorf("page = %q leaked to the wire", rec.get("page"))
+	}
+	if got := rec.get("cursor"); got == "" || !strings.HasPrefix(got, "cur_") {
+		t.Errorf("cursor = %q, want the cur_ token page 2 encodes to", got)
 	}
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want 24", got)
@@ -70,7 +76,7 @@ func TestDrafts_EntityScopeUsesCatalogIDs(t *testing.T) {
 		param   string
 		want    string
 	}{
-		"label":  {DraftFilters{LabelID: 129}, "label_id", "129"},
+		"label":  {DraftFilters{LabelID: 129}, "company_id", "129"},
 		"tag":    {DraftFilters{TagID: 55}, "tag_id", "55"},
 		"engine": {DraftFilters{EngineID: 7}, "engine_id", "7"},
 	} {

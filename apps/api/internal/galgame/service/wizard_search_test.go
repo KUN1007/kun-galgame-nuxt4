@@ -26,11 +26,11 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		r.mu.Lock()
-		body := `{"code":0,"message":"ok","data":{"items":[],"total":0}}`
+		body := `{"items":[],"total":0}`
 		switch {
-		case req.URL.Path == "/v1/catalog/works/search":
+		case req.URL.Path == "/v2/catalog/works":
 			r.catalogQ = req.URL.Query()
-			body = `{"code":0,"message":"ok","data":{"total":2,"items":[
+			body = `{"total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
 			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
 			   "localized":{"zh-Hans":{"value":"白恋樱","kind":"official"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
@@ -47,19 +47,19 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			   "claimed_by":{"site":"kungal","work_id":0,"state":"live"}},
 			  {"id":18,"display_name":"foreign","cover":"",
 			   "claimed_by":{"site":"moyu","work_id":700,"state":"live"}}
-			]}}`
+			]}`
 		case strings.Contains(req.URL.Path, "/v2/me/claims") || strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()
 			r.claimsPath = req.URL.Path
 			r.claimsAuth = req.Header.Get("Authorization")
 			r.claimsHit++
-			body = `{"code":0,"message":"ok","data":{"items":[
+			body = `{"items":[
 			  {"work_id":64689,"display_name":"曇った瞳に恋してる","site":"kungal",
 			   "product_work_id":64689,"claim_state":"pending","last_event_id":9,
 			   "last_from_state":"draft","last_to_state":"pending","last_reason":null,
 			   "last_actor_uid":7,"last_event_at":"2026-07-31T00:00:00Z",
 			   "first_acted_at":"2026-07-31T00:00:00Z","acted_count":1}
-			],"next_before":0,"total":1}}`
+			],"next_before":0,"total":1}`
 		case strings.HasSuffix(req.URL.Path, "/galgame/search"):
 			r.wikiHits++
 		}
@@ -195,7 +195,7 @@ func TestWizard_PendingComesFromThePerUserClaimFace(t *testing.T) {
 func TestWizard_PendingIsAnEmptyArrayWhenTheUserHasNone(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":null,"next_before":0,"total":0}}`))
+		_, _ = w.Write([]byte(`{"items":null,"next_before":0,"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
 	svc := NewSubmissionService(

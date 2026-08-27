@@ -26,7 +26,7 @@ func (r *searchRecorder) service(t *testing.T) *SearchService {
 		r.query = req.URL.Query()
 		r.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
 	return NewSearchService(nil, client.New(srv.URL, "nm_test_key", ""), &galgameService.GalgameEnricher{}, nil)
@@ -45,8 +45,8 @@ func TestSearchGalgames_AsksTheCatalogWithoutAClaimGate(t *testing.T) {
 	if _, appErr := svc.SearchGalgames(context.Background(), "恋爱", 1, 24, true); appErr != nil {
 		t.Fatalf("SearchGalgames: %v", appErr)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent — catalog is the existence layer", got)

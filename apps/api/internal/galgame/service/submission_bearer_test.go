@@ -44,13 +44,13 @@ func (r *claimPlaneRecorder) server(t *testing.T) *httptest.Server {
 			for _, it := range in.Items {
 				out = append(out, `{"external_id":"`+it.ExternalID+`","work":null}`)
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				strings.Join(out, ",") + `]}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				strings.Join(out, ",") + `],"missing":[]}`))
 			return
 		case strings.HasSuffix(req.URL.Path, "/catalog/works"):
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				`{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"draft"}}` +
-				`],"next_cursor":null}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				`{"object":"work","id":"90210","claim":{"site":"kungal","site_work_id":"90210","state":"draft"}}` +
+				`],"next_cursor":null}`))
 			return
 		}
 
@@ -79,8 +79,8 @@ func (r *claimPlaneRecorder) server(t *testing.T) *httptest.Server {
 			_, _ = w.Write([]byte(`{"object":"claim","id":"90210","state":"draft"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{` +
-			`"work_id":90210,"from_state":"draft","to_state":"pending","event_id":7}}`))
+		_, _ = w.Write([]byte(`{` +
+			`"work_id":90210,"from_state":"draft","to_state":"pending","event_id":7}`))
 	}))
 	t.Cleanup(srv.Close)
 	return srv

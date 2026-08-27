@@ -38,7 +38,7 @@ func TestCatalogLibrary_OnlyTheLibraryFlagLeavesTheForum(t *testing.T) {
 		rec.path = req.URL.Path
 		rec.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -64,7 +64,7 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 		rec.query = req.URL.Query()
 		rec.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0}}`))
+		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -79,8 +79,8 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	if page.Total != 0 {
 		t.Errorf("total = %d, want 0 from empty upstream", page.Total)
 	}
-	if rec.path != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", rec.path)
+	if rec.path != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", rec.path)
 	}
 	if got := rec.get("claim_state"); got != "" {
 		t.Errorf("claim_state = %q, want it absent", got)

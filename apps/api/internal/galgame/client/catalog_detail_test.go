@@ -24,12 +24,12 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) (*httptest.
 		case req.URL.Path == "/v2/catalog/works" && strings.Contains(req.URL.Query().Get("ids"), itoa(catalogID)):
 			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
 				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"}}]}`))
-		case req.URL.Path == "/v1/catalog/works/"+itoa(catalogID):
+		case req.URL.Path == "/v2/catalog/works/"+itoa(catalogID):
 			seen = req.URL.Query()
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":` + body + `}`))
+			_, _ = w.Write([]byte(body))
 		default:
 			t.Errorf("unexpected upstream call: %s", req.URL.Path)
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{}}`))
+			_, _ = w.Write([]byte(`{"object":"work","id":"0"}`))
 		}
 	}))
 	t.Cleanup(srv.Close)
@@ -54,9 +54,9 @@ func fullOf(t *testing.T, body string) dto.NextMoeGalgameDetailFull {
 
 func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	t.Run("landscape present", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"},
-			{"url":"https://cdn.example/ef/gh/banner.webp","kind":"dig","width":1280,"height":720,"thumbhash":"B"}
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","cover_kind":"main","width":600,"height":800,"thumbhash":"P"},
+			{"url":"https://cdn.example/ef/gh/banner.webp","cover_kind":"dig","width":1280,"height":720,"thumbhash":"B"}
 		]}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/ef/gh/banner.webp" {
@@ -72,8 +72,8 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	})
 
 	t.Run("portrait only falls back", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"}
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","cover_kind":"main","width":600,"height":800,"thumbhash":"P"}
 		]}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/ab/cd/portrait.webp" {
@@ -82,9 +82,9 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 	})
 
 	t.Run("dims unknown falls back to the pin", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/ab/cd/pinned.webp","kind":"main"},
-			{"url":"https://cdn.example/ef/gh/other.webp","kind":"dig"}
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/pinned.webp","cover_kind":"main"},
+			{"url":"https://cdn.example/ef/gh/other.webp","cover_kind":"dig"}
 		]}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/ab/cd/pinned.webp" {
@@ -95,13 +95,12 @@ func TestCatalogDetail_HeroPrefersTheLandscapeCover(t *testing.T) {
 
 func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 	t.Run("banner slot wins", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/ab/cd/portrait.webp","kind":"main","width":600,"height":800,"thumbhash":"P"},
-			{"url":"https://cdn.example/ef/gh/banner.webp","kind":"dig","width":1280,"height":720,"thumbhash":"B"}
-		],"cover_slots":{
-			"portrait":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P"},
-			"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B"}
-		}}`
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/ab/cd/portrait.webp","cover_kind":"main","width":600,"height":800,"thumbhash":"P"},
+			{"url":"https://cdn.example/ef/gh/banner.webp","cover_kind":"dig","width":1280,"height":720,"thumbhash":"B"}
+		],
+		"cover":{"url":"https://cdn.example/ab/cd/portrait.webp","width":600,"height":800,"thumbhash":"P","sexual":"safe","violence":null},
+		"banner":{"url":"https://cdn.example/ef/gh/banner.webp","width":1280,"height":720,"thumbhash":"B","sexual":"safe","violence":null}}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/ef/gh/banner.webp" ||
 			f.EffectiveBannerWidth != 1280 || f.EffectiveBannerThumbhash != "B" {
@@ -111,13 +110,12 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 	})
 
 	t.Run("null banner falls back to the portrait slot, not to the wide disc face", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/11/22/disc.webp","kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"},
-			{"url":"https://cdn.example/33/44/dig.webp","kind":"dig","width":720,"height":1080,"thumbhash":"G"}
-		],"cover_slots":{
-			"portrait":{"url":"https://cdn.example/33/44/dig.webp","width":720,"height":1080,"thumbhash":"G"},
-			"banner":null
-		}}`
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/11/22/disc.webp","cover_kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"},
+			{"url":"https://cdn.example/33/44/dig.webp","cover_kind":"dig","width":720,"height":1080,"thumbhash":"G"}
+		],
+		"cover":{"url":"https://cdn.example/33/44/dig.webp","width":720,"height":1080,"thumbhash":"G","sexual":"safe","violence":null},
+		"banner":null}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/33/44/dig.webp" {
 			t.Errorf("hero = %q, want the portrait slot — the disc face is not key art", f.EffectiveBannerURL)
@@ -128,9 +126,9 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 	})
 
 	t.Run("both slots null still shows the pin", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
-			{"url":"https://cdn.example/11/22/disc.webp","kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"}
-		],"cover_slots":{"portrait":null,"banner":null}}`
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[
+			{"url":"https://cdn.example/11/22/disc.webp","cover_kind":"pkgmed","width":1084,"height":1080,"thumbhash":"D"}
+		],"cover":null,"banner":null}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "https://cdn.example/11/22/disc.webp" {
 			t.Errorf("hero = %q, want covers[0] rather than a blank frame", f.EffectiveBannerURL)
@@ -138,8 +136,7 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 	})
 
 	t.Run("no covers at all leaves the hero empty", func(t *testing.T) {
-		body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[],
-			"cover_slots":{"portrait":null,"banner":null}}`
+		body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","covers":[],"cover":null,"banner":null}`
 		f := fullOf(t, body)
 		if f.EffectiveBannerURL != "" {
 			t.Errorf("hero = %q, want empty", f.EffectiveBannerURL)
@@ -148,12 +145,12 @@ func TestCatalogDetail_HeroReadsTheCatalogCoverSlots(t *testing.T) {
 }
 
 func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","labels":[
-		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja","work_count":42,
-		 "localized":{"zh-Hans":{"value":"戏画","kind":"translation"}}},
-		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"publisher","lang":"ja","work_count":42},
-		{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"brand","lang":"ja","work_count":42},
-		{"id":22,"display_name":"Circle","label_kind":"doujin_circle","kind":"circle","lang":"en","work_count":3,
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","companies":[
+		{"object":"company","id":"11","display_name":"戯画","company_kind":"game_brand","attribution_role":"developer","lang":"ja","work_count":42,
+		 "localized":{"zh-Hans":{"value":"戏画","is_machine":false}}},
+		{"object":"company","id":"11","display_name":"戯画","company_kind":"game_brand","attribution_role":"publisher","lang":"ja","work_count":42},
+		{"object":"company","id":"11","display_name":"戯画","company_kind":"game_brand","attribution_role":"brand","lang":"ja","work_count":42},
+		{"object":"company","id":"22","display_name":"Circle","company_kind":"doujin_circle","attribution_role":"circle","lang":"en","work_count":3,
 		 "localized":{}}
 	]}`
 	f := fullOf(t, body)
@@ -189,7 +186,7 @@ func TestCatalogDetail_LabelsDedupPerLabelID(t *testing.T) {
 }
 
 func TestCatalogDetail_WorkCountReachesAllThreeChipFamilies(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja",
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja",
 		"labels":[{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja","work_count":42}],
 		"engines":[{"id":31,"name":"KiriKiri","work_count":1337}],
 		"tags":[{"name":"純愛","canonical_id":51,"kind":"content","spoiler":0,"sexual":false,"work_count":9001}]}`
@@ -208,7 +205,7 @@ func TestCatalogDetail_WorkCountReachesAllThreeChipFamilies(t *testing.T) {
 
 func TestCatalogDetail_TagsArriveAtTheFullSpoilerCeiling(t *testing.T) {
 	const gid, catalogID = 777, 4242
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja",
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja",
 		"tags":[{"name":"純愛","canonical_id":51,"kind":"content","spoiler":0,"sexual":false},
 		        {"name":"ヒロイン死亡","canonical_id":52,"kind":"content","spoiler":2,"sexual":false}]}`
 	srv, seen := detailStub(t, gid, catalogID, body)
@@ -218,8 +215,11 @@ func TestCatalogDetail_TagsArriveAtTheFullSpoilerCeiling(t *testing.T) {
 	if appErr != nil || !found {
 		t.Fatalf("CatalogWorkDetail = (%v, %v)", appErr, found)
 	}
-	if got := seen.Get("spoilers"); got != "2" {
-		t.Errorf("spoilers = %q, want the full ceiling 2 — the tag panel filters client-side", got)
+	if got := seen.Get("spoiler"); got != "major" {
+		t.Errorf("spoiler = %q, want the full ceiling major — the tag panel filters client-side", got)
+	}
+	if seen.Has("spoilers") {
+		t.Error("v1's numeric spoilers= leaked; v2 drops it silently and answers the none ceiling")
 	}
 
 	f := CatalogDetailToFull(context.Background(), d, gid)
@@ -229,7 +229,7 @@ func TestCatalogDetail_TagsArriveAtTheFullSpoilerCeiling(t *testing.T) {
 }
 
 func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja",
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja",
 		"labels":[{"id":11,"display_name":"戯画","label_kind":"game_brand","kind":"developer","lang":"ja"}],
 		"engines":[{"id":31,"name":"KiriKiri"}],
 		"tags":[{"name":"純愛","canonical_id":51,"kind":"content","spoiler":0,"sexual":false},
@@ -254,7 +254,7 @@ func TestCatalogDetail_MissingWorkCountKeyIsZero(t *testing.T) {
 }
 
 func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","characters":[
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","characters":[
 		{"id":11,"display_name":"藤田 佳奈","latin":"Fujita Kana","kind":"main","spoiler":0,
 		 "localized":{"zh-Hans":{"value":"藤田佳奈","kind":"translation","machine":true}},
 		 "image":"https://cdn.example/ab/cd/bust.webp","figure":"https://cdn.example/ef/gh/figure.webp",
@@ -305,7 +305,7 @@ func TestCatalogDetail_RosterKeepsBothArtsApart(t *testing.T) {
 }
 
 func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","ratings":[
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","ratings":[
 		{"source":"vndb","score":8.1,"vote_count":900,"rank":12,
 		 "distribution":[{"score":8,"count":500},{"score":9,"count":300}],
 		 "stats":{"average":8.44}},
@@ -352,9 +352,9 @@ func TestCatalogDetail_RatingsCarryTheirPerSourceDetail(t *testing.T) {
 }
 
 func TestCatalogDetail_ImagesCarryTheirSource(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"r18","olang":"ja","covers":[
-		{"url":"https://cdn.example/ab/cd/a.webp","kind":"main","source":"vndb","sexual":1},
-		{"url":"https://cdn.example/ef/gh/b.webp","kind":"main","source":"upscale"}
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"r18","olang":"ja","covers":[
+		{"url":"https://cdn.example/ab/cd/a.webp","cover_kind":"main","source":"vndb","sexual":1},
+		{"url":"https://cdn.example/ef/gh/b.webp","cover_kind":"main","source":"upscale"}
 	],"screenshots":[
 		{"url":"https://cdn.example/11/22/s1.webp","source":"vndb","sexual":0},
 		{"url":"https://cdn.example/33/44/s2.webp","source":"getchu","sexual":2}
@@ -370,7 +370,7 @@ func TestCatalogDetail_ImagesCarryTheirSource(t *testing.T) {
 }
 
 func TestCatalogDetail_PlaytimesCarryTheirSource(t *testing.T) {
-	body := `{"id":4242,"display_name":"Kun","content_rating":"all_ages","olang":"ja","playtimes":[
+	body := `{"object":"work","id":"4242","display_name":"Kun","content_rating":"all_ages","olang":"ja","playtimes":[
 		{"source":"vndb","minutes":384,"vote_count":39},
 		{"source":"erogamescape","minutes":240,"vote_count":0}
 	]}`

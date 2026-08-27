@@ -13,8 +13,8 @@ func TestTagList_AsksForTagsThatHaveWorks(t *testing.T) {
 	if _, appErr := svc.GetList(context.Background(), url.Values{}, true); appErr != nil {
 		t.Fatalf("unexpected error: %v", appErr)
 	}
-	if got := rec.get("has_works"); got != "1" {
-		t.Fatalf("has_works = %q, want \"1\" — the empty vocabulary is back in the list", got)
+	if got := rec.get("has_works"); got != "true" {
+		t.Fatalf("has_works = %q, want \"true\" — v2 types it as a real boolean and 400s on 1; without it the empty vocabulary is back in the list", got)
 	}
 	if got := rec.get("nsfw"); got != "true" {
 		t.Fatalf("nsfw = %q, want true — the index is the open population, SFW filters locally", got)
@@ -28,8 +28,8 @@ func TestOfficialList_AsksForLabelsThatHaveWorks(t *testing.T) {
 	if _, appErr := svc.GetList(context.Background(), url.Values{}); appErr != nil {
 		t.Fatalf("unexpected error: %v", appErr)
 	}
-	if got := rec.get("has_works"); got != "1" {
-		t.Fatalf("has_works = %q, want \"1\" — the empty vocabulary is back in the list", got)
+	if got := rec.get("has_works"); got != "true" {
+		t.Fatalf("has_works = %q, want \"true\" — v2 types it as a real boolean and 400s on 1; without it the empty vocabulary is back in the list", got)
 	}
 	if got := rec.get("nsfw"); got != "true" {
 		t.Fatalf("nsfw = %q, want true", got)
@@ -47,7 +47,7 @@ func TestOfficialList_KindFilterKeepsHasWorks(t *testing.T) {
 	if got := rec.get("kind"); got != "game_brand" {
 		t.Fatalf("kind = %q, want \"game_brand\"", got)
 	}
-	if got := rec.get("has_works"); got != "1" {
-		t.Fatalf("has_works = %q, want \"1\"", got)
+	if got := rec.get("has_works"); got != "true" {
+		t.Fatalf("has_works = %q, want \"true\"", got)
 	}
 }

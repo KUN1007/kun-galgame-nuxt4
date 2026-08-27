@@ -13,15 +13,15 @@ func graphService(t *testing.T) *OfficialService {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path != "/v1/catalog/labels/24/relation-graph" {
+		if r.URL.Path != "/v2/catalog/companies/24/graph" {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(`{"code":4,"message":"资源不存在"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{"nodes":[` +
+		_, _ = w.Write([]byte(`{"nodes":[` +
 			`{"id":24,"display_name":"ねこねこソフト","localized":{"zh-Hans":{"value":"猫猫社","kind":"translation"}},"logo_hash":"aabbccddeeff","work_count":33},` +
 			`{"id":993,"display_name":"VisualArt's","logo_hash":"","work_count":120}],` +
-			`"edges":[{"from":24,"to":993,"relation":"parent"}]}}`))
+			`"edges":[{"from":24,"to":993,"relation":"parent"}]}`))
 	}))
 	t.Cleanup(srv.Close)
 	return NewOfficialService(client.New(srv.URL, "nm_test_key", "https://cdn.test/image"), nil)

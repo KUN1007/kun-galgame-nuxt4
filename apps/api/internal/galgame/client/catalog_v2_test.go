@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -69,46 +70,252 @@ func TestV2CatalogQuery_PageBecomesCursor(t *testing.T) {
 // Its own variables, never the application's: internal/testdb/rule_test.go
 // fails the whole suite on os.Getenv("KUN_ in a test, so that a smoke run can
 // never silently inherit a live catalog from a stray .env.
-func TestLiveV2Adapter(t *testing.T) {
+//
+// This is the only check that catches the failure this package keeps having.
+// The 2026-08 cutover compiled and its suite was green because it rewrote the
+// assertions alongside the code; nothing failed, the pages just went blank. So
+// every face the forum reads gets driven here against a real catalog, and each
+// assertion names a field that a page actually renders.
+func liveClient(t *testing.T) *GalgameClient {
+	t.Helper()
 	base, key := os.Getenv("SMOKE_CATALOG_BASE"), os.Getenv("SMOKE_CATALOG_KEY")
 	if base == "" || key == "" || os.Getenv("SMOKE_CATALOG_V2") == "" {
 		t.Skip("set SMOKE_CATALOG_V2=1 with SMOKE_CATALOG_BASE and SMOKE_CATALOG_KEY")
 	}
-	c := New(base, key, os.Getenv("SMOKE_IMAGE_PUBLIC_BASE_URL"))
-	q := url.Values{"limit": {"2"}, "include": {"titles,covers,refs"}}
-	OpenPopulation(q)
-	page, appErr := c.CatalogWorksSearch(context.Background(), q)
+	return New(base, key, os.Getenv("SMOKE_IMAGE_PUBLIC_BASE_URL"))
+}
+
+func TestLiveV2Works(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+
+	q := OpenPopulation(url.Values{"limit": {"3"}, "include": {"names,covers,refs,labels"}})
+	page, appErr := c.CatalogWorksSearch(ctx, q)
 	if appErr != nil {
 		t.Fatalf("CatalogWorksSearch: %v", appErr)
 	}
 	if len(page.Items) == 0 {
 		t.Fatal("empty works page")
 	}
-	b := CatalogItemToBrief(context.Background(), &page.Items[0])
-	if b.ID <= 0 || b.EffectiveBannerURL == "" {
-		t.Fatalf("brief not rewritten: %+v", b)
+	if page.Total == 0 {
+		t.Error("total = 0 — include_total did not reach the registry lane")
 	}
-	d, found, appErr := c.CatalogWorkDetail(context.Background(), b.ID)
-	if appErr != nil {
-		t.Fatalf("CatalogWorkDetail: %v", appErr)
-	}
-	if !found || d == nil || d.DisplayName == "" {
-		t.Fatalf("detail missing: found=%v d=%+v", found, d)
+	b := CatalogItemToBrief(ctx, &page.Items[0])
+	if b.ID <= 0 || b.Name == "" || b.EffectiveBannerURL == "" {
+		t.Fatalf("card fields missing: %+v", b)
 	}
 
-	labels, appErr := c.CatalogTaxonomyList(context.Background(), "labels", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+	d, found, appErr := c.CatalogWorkDetail(ctx, b.ID)
+	if appErr != nil || !found || d == nil {
+		t.Fatalf("CatalogWorkDetail(%d) = (%v, %v)", b.ID, appErr, found)
+	}
+	full := CatalogDetailToFull(ctx, d, b.ID)
+	if full.Name == "" {
+		t.Error("detail name empty")
+	}
+	if full.EffectiveBannerURL == "" {
+		t.Error("detail hero empty — the cover slots did not survive the rewrite")
+	}
+	if len(full.Official) == 0 {
+		t.Error("no 制作方 rows — the companies block decoded to nothing")
+	}
+	// A tag row the forum drops when canonical_id is 0, which is what v2 naming
+	// the same column `id` would produce.
+	if len(full.Tag) == 0 {
+		t.Error("no tag rows — a canonical_id of 0 drops every one of them")
+	}
+	for i := range full.Tag {
+		if full.Tag[i].Tag.ID == 0 || full.Tag[i].Tag.Name == "" {
+			t.Errorf("tag %d = %+v, want an id and a name", i, full.Tag[i].Tag)
+			break
+		}
+	}
+}
+
+func TestLiveV2DetailFaces(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+
+	labels, appErr := c.CatalogTaxonomyList(ctx, "labels", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+	if appErr != nil || len(labels.Items) == 0 {
+		t.Fatalf("company list: err=%v items=%d total=%d", appErr, len(labels.Items), labels.Total)
+	}
+	id := strconv.FormatInt(labels.Items[0].ID, 10)
+
+	label, found, _, appErr := c.CatalogLabel(ctx, id)
+	if appErr != nil || !found {
+		t.Fatalf("CatalogLabel(%s) = (%v, %v)", id, appErr, found)
+	}
+	if label.DisplayName == "" || label.WorkCount == 0 {
+		t.Errorf("company %s = %+v, want a name and a work count", id, label)
+	}
+
+	graph, found, appErr := c.CatalogLabelRelationGraph(ctx, id)
 	if appErr != nil {
-		t.Fatalf("CatalogTaxonomyList labels: %v", appErr)
+		t.Fatalf("CatalogLabelRelationGraph(%s): %v", id, appErr)
 	}
-	if len(labels.Items) == 0 {
-		t.Fatalf("company list empty: total=%d", labels.Total)
+	if found && len(graph.Nodes) == 0 {
+		t.Errorf("company %s graph answered with no nodes", id)
 	}
-	tags, appErr := c.CatalogTaxonomyList(context.Background(), "tags", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+
+	tags, appErr := c.CatalogTaxonomyList(ctx, "tags", OpenPopulation(url.Values{"has_works": {"1"}, "limit": {"3"}}))
+	if appErr != nil || len(tags.Items) == 0 {
+		t.Fatalf("tag list: err=%v items=%d total=%d", appErr, len(tags.Items), tags.Total)
+	}
+	tag, found, appErr := c.CatalogTag(ctx, strconv.FormatInt(tags.Items[0].ID, 10))
+	if appErr != nil || !found || tag.Label() == "" {
+		t.Fatalf("CatalogTag = (%v, %v, %q)", appErr, found, tag.Label())
+	}
+
+	series, appErr := c.CatalogTaxonomyList(ctx, "series", OpenPopulation(url.Values{"limit": {"3"}}))
+	if appErr != nil || len(series.Items) == 0 {
+		t.Fatalf("series list: err=%v items=%d", appErr, len(series.Items))
+	}
+
+	// The staff page: the credits block lives on its own sub-face and is spliced
+	// back in, inheriting the parent's population gate.
+	hits, appErr := c.CatalogEntitySearch(ctx, "names", "田村", 3)
 	if appErr != nil {
-		t.Fatalf("CatalogTaxonomyList tags: %v", appErr)
+		t.Fatalf("CatalogEntitySearch names: %v", appErr)
 	}
-	if len(tags.Items) == 0 {
-		t.Fatalf("tag list empty: total=%d", tags.Total)
+	if len(hits) == 0 {
+		t.Fatal("staff search found nothing")
+	}
+	if hits[0].EntityType != "name" {
+		t.Errorf("hit entity_type = %q, want name", hits[0].EntityType)
+	}
+	name, found, _, appErr := c.CatalogNameDetail(ctx, hits[0].ID, 50, 0)
+	if appErr != nil || !found {
+		t.Fatalf("CatalogNameDetail(%d) = (%v, %v)", hits[0].ID, appErr, found)
+	}
+	if CatalogEntityName(ctx, name.Localized, name.DisplayName, name.Latin) == "" {
+		t.Error("staff name empty")
+	}
+	if len(name.Credits) == 0 {
+		t.Errorf("staff %d has no credits — the sub-face splice produced nothing", hits[0].ID)
+	}
+
+	chars, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 3)
+	if appErr != nil || len(chars) == 0 {
+		t.Fatalf("character search: err=%v hits=%d", appErr, len(chars))
+	}
+	ch, found, _, appErr := c.CatalogCharacterDetail(ctx, chars[0].ID, 50, 0, true)
+	if appErr != nil || !found {
+		t.Fatalf("CatalogCharacterDetail(%d) = (%v, %v)", chars[0].ID, appErr, found)
+	}
+	if CatalogEntityName(ctx, ch.Localized, ch.DisplayName, ch.Latin) == "" {
+		t.Error("character name empty")
+	}
+	if ch.Image == "" && ch.Figure == "" {
+		t.Errorf("character %d has neither art — the image objects did not fold to URLs", chars[0].ID)
+	}
+	for i := range ch.Traits {
+		if ch.Traits[i].LocalName() == "" {
+			t.Errorf("trait %d renders as an empty chip: %+v", i, ch.Traits[i])
+			break
+		}
+	}
+}
+
+func TestLiveV2Calendar(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+	for _, bucket := range []string{"", "/pending", "/tba"} {
+		page, appErr := c.CatalogCalendar(ctx, bucket, OpenPopulation(url.Values{"limit": {"3"}}))
+		if appErr != nil {
+			t.Errorf("CatalogCalendar(%q): %v", bucket, appErr)
+			continue
+		}
+		if len(page.Items) == 0 {
+			t.Errorf("CatalogCalendar(%q) answered no rows", bucket)
+		}
+	}
+}
+
+// The gid bridge is the one lane that was already on v2, and it is how every
+// legacy forum id finds its catalog work. HydrateCardsByIDs drops an id it
+// cannot resolve, so a break here is a short page, never an error.
+func TestLiveV2GIDBridge(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+	raw := os.Getenv("SMOKE_GIDS")
+	if raw == "" {
+		t.Skip("set SMOKE_GIDS to a comma-separated list of published forum gids")
+	}
+	var gids []int
+	for _, part := range strings.Split(raw, ",") {
+		if n, err := strconv.Atoi(strings.TrimSpace(part)); err == nil {
+			gids = append(gids, n)
+		}
+	}
+	ids, appErr := c.CatalogWorkIDs(ctx, gids)
+	if appErr != nil {
+		t.Fatalf("CatalogWorkIDs: %v", appErr)
+	}
+	// A handful of unresolved gids are forum rows whose catalog work was deleted;
+	// they are data drift and always have been. A PROPORTION of them is the read
+	// regression this test exists for — the 2026-08 olang bug lost 1.6% of the
+	// catalogue this way, and because HydrateCardsByIDs skips what it cannot
+	// resolve, the only symptom was pages that came back one row short.
+	if lost := len(gids) - len(ids); lost > 0 {
+		var sample []int
+		for _, gid := range gids {
+			if _, ok := ids[gid]; !ok && len(sample) < 20 {
+				sample = append(sample, gid)
+			}
+		}
+		t.Logf("bridge resolved %d of %d gids; unresolved: %v", len(ids), len(gids), sample)
+		if lost*200 > len(gids) {
+			t.Errorf("%d of %d gids (%.1f%%) resolve to nothing — that is a lane fault, not drift",
+				lost, len(gids), float64(lost)*100/float64(len(gids)))
+		}
+	}
+	rows, appErr := c.CatalogRowsByGIDs(ctx, gids, "names,covers,refs,labels", "all")
+	if appErr != nil {
+		t.Fatalf("CatalogRowsByGIDs: %v", appErr)
+	}
+	// A shortfall here is normally the forum's own gates doing their job: catalog
+	// hides a work the forum still has published, or the claim's site_work_id no
+	// longer round-trips to the gid the anchor names. Those are drift, not a read
+	// regression. Only a LIVE row that failed to hydrate means the lane is broken,
+	// and that is the case worth a red test — HydrateCardsByIDs skips what it
+	// cannot resolve, so upstream breakage shows up as a short page, never an error.
+	if len(rows) != len(gids) {
+		var missingIDs []int64
+		byCatalogID := map[int64]int{}
+		for _, gid := range gids {
+			if _, ok := rows[gid]; !ok && ids[gid] != 0 {
+				missingIDs = append(missingIDs, ids[gid])
+				byCatalogID[ids[gid]] = gid
+			}
+		}
+		explained, dropped := 0, map[int64]string{}
+		if len(missingIDs) > 0 {
+			back, appErr := c.CatalogRowsByCatalogIDs(ctx, missingIDs, false)
+			if appErr != nil {
+				t.Fatalf("re-reading the missing rows: %v", appErr)
+			}
+			for id := range back {
+				row := back[id]
+				switch {
+				case row.ClaimedBy == nil:
+					dropped[id] = "no claim"
+				case row.ClaimedBy.State == "live":
+					dropped[id] = "LIVE and still lost"
+				default:
+					explained++
+				}
+			}
+		}
+		t.Logf("hydrated %d of %d gids; %d explained by claim state, %d with no catalog row",
+			len(rows), len(gids), explained, len(gids)-len(ids))
+		for id, why := range dropped {
+			t.Errorf("gid %d -> catalog %d: %s", byCatalogID[id], id, why)
+		}
+	}
+	for gid := range rows {
+		row := rows[gid]
+		b := CatalogItemToBrief(ctx, &row)
+		if b.Name == "" {
+			t.Errorf("gid %d hydrated with no name", gid)
+			break
+		}
 	}
 }
 

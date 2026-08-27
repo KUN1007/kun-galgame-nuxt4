@@ -14,15 +14,15 @@ import (
 func TestCatalogLabel_RendersTheChineseNameAndDecodesObjectAliases(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":{
-			"id":13,"display_name":"ねこねこソフト","lang":"ja","kind":"game_brand",
-			"localized":{"zh-Hans":{"value":"猫猫社","kind":"translation","machine":true}},
+		_, _ = w.Write([]byte(`{
+			"id":"13","display_name":"ねこねこソフト","lang":"ja","company_kind":"game_brand",
+			"localized":{"zh-Hans":{"value":"猫猫社","kind":"translation","is_machine":true}},
 			"aliases":[
-			  {"value":"猫猫社","lang":"zh-Hans","kind":"translation","machine":true},
+			  {"value":"猫猫社","lang":"zh-Hans","kind":"translation","is_machine":true},
 			  {"value":"NekoNeko-soft","lang":"en","kind":"spelling_variant"}],
 			"intros":[
 			  {"lang":"ja","intro":"げんぶん","source":"bangumi"},
-			  {"lang":"zh-Hans","intro":"译文","source":"bangumi","machine":true}]}}`))
+			  {"lang":"zh-Hans","intro":"译文","source":"bangumi","is_machine":true}]}`))
 	}))
 	t.Cleanup(srv.Close)
 

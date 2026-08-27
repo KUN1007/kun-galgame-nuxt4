@@ -110,8 +110,8 @@ func adoptedStub(t *testing.T, rows map[int64]string) *GalgameClient {
 			for _, it := range body.Items {
 				out = append(out, `{"external_id":"`+it.ExternalID+`","work":null}`)
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				strings.Join(out, ",") + `]}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				strings.Join(out, ",") + `]}`))
 		case strings.HasSuffix(req.URL.Path, "/catalog/works"):
 			var items []string
 			for _, raw := range strings.Split(req.URL.Query().Get("ids"), ",") {
@@ -125,8 +125,8 @@ func adoptedStub(t *testing.T, rows map[int64]string) *GalgameClient {
 					items = append(items, frag)
 				}
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				strings.Join(items, ",") + `],"next_cursor":null}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				strings.Join(items, ",") + `],"next_cursor":null}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

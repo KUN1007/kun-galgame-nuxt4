@@ -114,7 +114,7 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 			"include": {"refs"},
 		}
 		openPopulation(q)
-		data, appErr := c.GetV1(ctx, "/catalog/works", q)
+		data, appErr := c.CatalogGet(ctx, "/catalog/works", q)
 		if appErr != nil {
 			return nil, appErr
 		}
@@ -234,7 +234,7 @@ func (c *GalgameClient) worksByCatalogIDs(ctx context.Context, ids []int64, incl
 		}
 		applyWorksGate(q, contentLimit)
 
-		data, appErr := c.GetV1(ctx, "/catalog/works", q)
+		data, appErr := c.CatalogGet(ctx, "/catalog/works", q)
 		if appErr != nil {
 			return nil, appErr
 		}
@@ -458,7 +458,7 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 		"include":  {"credits"},
 	}
 	openPopulation(q)
-	data, appErr := c.GetV1(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/works/"+strconv.FormatInt(catalogID, 10), q)
 	if appErr != nil {
 		if appErr.StatusCode == 404 {
 			return nil, false, nil
@@ -502,7 +502,7 @@ type CatalogWorksPage struct {
 }
 
 func (c *GalgameClient) CatalogWorksList(ctx context.Context, q url.Values) (*CatalogWorksPage, *errors.AppError) {
-	data, appErr := c.GetV1(ctx, "/catalog/works", q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/works", q)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -576,7 +576,7 @@ func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, i
 }
 
 func (c *GalgameClient) CatalogWorksSearch(ctx context.Context, q url.Values) (*CatalogWorksPage, *errors.AppError) {
-	data, appErr := c.GetV1(ctx, "/catalog/works/search", q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/works/search", q)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -588,7 +588,7 @@ func (c *GalgameClient) CatalogWorksSearch(ctx context.Context, q url.Values) (*
 }
 
 func (c *GalgameClient) CatalogCalendar(ctx context.Context, bucket string, q url.Values) (*CatalogWorksPage, *errors.AppError) {
-	data, appErr := c.GetV1(ctx, "/catalog/calendar"+bucket, q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/calendar"+bucket, q)
 	if appErr != nil {
 		return nil, appErr
 	}

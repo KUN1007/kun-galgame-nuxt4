@@ -8,60 +8,98 @@ import (
 	"testing"
 )
 
-func characterStub(t *testing.T, id int64, status int, body string) (*httptest.Server, *url.Values) {
+// v2 moved the character's works onto their own cursor-paged sub-face, so the
+// stub answers two routes and records whether the sub-face was reached at all —
+// that call, not an include= token, is what "works were asked for" now means.
+func characterStub(t *testing.T, id int64, status int, body string) (*httptest.Server, *characterCalls) {
 	t.Helper()
-	var seen url.Values
+	calls := &characterCalls{}
+	detail := "/v2/catalog/characters/" + itoa(id)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/v1/catalog/characters/"+itoa(id) {
+		w.Header().Set("Content-Type", "application/json")
+		switch req.URL.Path {
+		case detail:
+			calls.detail = req.URL.Query()
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(body))
+		case detail + "/appearances":
+			calls.appearances = req.URL.Query()
+			_, _ = w.Write([]byte(calls.appearanceBody))
+		default:
 			t.Errorf("unexpected upstream call: %s", req.URL.Path)
 		}
-		seen = req.URL.Query()
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
-		_, _ = w.Write([]byte(v1Envelope(status, body)))
 	}))
 	t.Cleanup(srv.Close)
-	return srv, &seen
+	return srv, calls
+}
+
+type characterCalls struct {
+	detail         url.Values
+	appearances    url.Values
+	appearanceBody string
 }
 
 func TestCatalogCharacter_WorksAreIncludeGatedOnTheWire(t *testing.T) {
-	srv, seen := characterStub(t, 5, http.StatusOK,
-		`{"id":5,"display_name":"朝倉","traits":[],"intros":[],"refs":[]}`)
+	srv, calls := characterStub(t, 5, http.StatusOK,
+		`{"object":"character","id":"5","display_name":"朝倉","traits":[],"intros":[],"refs":[]}`)
+	calls.appearanceBody = `{"object":"list","items":[],"next_cursor":null}`
 	c := New(srv.URL, "nm_test_key", "")
 
 	if _, _, _, appErr := c.CatalogCharacterDetail(context.Background(), 5, 50, 0, false); appErr != nil {
 		t.Fatalf("CatalogCharacterDetail: %v", appErr)
 	}
-	if got := seen.Get("include"); got != "" {
-		t.Errorf("include = %q with withWorks=false, want it absent", got)
+	if calls.appearances != nil {
+		t.Error("the appearances sub-face was fetched with withWorks=false")
 	}
-	if got := seen.Get("spoilers"); got != "2" {
-		t.Errorf("spoilers = %q, want the full ceiling 2", got)
+	// The detail include is unconditional and total: v2 answers a bare id+name
+	// row for anything it was not asked for, so dropping a token blanks a panel.
+	if got := calls.detail.Get("include"); got != v2CatalogDetailInclude["characters"] {
+		t.Errorf("include = %q, want the full character vocabulary", got)
 	}
-	if got := seen.Get("nsfw"); got != "true" {
+	if got := calls.detail.Get("spoiler"); got != "major" {
+		t.Errorf("spoiler = %q, want the full ceiling major", got)
+	}
+	if calls.detail.Has("spoilers") {
+		t.Error("v1's numeric spoilers= leaked; v2 drops it silently and hides every spoilered trait")
+	}
+	if got := calls.detail.Get("nsfw"); got != "true" {
 		t.Errorf("nsfw = %q, want the population open", got)
 	}
 
 	if _, _, _, appErr := c.CatalogCharacterDetail(context.Background(), 5, 50, 0, true); appErr != nil {
 		t.Fatalf("CatalogCharacterDetail(withWorks): %v", appErr)
 	}
-	if got := seen.Get("include"); got != "works" {
-		t.Errorf("include = %q with withWorks=true, want works", got)
+	if calls.appearances == nil {
+		t.Fatal("the appearances sub-face was not fetched with withWorks=true")
+	}
+	// The sub-face gates its own population, so it has to inherit the parent's.
+	if got := calls.appearances.Get("nsfw"); got != "true" {
+		t.Errorf("appearances nsfw = %q, want the parent's open population", got)
 	}
 }
 
 func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
-	srv, _ := characterStub(t, 7, http.StatusOK, `{
-		"id":7,"display_name":"雪村杏","latin":"Yukimura Anzu",
-		"image":"https://cdn.test/aa/bb/bust.webp",
-		"figure":"https://cdn.test/cc/dd/figure.webp",
-		"traits":[{"id":1,"name":"Blonde","name_zh":"金发","group":"Hair","group_zh":"发型","spoiler":0,"sexual":false,"lie":false},
-		          {"id":2,"name":"Dead","group":"Role","spoiler":2,"sexual":false,"lie":true}],
-		"intros":[{"lang":"zh-Hans","intro":"主人公的青梅竹马","source":"bangumi","machine":true}],
-		"refs":[{"source":"vndb","external_id":"c1234"}],
-		"works":[{"work":{"id":900,"display_name":"テスト","medium":"game","content_rating":"r18"},
-		          "voices":[{"id":11,"name":"茶木ひかる","lang":"ja"}]}],
-		"next_offset":50}`)
+	// Captured from character 7 on the running catalog: the two arts are objects
+	// rather than URL strings, traits carry localized/is_* rather than *_zh, and
+	// the works block arrives from the appearances sub-face with a cursor.
+	srv, calls := characterStub(t, 7, http.StatusOK, `{
+		"object":"character","id":"7","display_name":"雪村杏","latin":"Yukimura Anzu",
+		"image":{"url":"https://cdn.test/aa/bb/bust.webp","hash":"aabb","width":250,"height":300,"thumbhash":"B","sexual":"safe","violence":null},
+		"figure":{"url":"https://cdn.test/cc/dd/figure.webp","hash":"ccdd","width":400,"height":900,"thumbhash":"F","sexual":"safe","violence":null},
+		"traits":[{"object":"character_trait","id":"1","display_name":"Blonde","group":"Hair",
+		           "localized":{"zh-Hans":{"value":"金发","is_machine":false}},
+		           "group_localized":{"zh-Hans":{"value":"发型","is_machine":false}},
+		           "spoiler":"none","is_sexual":false,"is_lie":false},
+		          {"object":"character_trait","id":"2","display_name":"Dead","group":"Role",
+		           "localized":{},"group_localized":{},
+		           "spoiler":"major","is_sexual":false,"is_lie":true}],
+		"intros":[{"lang":"zh-Hans","text":"主人公的青梅竹马","source":"bangumi","is_machine":true}],
+		"refs":[{"source":"vndb","external_id":"c1234"}]}`)
+	calls.appearanceBody = `{"object":"list","items":[
+		{"object":"appearance","roster_role":"main","spoiler":"none",
+		 "work":{"object":"work","id":"900","display_name":"テスト","medium":"game","content_rating":"r18"},
+		 "voices":[{"object":"credit_name","id":"11","display_name":"茶木ひかる","lang":"ja"}]}],
+		"next_cursor":"cur_NTA"}`
 	c := New(srv.URL, "nm_test_key", "")
 
 	ch, found, movedTo, appErr := c.CatalogCharacterDetail(context.Background(), 7, 50, 0, true)
@@ -77,11 +115,18 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 	if len(ch.Traits) != 2 || ch.Traits[1].Spoiler != 2 || !ch.Traits[1].Lie {
 		t.Errorf("Traits = %+v, want the spoiler+lie row intact", ch.Traits)
 	}
-	if ch.Traits[0].NameZh != "金发" || ch.Traits[0].GroupZh != "发型" {
-		t.Errorf("zh trait = %q / %q, want 金发 / 发型", ch.Traits[0].NameZh, ch.Traits[0].GroupZh)
+	// Read through the accessors, not name_zh: wave 212 superseded that field and
+	// the live catalog already answers the localized primitive on both versions,
+	// so asserting the raw column passes on a hand-written fixture and tells you
+	// nothing about the wire.
+	if got, want := ch.Traits[0].LocalName(), "金发"; got != want {
+		t.Errorf("zh trait name = %q, want %q", got, want)
 	}
-	if ch.Traits[1].NameZh != "" || ch.Traits[1].GroupZh != "" {
-		t.Errorf("unrendered trait = %q / %q, want both empty", ch.Traits[1].NameZh, ch.Traits[1].GroupZh)
+	if got, want := ch.Traits[0].LocalGroup(), "发型"; got != want {
+		t.Errorf("zh trait group = %q, want %q", got, want)
+	}
+	if got, want := ch.Traits[1].LocalName(), "Dead"; got != want {
+		t.Errorf("untranslated trait = %q, want the vocabulary name %q", got, want)
 	}
 	if len(ch.Intros) != 1 || !ch.Intros[0].Machine {
 		t.Errorf("Intros = %+v, want the machine flag carried", ch.Intros)
@@ -95,8 +140,15 @@ func TestCatalogCharacter_BothArtsSurviveInTheirOwnFields(t *testing.T) {
 }
 
 func TestCatalogCharacter_MergedIDRedirectsRatherThanRenders(t *testing.T) {
-	srv, _ := characterStub(t, 3, http.StatusMovedPermanently,
-		`{"code":12,"message":"moved","data":{"entity_type":"character","id":3,"current_id":91}}`)
+	// Captured from company 15845 on the running catalog, which is merged into
+	// 818: v2 reports a merge as a 404 whose code is ENTITY_MERGED, where v1 sent
+	// 301 + Location. A reader that checks the status alone sees only "absent".
+	srv, _ := characterStub(t, 3, http.StatusNotFound, `{
+		"$schema":"https://catalog/Problem.json",
+		"type":"https://developer.nextmoe.dev/problems/catalog/entity-merged",
+		"title":"Entity merged","status":404,
+		"detail":"character 3 was merged into character 91.",
+		"code":"ENTITY_MERGED","object":"character","current_id":"91"}`)
 	c := New(srv.URL, "nm_test_key", "")
 
 	ch, found, movedTo, appErr := c.CatalogCharacterDetail(context.Background(), 3, 50, 0, true)

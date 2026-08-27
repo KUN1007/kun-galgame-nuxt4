@@ -30,8 +30,7 @@ func seriesStub(t *testing.T, hasNSFWField bool) *httptest.Server {
 				row(4, "无可展示成员", 2, false),
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"code": 0, "message": "ok",
-				"data": map[string]any{"items": items, "next_cursor": "", "total": len(items)},
+				"object": "list", "items": items, "next_cursor": "", "total": len(items),
 			})
 			return
 		}
@@ -51,8 +50,7 @@ func seriesStub(t *testing.T, hasNSFWField bool) *httptest.Server {
 			items = append(items, map[string]any{"id": 4001, "display_name": "别处的作品"})
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": 0, "message": "ok",
-			"data": map[string]any{"items": items, "total": len(items)},
+			"object": "list", "items": items, "total": len(items),
 		})
 	}))
 	t.Cleanup(srv.Close)

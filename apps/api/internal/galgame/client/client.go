@@ -1,7 +1,6 @@
 package client
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -137,23 +136,9 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 	}
 }
 
-type apiResponse struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
-}
-
-func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
-	if catalogReadsV1(path, query) {
-		status, env, appErr := c.doV1(ctx, path, query)
-		if appErr != nil {
-			return nil, appErr
-		}
-		if status >= 200 && status < 300 && env.Code == 0 {
-			return rewriteBanners(env.Data, c.imageCDNBase), nil
-		}
-		return nil, errors.New(errors.CodeBiz, cmp.Or(env.Message, "Galgame 资源不存在"), status)
-	}
+// CatalogGet reads a catalog face and returns the record with v2's shapes
+// already folded into the field names the decoders below read.
+func (c *GalgameClient) CatalogGet(ctx context.Context, path string, query url.Values) (json.RawMessage, *errors.AppError) {
 	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
 	if appErr != nil {
 		return nil, appErr
@@ -161,34 +146,34 @@ func (c *GalgameClient) GetV1(ctx context.Context, path string, query url.Values
 	if status >= 200 && status < 300 {
 		return rewriteBanners(raw, c.imageCDNBase), nil
 	}
-	st, _, err := c.v2Error(status, raw)
-	if err != nil {
-		return nil, err
-	}
-	return nil, errors.New(errors.CodeBiz, "Galgame 资源不存在", st)
+	return nil, c.v2Error(status, raw)
 }
 
-const catalogMovedCode = 12
-
-func (c *GalgameClient) getV1Envelope(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
-	if catalogReadsV1(path, query) {
-		status, env, appErr := c.doV1(ctx, path, query)
-		if appErr != nil {
-			return 0, nil, appErr
-		}
-		if status >= 200 && status < 300 {
-			env.Data = rewriteBanners(env.Data, c.imageCDNBase)
-		}
-		return status, env, nil
-	}
+// catalogGetRecord is CatalogGet for the detail faces, which have two outcomes
+// beyond a body: the entity is absent, or it was merged away and the caller has
+// to redirect the BROWSER to the survivor rather than serve the same record
+// under two URLs.
+func (c *GalgameClient) catalogGetRecord(
+	ctx context.Context, path string, query url.Values,
+) (data json.RawMessage, found bool, movedTo int64, appErr *errors.AppError) {
 	status, raw, appErr := c.doV2(ctx, http.MethodGet, path, query, nil)
 	if appErr != nil {
-		return 0, nil, appErr
+		return nil, false, 0, appErr
 	}
 	if status >= 200 && status < 300 {
-		return status, &apiResponse{Data: rewriteBanners(raw, c.imageCDNBase)}, nil
+		return rewriteBanners(raw, c.imageCDNBase), true, 0, nil
 	}
-	return c.v2Error(status, raw)
+	// Merged BEFORE absent, and the order is load-bearing: v1 announced a merge
+	// with 301 + Location, v2 announces it with a 404 whose code is ENTITY_MERGED.
+	// Checking absence first swallows every merge into "no such entity" and the
+	// browser stops being redirected to the survivor.
+	if id, ok := v2MergedInto(status, raw); ok {
+		return nil, false, id, nil
+	}
+	if status == http.StatusNotFound {
+		return nil, false, 0, nil
+	}
+	return nil, false, 0, c.v2Error(status, raw)
 }
 
 func BriefName(b *GalgameBrief) string {

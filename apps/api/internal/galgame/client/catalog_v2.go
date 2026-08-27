@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -34,37 +35,18 @@ func catalogOrigin(raw string) string {
 	return u
 }
 
-// Catalog reads still answer from /v1. Everything below this line is the v2
-// translation, kept complete and verified against a live catalog so the flip is
-// this one predicate.
+// Catalog is read entirely over /v2. The /v1 family is being retired upstream,
+// so nothing here may address it — a surviving caller does not degrade, it 404s
+// the moment infra deletes the route.
 //
-// The seven gaps that blocked the flip are closed upstream (infra PR #86,
-// deployed 2026-08-27) and re-verified against the running production catalog,
-// not the report: calendar declares content_limit and 400s on a bogus value,
-// answers a meta block on the month window, the roster carries voices and
-// identity, covers carry cover_kind, a rollup row carries via_company, and the
-// tags list honours has_works= (3,463 -> 1,630, same as v1).
-//
-// An eighth gap was ours to find, and it was on /v1: for three days from
-// 2026-08-24 every v1 works lane floored olang to ja+zh, because a shared
-// filter grew an OLang field whose zero value is the calendar's local-population
-// predicate and only the v2 handler was taught to pass All. v1 declares no
-// olang=, so no caller could compensate. 128 published galgames — 心跳文学部
-// among them — left every list while their detail pages rendered fine, and the
-// nightly content_limit sweep could not resolve them either, so their cached
-// column stayed NULL and they kept falling out of SFW pages one day longer.
-// Closed by infra PR #87; the two ids= arms now agree exactly, 7,881 to 7,881.
-//
-// refs= is the exception and the reason this is a predicate rather than a
-// deletion: only v2 resolves the source:external_id batch lane, and that lane is
-// how a legacy gid finds its catalog work. v1 accepts the parameter and ignores
-// it, which would answer page 1 of the whole catalogue.
-func catalogReadsV1(path string, query url.Values) bool {
-	if !strings.HasPrefix(strings.TrimPrefix(path, "/v1"), "/catalog") {
-		return false
-	}
-	return query.Get("refs") == ""
-}
+// Reads lived on /v1 from 2026-08-26 to 2026-08-28 because v2 was then a strict
+// subset: entity reprs were id+name with no include vocabulary, covers[].sexual
+// was typed as a string so one field failed the whole record, and the limiter
+// counted per client IP at 100/min regardless of key tier, which spent the
+// backend's whole minute on one page view. Infra PRs #79/#81/#83/#84/#86 closed
+// the field gaps and the limiter now honours the internal tier; each was
+// re-verified against the running catalog before this flip, face by face,
+// rather than taken from the report.
 
 // v2CatalogDetailInclude is the full include vocabulary of each detail face.
 // v1 returned every block by default; v2 returns nothing that was not asked for,
@@ -81,7 +63,6 @@ var v2CatalogDetailInclude = map[string]string{
 }
 
 func v2CatalogPath(path string) string {
-	path = strings.TrimPrefix(path, "/v1")
 	switch {
 	case path == "/catalog/works/search":
 		return "/v2/catalog/works"
@@ -377,77 +358,35 @@ func includeHasToken(query url.Values, token string) bool {
 	return false
 }
 
-func (c *GalgameClient) doV1(ctx context.Context, path string, query url.Values) (int, *apiResponse, *errors.AppError) {
-	reqURL := c.origin + "/v1" + strings.TrimPrefix(path, "/v1")
-	if len(query) > 0 {
-		reqURL += "?" + query.Encode()
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return 0, nil, errors.ErrInternal("创建请求失败")
-	}
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		slog.Error("Galgame 服务请求失败 (传输层)",
-			"method", req.Method, "url", req.URL.String(), "error", err)
-		return 0, nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
-	}
-	var env apiResponse
-	if len(bytes.TrimSpace(raw)) > 0 {
-		if err := json.Unmarshal(raw, &env); err != nil {
-			return resp.StatusCode, nil, errors.ErrInternal("解析 Galgame 响应失败")
-		}
-	}
-	return resp.StatusCode, &env, nil
-}
-
-func (c *GalgameClient) v2Error(status int, raw []byte) (int, *apiResponse, *errors.AppError) {
+// v2MergedInto reports the survivor of a merged entity. Catalog answers it two
+// ways and both have been seen live: a problem+json ENTITY_MERGED, and a bare
+// 301 whose body carries current_id.
+func v2MergedInto(status int, raw []byte) (int64, bool) {
 	var p v2Problem
 	_ = json.Unmarshal(raw, &p)
-	if status == http.StatusMovedPermanently {
-		var env apiResponse
-		if json.Unmarshal(raw, &env) == nil && env.Code == catalogMovedCode {
-			return status, &env, nil
+	if p.Code == "ENTITY_MERGED" && p.CurrentID != "" {
+		if id, err := strconv.ParseInt(p.CurrentID, 10, 64); err == nil && id != 0 {
+			return id, true
 		}
 	}
-	if p.Code == "ENTITY_MERGED" && p.CurrentID != "" {
-		id, _ := strconv.ParseInt(p.CurrentID, 10, 64)
-		data, _ := json.Marshal(map[string]any{"current_id": id})
-		return http.StatusMovedPermanently, &apiResponse{Code: catalogMovedCode, Data: data}, nil
+	if status == http.StatusMovedPermanently {
+		var moved struct {
+			CurrentID json.Number `json:"current_id"`
+		}
+		if json.Unmarshal(raw, &moved) == nil {
+			if id, err := moved.CurrentID.Int64(); err == nil && id != 0 {
+				return id, true
+			}
+		}
 	}
-	msg := p.Detail
-	if msg == "" {
-		msg = p.Title
-	}
-	if msg == "" {
-		msg = fmt.Sprintf("Galgame 服务返回了非预期响应 (HTTP %d)", status)
-	}
-	code := errors.CodeBiz
-	if status == http.StatusNotFound {
-		return status, &apiResponse{Code: code, Message: msg}, nil
-	}
-	return status, nil, errors.New(code, msg, status)
+	return 0, false
 }
 
-func envelopeOK(m map[string]any) bool {
-	switch c := m["code"].(type) {
-	case json.Number:
-		return c == "0"
-	case float64:
-		return c == 0
-	case int:
-		return c == 0
-	default:
-		return false
-	}
+func (c *GalgameClient) v2Error(status int, raw []byte) *errors.AppError {
+	var p v2Problem
+	_ = json.Unmarshal(raw, &p)
+	msg := cmp.Or(p.Detail, p.Title, fmt.Sprintf("Galgame 服务返回了非预期响应 (HTTP %d)", status))
+	return errors.New(errors.CodeBiz, msg, status)
 }
 
 func rewriteV2JSON(raw []byte, cdnBase string) []byte {
@@ -459,13 +398,6 @@ func rewriteV2JSON(raw []byte, cdnBase string) []byte {
 	var tree any
 	if err := dec.Decode(&tree); err != nil {
 		return raw
-	}
-	if m, ok := tree.(map[string]any); ok {
-		if _, has := m["object"]; !has {
-			if data, ok := m["data"]; ok && envelopeOK(m) {
-				tree = data
-			}
-		}
 	}
 	if !walkV2(tree, cdnBase) {
 		if _, ok := tree.(map[string]any); !ok && tree == nil {

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"net/http"
 	"net/url"
 	"strconv"
 	"sync"
@@ -113,7 +112,7 @@ func (c *GalgameClient) CatalogTaxonomyList(ctx context.Context, entity string, 
 	if q.Get("include_total") == "" {
 		q.Set("include_total", "true")
 	}
-	data, appErr := c.GetV1(ctx, "/catalog/"+entity, q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/"+entity, q)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -193,25 +192,11 @@ func (c *GalgameClient) CatalogSeries(ctx context.Context, id string) (*CatalogS
 
 func (c *GalgameClient) catalogTaxonomyDetail(ctx context.Context, entity, id string, out any) (bool, int64, *errors.AppError) {
 	q := openPopulation(url.Values{})
-	status, env, appErr := c.getV1Envelope(ctx, "/catalog/"+entity+"/"+id, q)
-	if appErr != nil {
-		return false, 0, appErr
+	data, found, movedTo, appErr := c.catalogGetRecord(ctx, "/catalog/"+entity+"/"+id, q)
+	if appErr != nil || !found {
+		return false, movedTo, appErr
 	}
-	switch {
-	case status == http.StatusNotFound:
-		return false, 0, nil
-	case status == http.StatusMovedPermanently && env.Code == catalogMovedCode:
-		var moved struct {
-			CurrentID int64 `json:"current_id"`
-		}
-		if err := json.Unmarshal(env.Data, &moved); err != nil || moved.CurrentID == 0 {
-			return false, 0, nil
-		}
-		return false, moved.CurrentID, nil
-	case env.Code != 0:
-		return false, 0, errors.New(env.Code, env.Message, status)
-	}
-	if err := json.Unmarshal(env.Data, out); err != nil {
+	if err := json.Unmarshal(data, out); err != nil {
 		return false, 0, errors.ErrInternal("解析 Catalog 词表详情响应失败")
 	}
 	return true, 0, nil
@@ -242,7 +227,7 @@ func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, key
 		"limit": {strconv.Itoa(limit)},
 	}
 	openPopulation(q)
-	data, appErr := c.GetV1(ctx, "/catalog/search", q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/search", q)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -309,7 +294,7 @@ func (c *GalgameClient) lookupLabelBySource(ctx context.Context, source string, 
 		"refs": {source + ":" + strconv.Itoa(wikiID)},
 	}
 	openPopulation(q)
-	data, appErr := c.GetV1(ctx, "/catalog/labels", q)
+	data, appErr := c.CatalogGet(ctx, "/catalog/labels", q)
 	if appErr != nil {
 		if appErr.StatusCode == 404 {
 			return 0, false, nil

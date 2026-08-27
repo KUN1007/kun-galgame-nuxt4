@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"net/http"
 	"net/url"
 
 	"kun-galgame-api/pkg/errors"
@@ -41,18 +40,12 @@ type CatalogLabelRelationGraph struct {
 
 func (c *GalgameClient) CatalogLabelRelationGraph(ctx context.Context, id string) (*CatalogLabelRelationGraph, bool, *errors.AppError) {
 	q := openPopulation(url.Values{})
-	status, env, appErr := c.getV1Envelope(ctx, "/catalog/labels/"+id+"/relation-graph", q)
-	if appErr != nil {
+	data, found, _, appErr := c.catalogGetRecord(ctx, "/catalog/labels/"+id+"/relation-graph", q)
+	if appErr != nil || !found {
 		return nil, false, appErr
 	}
-	if status == http.StatusNotFound {
-		return nil, false, nil
-	}
-	if env.Code != 0 {
-		return nil, false, errors.New(env.Code, env.Message, status)
-	}
 	var graph CatalogLabelRelationGraph
-	if err := json.Unmarshal(env.Data, &graph); err != nil {
+	if err := json.Unmarshal(data, &graph); err != nil {
 		return nil, false, errors.ErrInternal("解析 Catalog 会社关系图响应失败")
 	}
 	return &graph, true, nil

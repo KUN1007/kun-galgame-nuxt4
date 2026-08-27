@@ -25,7 +25,7 @@ func (r *queryRecorder) service(t *testing.T) *TagService {
 		r.query = req.URL.Query()
 		r.mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[],"total":0,"page":1,"limit":20}}`))
+		_, _ = w.Write([]byte(`{"items":[],"total":0,"page":1,"limit":20}`))
 	}))
 	t.Cleanup(srv.Close)
 	return NewTagService(client.New(srv.URL, "nm_test_key", ""), &GalgameEnricher{}, nil)
@@ -69,20 +69,27 @@ func TestGetByMultiTag_ForwardsPagination(t *testing.T) {
 		t.Fatalf("GetByMultiTag: %v", appErr)
 	}
 
-	if got := rec.urlPath(); got != "/v1/catalog/works/search" {
-		t.Errorf("path = %q, want /v1/catalog/works/search", got)
+	if got := rec.urlPath(); got != "/v2/catalog/works" {
+		t.Errorf("path = %q, want /v2/catalog/works", got)
 	}
 	if got := rec.all("tag_id"); len(got) != 1 || got[0] != "638,41" {
 		t.Errorf("tag_id = %v, want exactly one param valued \"638,41\"", got)
 	}
-	if got := rec.get("page"); got != "3" {
-		t.Errorf("page = %q, want 3 — the v1 search face pages by number", got)
+	// The forum still pages by number; v2 takes an opaque cursor, so the number
+	// has to become one on the wire or every page serves page 1.
+	if rec.has("page") {
+		t.Errorf("page = %q leaked to the wire", rec.get("page"))
+	}
+	if got := rec.get("cursor"); got == "" {
+		t.Error("cursor = empty, want the token page 3 encodes to")
 	}
 	if got := rec.get("limit"); got != "24" {
 		t.Errorf("limit = %q, want %q", got, "24")
 	}
-	if got := rec.get("include"); got != CatalogCardInclude {
-		t.Errorf("include = %q, want %q (cards render names + covers)", got, CatalogCardInclude)
+	// CatalogCardInclude is written in the forum's v1 vocabulary and remapped at
+	// the edge; v2 answers a bare id row for any block it was not asked for.
+	if got := rec.get("include"); got != "titles,covers,companies" {
+		t.Errorf("include = %q, want titles,covers,companies (cards render names + covers)", got)
 	}
 	if got := rec.get("nsfw"); got != "true" {
 		t.Errorf("nsfw = %q, want true on every lane", got)

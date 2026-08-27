@@ -70,6 +70,14 @@ type ClaimEventFeedPage struct {
 	NextSince int64                `json:"next_since"`
 }
 
+// The last route the forum still reads over v1, and it has no replacement: as of
+// 2026-08-28 /v2/catalog/changes answers only {target_object, id, updated_at} —
+// no state transition, no actor, no site — and it accepts from= and actor=
+// without applying them, so three calls with different filters returned the same
+// first row. The moemoepoint award, the stub cleanup and the unpublish cron all
+// need the transition and the actor, so they cannot move until v2 grows a feed
+// that carries them. Retiring v1 without that replacement stops moemoepoint
+// site-wide, silently, exactly the way the 2026-06 outage did.
 func (c *Client) ClaimEventsSince(ctx context.Context, since int64, limit int, site string) (*ClaimEventFeedPage, error) {
 	q := url.Values{
 		"since": {strconv.FormatInt(since, 10)},

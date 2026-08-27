@@ -12,24 +12,28 @@ import (
 
 func TestSearchCatalogEntities_MapsPublicHits(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/v1/catalog/search" {
-			t.Errorf("path = %q, want /v1/catalog/search", req.URL.Path)
+		if req.URL.Path != "/v2/catalog/search" {
+			t.Errorf("path = %q, want /v2/catalog/search", req.URL.Path)
 		}
-		if got := req.URL.Query().Get("type"); got != "names" {
-			t.Errorf("type = %q, want names", got)
+		// v1's type=names is object=credit_name on v2; huma drops the old name
+		// silently and answers an unfiltered search across every entity kind.
+		if got := req.URL.Query().Get("object"); got != "credit_name" {
+			t.Errorf("object = %q, want credit_name", got)
+		}
+		if req.URL.Query().Has("type") {
+			t.Error("v1's type= leaked to the wire")
 		}
 		if got := req.URL.Query().Get("q"); got != "丸戸" {
 			t.Errorf("q = %q, want 丸戸", got)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": 0, "message": "ok",
-			"data": map[string]any{
-				"items": []map[string]any{
-					{"id": 42, "display_name": "丸戸史明", "entity_type": "name",
-						"localized": map[string]any{
-							"zh-Hans": map[string]any{"value": "丸户史明", "kind": "translation"},
-						}},
-				},
+			"object": "list",
+			"items": []map[string]any{
+				{"object": "search_result", "target_object": "credit_name",
+					"id": "42", "display_name": "丸戸史明",
+					"localized": map[string]any{
+						"zh-Hans": map[string]any{"value": "丸户史明", "is_machine": false},
+					}},
 			},
 		})
 	}))

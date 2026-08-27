@@ -58,12 +58,12 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 			for _, it := range body.Items {
 				out = append(out, `{"external_id":"`+it.ExternalID+`","work":null}`)
 			}
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				strings.Join(out, ",") + `]}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				strings.Join(out, ",") + `],"missing":[]}`))
 		case strings.HasSuffix(req.URL.Path, "/catalog/works"):
-			_, _ = w.Write([]byte(`{"code":0,"message":"ok","data":{"items":[` +
-				`{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}` +
-				`],"next_cursor":null}}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[` +
+				`{"object":"work","id":"90210","claim":{"site":"kungal","site_work_id":"90210","state":"pending"}}` +
+				`],"next_cursor":null}`))
 		default:
 			_, _ = w.Write([]byte(`{"object":"proposal","id":"1","state":"open"}`))
 		}

@@ -1,9 +1,9 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
-	"net/http"
 	"net/url"
 	"strconv"
 
@@ -38,8 +38,12 @@ type CatalogCharacter struct {
 // a trait renders 金发 rather than Blonde, reading them alone would turn every
 // character's traits back to English on catalog's deploy without erroring.
 type CatalogCharacterTrait struct {
-	ID             int64                       `json:"id"`
+	ID int64 `json:"id"`
+	// The vocabulary name is `name` on v1 and `display_name` on v2. Every sibling
+	// entity carries both and prefers the v2 spelling; this one did not, so an
+	// untranslated trait rendered as an empty chip instead of Blonde.
 	Name           string                      `json:"name"`
+	DisplayName    string                      `json:"display_name"`
 	Localized      map[string]catLocalizedName `json:"localized"`
 	NameZh         string                      `json:"name_zh"`
 	Group          string                      `json:"group"`
@@ -51,7 +55,7 @@ type CatalogCharacterTrait struct {
 }
 
 func (t *CatalogCharacterTrait) LocalName() string {
-	return catalogTraitName(t.Localized, t.NameZh, t.Name)
+	return catalogTraitName(t.Localized, t.NameZh, cmp.Or(t.DisplayName, t.Name))
 }
 
 func (t *CatalogCharacterTrait) LocalGroup() string {
@@ -81,26 +85,12 @@ func (c *GalgameClient) CatalogCharacterDetail(
 	}
 	openPopulation(q)
 
-	status, env, appErr := c.getV1Envelope(ctx, "/catalog/characters/"+strconv.FormatInt(id, 10), q)
-	if appErr != nil {
-		return nil, false, 0, appErr
-	}
-	switch {
-	case status == http.StatusNotFound:
-		return nil, false, 0, nil
-	case status == http.StatusMovedPermanently && env.Code == catalogMovedCode:
-		var moved struct {
-			CurrentID int64 `json:"current_id"`
-		}
-		if err := json.Unmarshal(env.Data, &moved); err != nil || moved.CurrentID == 0 {
-			return nil, false, 0, nil
-		}
-		return nil, false, moved.CurrentID, nil
-	case env.Code != 0:
-		return nil, false, 0, errors.New(env.Code, env.Message, status)
+	data, found, movedTo, appErr := c.catalogGetRecord(ctx, "/catalog/characters/"+strconv.FormatInt(id, 10), q)
+	if appErr != nil || !found {
+		return nil, false, movedTo, appErr
 	}
 	var ch CatalogCharacter
-	if err := json.Unmarshal(env.Data, &ch); err != nil {
+	if err := json.Unmarshal(data, &ch); err != nil {
 		return nil, false, 0, errors.ErrInternal("解析 Catalog 角色详情响应失败")
 	}
 	if meta := c.resolveArtMeta([]string{ch.Image, ch.Figure}); meta != nil {

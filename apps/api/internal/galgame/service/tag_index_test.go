@@ -41,11 +41,9 @@ func tagLaneStub(t *testing.T) *httptest.Server {
 			items, next = page2, ""
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"code": 0, "message": "ok",
-			"data": map[string]any{
-				"items": items, "next_cursor": next,
-				"total": len(page1) + len(page2),
-			},
+			"object": "list",
+			"items":  items, "next_cursor": next,
+			"total": len(page1) + len(page2),
 		})
 	}))
 	t.Cleanup(srv.Close)
