@@ -59,7 +59,7 @@ useKunSeoMeta({
 </script>
 
 <template>
-  <div v-if="data" class="space-y-6">
+  <div v-if="data" class="flex flex-col gap-6">
     <KunHeader
       :name="`${data.name} 引擎制作的 Galgame`"
       :description="data.description"
@@ -99,22 +99,21 @@ useKunSeoMeta({
       description="当前为 SFW 模式，该引擎含 NSFW 内容的 Galgame 不会显示。如需查看，请在设置面板开启 NSFW 开关。"
     />
 
-    <GalgameCard
-      :is-transparent="false"
-      v-if="data.galgame.length"
-      :galgames="data.galgame"
-    />
+    <KunLoading :loading="status === 'pending'">
+      <GalgameCard
+        :is-transparent="false"
+        v-if="data.galgame.length"
+        :galgames="data.galgame"
+      />
+
+      <KunNull v-else :description="`${data.name} 引擎下暂无 Galgame`" />
+    </KunLoading>
 
     <KunPagination
       v-if="data.galgame_count > limit"
       v-model:current-page="page"
       :total-page="Math.ceil(data.galgame_count / limit)"
       :is-loading="status === 'pending'"
-    />
-
-    <KunNull
-      v-if="!data.galgame_count"
-      :description="`${data.name} 引擎下暂无 Galgame`"
     />
   </div>
 </template>
