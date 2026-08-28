@@ -53,7 +53,7 @@ func (r *claimActionRecorder) catalog(t *testing.T) *catalogclient.Client {
 		_, _ = w.Write([]byte(`{"object":"claim","id":"4649","state":"` + state + `"}`))
 	}))
 	t.Cleanup(srv.Close)
-	return catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	return catalogclient.New(catalogclient.Config{BaseURL: srv.URL})
 }
 
 func TestAdoptAndPublish_AnchorsTheClaimAtTheCatalogWorkID(t *testing.T) {

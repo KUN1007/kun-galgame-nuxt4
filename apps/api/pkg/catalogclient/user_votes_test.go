@@ -18,7 +18,7 @@ func TestVoteCover_ForwardsBearerAndParsesEnvelope(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL})
 	res, err := c.VoteCover(context.Background(), "user-jwt", 1000, 88)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -48,7 +48,7 @@ func TestUnvoteCover_UsesDelete(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL})
 	res, err := c.UnvoteCover(context.Background(), "user-jwt", 1000, 88)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -80,7 +80,7 @@ func TestCoverVoteErrorMapping(t *testing.T) {
 				_, _ = w.Write([]byte(tc.body))
 			}))
 			defer srv.Close()
-			c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+			c := New(Config{BaseURL: srv.URL})
 			_, err := c.VoteCover(context.Background(), "user-jwt", 1000, 88)
 			if !errors.Is(err, tc.want) {
 				t.Fatalf("err = %v, want %v", err, tc.want)
@@ -95,7 +95,7 @@ func TestCoverVoteForbiddenWithoutScopeIsGeneric(t *testing.T) {
 		_, _ = w.Write([]byte(`{"code":233,"message":"client is not bound to a catalog site"}`))
 	}))
 	defer srv.Close()
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL})
 	_, err := c.VoteCover(context.Background(), "user-jwt", 1000, 88)
 	if errors.Is(err, ErrInsufficientScope) {
 		t.Fatal("a site-binding 403 must not read as a scope problem")
@@ -110,7 +110,7 @@ func TestCoverVoteWithoutTokenNeverCalls(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
 	defer srv.Close()
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
+	c := New(Config{BaseURL: srv.URL})
 	if _, err := c.VoteCover(context.Background(), "", 1000, 88); !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("err = %v, want ErrUnauthorized", err)
 	}

@@ -65,7 +65,7 @@ func (f *fakePlaytimeFace) server(t *testing.T) *httptest.Server {
 
 func playtimeTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
 	t.Helper()
-	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
+	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL})
 	gc := client.New(fakeGalgame(t).URL, "nm_test", "")
 	h := NewPlaytimeHandler(service.NewPlaytimeService(nil, gc, cc, "forum"))
 

@@ -54,7 +54,7 @@ func (r *coverPlaneRecorder) service(t *testing.T) *GalgameService {
 	srv := r.server(t)
 	return &GalgameService{
 		galgameClient: client.New(srv.URL, "nm_test_key", ""),
-		catalog:       catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec", AppKey: "nmk_test"}),
+		catalog:       catalogclient.New(catalogclient.Config{BaseURL: srv.URL, AppKey: "nmk_test"}),
 	}
 }
 

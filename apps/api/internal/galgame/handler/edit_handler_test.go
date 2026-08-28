@@ -199,7 +199,7 @@ func editTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fi
 
 func editTestAppFull(t *testing.T, catalogURL, galgameURL string, user *middleware.UserInfo, notifier msgService.Notifier) *fiber.App {
 	t.Helper()
-	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec", AppKey: "nmk_test"})
+	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, AppKey: "nmk_test"})
 	var galgameClient *client.GalgameClient
 	if galgameURL != "" {
 		galgameClient = client.New(galgameURL, "nm_test", "")

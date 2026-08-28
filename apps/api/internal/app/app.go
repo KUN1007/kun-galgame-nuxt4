@@ -290,15 +290,13 @@ func New(cfg *config.Config) *App {
 	}
 
 	catalogCli := catalogclient.New(catalogclient.Config{
-		BaseURL:      cfg.Catalog.BaseURL,
-		ClientID:     cfg.OAuth.ClientID,
-		ClientSecret: cfg.OAuth.ClientSecret,
-		AppKey:       cfg.NextMoeAPI.APIKey,
+		BaseURL: cfg.Catalog.BaseURL,
+		AppKey:  cfg.NextMoeAPI.APIKey,
 	})
-	if catalogCli.Configured() {
+	if catalogCli.AppConfigured() {
 		slog.Info("catalog service client configured", "base_url", cfg.Catalog.BaseURL)
 	} else {
-		slog.Warn("catalog service client NOT configured; galgame edit review returns 未启用 — set KUN_CATALOG_API_BASE + OAuth creds")
+		slog.Warn("catalog service client NOT configured; galgame edit review returns 未启用 — set KUN_CATALOG_API_BASE + KUN_NEXTMOE_API_KEY")
 	}
 
 	commClientID := cfg.Community.ClientID

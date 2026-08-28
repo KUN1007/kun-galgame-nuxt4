@@ -2,6 +2,7 @@ package catalogclient
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"time"
@@ -54,39 +55,102 @@ type WorkSubmitResult struct {
 }
 
 type ClaimEventFeedItem struct {
-	ID            int64     `json:"id"`
-	WorkID        int64     `json:"work_id"`
-	FromState     *string   `json:"from_state"`
-	ToState       string    `json:"to_state"`
-	ActorUID      int64     `json:"actor_uid"`
-	Reason        *string   `json:"reason"`
-	Site          string    `json:"site"`
-	ProductWorkID *int64    `json:"product_work_id"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID            int64
+	WorkID        int64
+	FromState     *string
+	ToState       string
+	ActorUID      int64
+	Reason        *string
+	Site          string
+	ProductWorkID *int64
+	CreatedAt     time.Time
 }
 
 type ClaimEventFeedPage struct {
-	Items     []ClaimEventFeedItem `json:"items"`
-	NextSince int64                `json:"next_since"`
+	Items   []ClaimEventFeedItem
+	HasMore bool
 }
 
-// The last route the forum still reads over v1, and it has no replacement: as of
-// 2026-08-28 /v2/catalog/changes answers only {target_object, id, updated_at} —
-// no state transition, no actor, no site — and it accepts from= and actor=
-// without applying them, so three calls with different filters returned the same
-// first row. The moemoepoint award, the stub cleanup and the unpublish cron all
-// need the transition and the actor, so they cannot move until v2 grows a feed
-// that carries them. Retiring v1 without that replacement stops moemoepoint
-// site-wide, silently, exactly the way the 2026-06 outage did.
+// Every id on this face is a decimal STRING on the wire.
+type v2ClaimEvent struct {
+	ID            json.RawMessage `json:"id"`
+	WorkID        json.RawMessage `json:"work_id"`
+	FromState     *string         `json:"from_state"`
+	ToState       string          `json:"to_state"`
+	ActorUID      json.RawMessage `json:"actor_uid"`
+	Reason        *string         `json:"reason"`
+	Site          string          `json:"site"`
+	ProductWorkID json.RawMessage `json:"product_work_id"`
+	CreatedAt     time.Time       `json:"created_at"`
+}
+
+// ClaimEventsSince walks the claim-transition feed oldest-first from a
+// watermark. The watermark is the caller's own durable event id rather than the
+// page's opaque next_cursor: an event's effects have to land before the cursor
+// may pass it, so a page that fails halfway has to resume in the middle of that
+// page, which next_cursor cannot address.
+//
+// The scope is claim_events:read ON TOP OF catalog:read, and it is granted by an
+// operator rather than self-service, so the read key does not carry it by
+// default.
 func (c *Client) ClaimEventsSince(ctx context.Context, since int64, limit int, site string) (*ClaimEventFeedPage, error) {
 	q := url.Values{
-		"since": {strconv.FormatInt(since, 10)},
-		"limit": {strconv.Itoa(limit)},
+		"sort":  {"recorded_asc"},
+		"limit": {strconv.Itoa(clampV2Limit(limit))},
 	}
 	if site != "" {
 		q.Set("site", site)
 	}
-	return editGetQuery[ClaimEventFeedPage](ctx, c, "/api/v1/catalog/claim-events/feed", q)
+	if cur := encodeWatermark(since); cur != "" {
+		q.Set("cursor", cur)
+	}
+	return c.claimEventPage(ctx, q)
+}
+
+// ClaimEventHead is the newest event id, which seeds the watermark on a first
+// run so that history is not replayed. It asks the feed for its last row rather
+// than walking to the end: at limit<=100 a walk over the whole collection is
+// hundreds of pages, and a walk that stops at a page cap seeds the watermark in
+// the middle of history and replays everything after it.
+func (c *Client) ClaimEventHead(ctx context.Context, site string) (int64, error) {
+	q := url.Values{"sort": {"recorded_desc"}, "limit": {"1"}}
+	if site != "" {
+		q.Set("site", site)
+	}
+	page, err := c.claimEventPage(ctx, q)
+	if err != nil || len(page.Items) == 0 {
+		return 0, err
+	}
+	return page.Items[0].ID, nil
+}
+
+func (c *Client) claimEventPage(ctx context.Context, q url.Values) (*ClaimEventFeedPage, error) {
+	var raw v2List[v2ClaimEvent]
+	if err := c.appV2JSON(ctx, "/v2/catalog/claim-events", q, &raw); err != nil {
+		return nil, err
+	}
+	rows := raw.rows()
+	page := &ClaimEventFeedPage{
+		Items:   make([]ClaimEventFeedItem, 0, len(rows)),
+		HasMore: raw.cursor() != "",
+	}
+	for i := range rows {
+		it := ClaimEventFeedItem{
+			ID:        parseFlexID(rows[i].ID),
+			WorkID:    parseFlexID(rows[i].WorkID),
+			FromState: rows[i].FromState,
+			ToState:   rows[i].ToState,
+			ActorUID:  parseFlexID(rows[i].ActorUID),
+			Reason:    rows[i].Reason,
+			Site:      rows[i].Site,
+			CreatedAt: rows[i].CreatedAt,
+		}
+		if n := parseFlexID(rows[i].ProductWorkID); n > 0 {
+			it.ProductWorkID = &n
+		}
+		page.Items = append(page.Items, it)
+	}
+	return page, nil
 }
 
 type UserClaimItem struct {
@@ -124,11 +188,4 @@ type UserClaimFilter struct {
 	Before      int64
 	Limit       int
 	Kind        string
-}
-
-func editGetQuery[T any](ctx context.Context, c *Client, path string, q url.Values) (*T, error) {
-	if len(q) > 0 {
-		path += "?" + q.Encode()
-	}
-	return editGet[T](ctx, c, path)
 }

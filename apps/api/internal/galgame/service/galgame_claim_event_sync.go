@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strconv"
 	"time"
@@ -57,13 +58,15 @@ const (
 
 	claimSubmitterTTL = 90 * 24 * time.Hour
 
-	claimFeedBatch    = 1000
+	// 100 is the feed's own ceiling: a larger limit is 400 LIMIT_TOO_LARGE, not a
+	// clamp. At 50 pages that is 5000 events a run against a 10-minute beat.
+	claimFeedBatch    = 100
 	claimMaxPagesRun  = 50
 	claimFeedPageWait = 5 * time.Minute
 )
 
 func (s *GalgameClaimEventSync) Run() {
-	if s.catalog == nil || !s.catalog.Configured() {
+	if s.catalog == nil || !s.catalog.AppConfigured() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), claimFeedPageWait)
@@ -75,9 +78,9 @@ func (s *GalgameClaimEventSync) Run() {
 		return
 	}
 	if !seeded {
-		head, err := s.feedHead(ctx)
+		head, err := s.catalog.ClaimEventHead(ctx, claimSite)
 		if err != nil {
-			slog.Warn("catalog claim feed 定位队首失败, 下一轮重试", "error", err)
+			reportFeedError(err, 0)
 			return
 		}
 		s.writeCursor(ctx, head)
@@ -89,7 +92,7 @@ func (s *GalgameClaimEventSync) Run() {
 	for pages := 1; pages <= claimMaxPagesRun; pages++ {
 		page, err := s.catalog.ClaimEventsSince(ctx, maxSeen, s.batch, claimSite)
 		if err != nil {
-			slog.Warn("catalog claim feed 拉取失败", "error", err, "since", maxSeen)
+			reportFeedError(err, maxSeen)
 			break
 		}
 		if len(page.Items) == 0 {
@@ -105,7 +108,7 @@ func (s *GalgameClaimEventSync) Run() {
 				maxSeen = page.Items[i].ID
 			}
 		}
-		if holding || len(page.Items) < s.batch {
+		if holding || !page.HasMore {
 			break
 		}
 	}
@@ -116,22 +119,26 @@ func (s *GalgameClaimEventSync) Run() {
 	}
 }
 
-func (s *GalgameClaimEventSync) feedHead(ctx context.Context) (int64, error) {
-	var head int64
-	for pages := 1; pages <= claimMaxPagesRun; pages++ {
-		page, err := s.catalog.ClaimEventsSince(ctx, head, s.batch, claimSite)
-		if err != nil {
-			return 0, err
-		}
-		if len(page.Items) == 0 {
-			break
-		}
-		head = page.Items[len(page.Items)-1].ID
-		if len(page.Items) < s.batch {
-			break
-		}
+// A credential fault on this feed is not a blip. It is the only source of the
+// submission reward, of the local stub row and of the ban unpublish, and all
+// three fail by doing nothing at all — no user-visible error anywhere. When
+// catalog retired the v1 feed on 2026-08-27 the cron stalled for a day behind a
+// WARN that nobody was reading, so anything permanent is logged at ERROR and
+// names what it needs.
+func reportFeedError(err error, since int64) {
+	var apiErr *catalogclient.UserAPIError
+	permanent := errors.Is(err, catalogclient.ErrUnauthorized) ||
+		errors.Is(err, catalogclient.ErrNotFound) ||
+		errors.As(err, &apiErr)
+	if !permanent {
+		slog.Warn("catalog claim feed 拉取失败", "error", err, "since", since)
+		return
 	}
-	return head, nil
+	slog.Error(
+		"catalog claim feed 不可读: 投稿发奖/建行/封禁下架已全部停止, "+
+			"应用 key 需要 claim_events:read scope (在 catalog:read 之上, 由运营方授予)",
+		"error", err, "since", since,
+	)
 }
 
 const claimSite = client.ClaimSiteKungal

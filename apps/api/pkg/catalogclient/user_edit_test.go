@@ -39,7 +39,7 @@ func recordingServer(t *testing.T, status int, reply string) (*httptest.Server, 
 }
 
 func userClient(baseURL string) *Client {
-	return New(Config{BaseURL: baseURL, ClientID: "cid", ClientSecret: "sec"})
+	return New(Config{BaseURL: baseURL})
 }
 
 func TestCreateEditProposalUser_TravelsAsTheUser(t *testing.T) {

@@ -2,98 +2,98 @@ package catalogclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 )
 
-func TestConfigured(t *testing.T) {
-	if New(Config{BaseURL: "http://x", ClientID: "", ClientSecret: ""}).Configured() {
-		t.Fatal("expected not configured without credentials")
+func TestConfiguredPlanes(t *testing.T) {
+	// The two planes have different credentials. The user plane carries the
+	// reader's own token and needs nothing but a host; the application plane
+	// needs the nmk_ key. Gating a user-plane call on the app key (or the other
+	// way round) silently disables a working feature.
+	if New(Config{}).Configured() {
+		t.Error("no base URL is not configured")
 	}
-	if New(Config{BaseURL: "", ClientID: "a", ClientSecret: "b"}).Configured() {
-		t.Fatal("expected not configured without base URL")
+	if !New(Config{BaseURL: "http://x"}).Configured() {
+		t.Error("the user plane needs only a base URL")
 	}
-	if !New(Config{BaseURL: "http://x", ClientID: "a", ClientSecret: "b"}).Configured() {
-		t.Fatal("expected configured with base URL + credentials")
+	if New(Config{BaseURL: "http://x"}).AppConfigured() {
+		t.Error("the application plane must not report configured without a key")
+	}
+	if !New(Config{BaseURL: "http://x", AppKey: "nmk_k"}).AppConfigured() {
+		t.Error("base URL + application key is configured")
 	}
 }
 
-func TestNotConfigured(t *testing.T) {
-	if _, err := New(Config{}).getData(context.Background(), "/api/v1/catalog/ping", nil); !errors.Is(err, ErrNotConfigured) {
-		t.Fatalf("want ErrNotConfigured, got %v", err)
-	}
-}
-
-func TestGetData_ForwardsBasicAndPassesThrough(t *testing.T) {
-	var gotAuth, gotPath, gotQuery string
-	body := `{"work_id":3853,"groups":[{"role_id":1,"role_key":"scenario","role_name":"剧本","credits":[{"credit_name_id":42,"name":"丸戸史明"}]}]}`
+func TestAppPlaneStripsAVersionSuffixFromTheBase(t *testing.T) {
+	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		gotPath = r.URL.Path
-		gotQuery = r.URL.RawQuery
-		_, _ = w.Write([]byte(`{"code":0,"message":"成功","data":` + body + `}`))
+		got = r.URL.Path
+		if auth := r.Header.Get("Authorization"); auth != "Bearer nmk_k" {
+			t.Errorf("Authorization = %q, want the application key as a Bearer", auth)
+		}
+		_, _ = w.Write([]byte(`{"object":"list","items":[]}`))
 	}))
 	defer srv.Close()
 
-	c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
-	data, err := c.getData(context.Background(), "/api/v2/catalog/works/3853/credits",
-		url.Values{"limit": {"10"}})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if gotPath != "/api/v2/catalog/works/3853/credits" {
-		t.Fatalf("bad path %q", gotPath)
-	}
-	if gotQuery != "limit=10" {
-		t.Fatalf("bad query %q", gotQuery)
-	}
-	if len(gotAuth) < 6 || gotAuth[:6] != "Basic " {
-		t.Fatalf("expected Basic auth, got %q", gotAuth)
-	}
-	var got any
-	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("returned data is not valid json: %v", err)
-	}
-	if string(data) != body {
-		t.Fatalf("data not passed through verbatim:\n got %s\nwant %s", data, body)
+	// KUN_CATALOG_API_BASE is a host with no path, but a stale value carrying a
+	// version suffix would otherwise build /v2/v2/... and 404 the whole plane.
+	for _, suffix := range []string{"", "/v2", "/v1", "/api/v1"} {
+		c := New(Config{BaseURL: srv.URL + suffix, AppKey: "nmk_k"})
+		if _, err := c.ClaimEventHead(context.Background(), "kungal"); err != nil {
+			t.Fatalf("base%q: %v", suffix, err)
+		}
+		if got != "/v2/catalog/claim-events" {
+			t.Errorf("base%q reached %q", suffix, got)
+		}
 	}
 }
 
-func TestErrorMapping(t *testing.T) {
+func TestAppPlaneErrorMapping(t *testing.T) {
 	cases := []struct {
 		status int
 		body   string
 		want   error
 	}{
-		{http.StatusUnauthorized, `{"code":10001,"message":"bad creds"}`, ErrUnauthorized},
-		{http.StatusNotFound, `{"code":4,"message":"not found"}`, ErrNotFound},
-		{http.StatusInternalServerError, `{"code":1,"message":"boom"}`, ErrUpstream},
-		{http.StatusOK, `{"code":1,"message":"logical failure"}`, ErrUpstream},
+		{http.StatusUnauthorized, `{"code":"UNAUTHORIZED"}`, ErrUnauthorized},
+		{http.StatusNotFound, `{"code":"NOT_FOUND"}`, ErrNotFound},
+		{http.StatusInternalServerError, `{"code":"INTERNAL"}`, ErrUpstream},
 	}
 	for _, tc := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(tc.status)
 			_, _ = w.Write([]byte(tc.body))
 		}))
-		c := New(Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"})
-		_, err := c.getData(context.Background(), "/api/v2/catalog/works/1/credits", nil)
+		c := New(Config{BaseURL: srv.URL, AppKey: "nmk_k"})
+		_, err := c.ClaimEventHead(context.Background(), "kungal")
 		if !errors.Is(err, tc.want) {
-			t.Fatalf("status %d: want %v, got %v", tc.status, tc.want, err)
+			t.Errorf("status %d: want %v, got %v", tc.status, tc.want, err)
 		}
 		srv.Close()
 	}
+
+	// A scope refusal must stay distinguishable: it names an operator grant the
+	// deployment is missing, not an outage and not the reader's session.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"status":403,"code":"SCOPE_REQUIRED",` +
+			`"detail":"this operation additionally requires the claim_events:read scope."}`))
+	}))
+	defer srv.Close()
+	var apiErr *UserAPIError
+	_, err := New(Config{BaseURL: srv.URL, AppKey: "nmk_k"}).ClaimEventHead(context.Background(), "kungal")
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusForbidden {
+		t.Fatalf("err = %v, want a 403 the caller can report", err)
+	}
+	if !errors.Is(err, err) || apiErr.Message == "" {
+		t.Error("the 403 lost the detail naming the scope")
+	}
 }
 
-func TestUpstreamUnreachable(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	deadURL := srv.URL
-	srv.Close()
-	c := New(Config{BaseURL: deadURL, ClientID: "cid", ClientSecret: "sec"})
-	if _, err := c.getData(context.Background(), "/api/v2/catalog/works/1/credits", nil); !errors.Is(err, ErrUpstream) {
-		t.Fatalf("want ErrUpstream, got %v", err)
+func TestNotConfigured(t *testing.T) {
+	if _, err := New(Config{}).ClaimEventHead(context.Background(), "kungal"); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("want ErrNotConfigured, got %v", err)
 	}
 }

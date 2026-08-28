@@ -50,7 +50,7 @@ func (f *fakeVoteFace) server(t *testing.T) *httptest.Server {
 
 func voteTestApp(t *testing.T, catalogURL string, user *middleware.UserInfo) *fiber.App {
 	t.Helper()
-	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec"})
+	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL})
 	h := NewCoverVoteHandler(cc, client.New(fakeGalgame(t).URL, "nm_test", ""))
 
 	app := fiber.New()

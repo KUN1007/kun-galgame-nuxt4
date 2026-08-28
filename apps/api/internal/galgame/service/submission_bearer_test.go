@@ -90,7 +90,7 @@ func (r *claimPlaneRecorder) submissionService(t *testing.T) *SubmissionService 
 	srv := r.server(t)
 	return NewSubmissionService(
 		client.New(srv.URL, "nm_test_key", ""),
-		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL}),
 		nil,
 	)
 }
@@ -99,7 +99,7 @@ func (r *claimPlaneRecorder) reviewService(t *testing.T) *ClaimReviewService {
 	srv := r.server(t)
 	return NewClaimReviewService(
 		client.New(srv.URL, "nm_test_key", ""),
-		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL}),
 	)
 }
 

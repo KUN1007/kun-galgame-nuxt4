@@ -1,9 +1,11 @@
 package service
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -100,70 +102,195 @@ type claimFeedStub struct {
 	mu    sync.Mutex
 	total int64
 	page  int
-	sites []string
+	asked []url.Values
+}
+
+// The feed is keyset-paged: cursor is cur_<base64url of the decimal watermark>,
+// and the page it returns is the events strictly after it.
+func decodeWatermark(t *testing.T, cur string) int64 {
+	t.Helper()
+	if cur == "" {
+		return 0
+	}
+	if !strings.HasPrefix(cur, "cur_") {
+		t.Fatalf("cursor %q does not start with cur_ — catalog answers 400 for anything else", cur)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(cur, "cur_"))
+	if err != nil {
+		t.Fatalf("cursor %q is not base64url: %v", cur, err)
+	}
+	n, err := strconv.ParseInt(string(raw), 10, 64)
+	if err != nil {
+		t.Fatalf("cursor %q does not carry a decimal event id: %v", cur, err)
+	}
+	return n
 }
 
 func (f *claimFeedStub) client(t *testing.T) *catalogclient.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		since, _ := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
+		q := r.URL.Query()
 		f.mu.Lock()
-		f.sites = append(f.sites, r.URL.Query().Get("site"))
+		f.asked = append(f.asked, q)
 		f.mu.Unlock()
 
-		items := []string{}
-		for id := since + 1; id <= f.total && len(items) < f.page; id++ {
-			items = append(items, fmt.Sprintf(
-				`{"id":%d,"work_id":%d,"from_state":null,"to_state":"live","actor_uid":7,`+
-					`"reason":null,"site":"kungal","product_work_id":%d,`+
-					`"created_at":"2026-07-30T10:00:00Z"}`, id, 5000+id, 100+id))
+		if got := r.Header.Get("Authorization"); got != "Bearer nmk_test" {
+			t.Errorf("Authorization = %q; the feed is on the application-key plane", got)
 		}
-		next := since
-		if n := len(items); n > 0 {
-			next = since + int64(n)
+		limit, _ := strconv.Atoi(q.Get("limit"))
+		if limit < 1 || limit > 100 {
+			// Not a clamp upstream: 400 LIMIT_TOO_LARGE.
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"status":400,"code":"LIMIT_TOO_LARGE","detail":"limit must be 1-100"}`))
+			return
 		}
-		_, _ = fmt.Fprintf(w, `{"code":0,"message":"成功","data":{"items":[%s],"next_since":%d}}`,
-			strings.Join(items, ","), next)
+
+		row := func(id int64) string {
+			return fmt.Sprintf(
+				`{"object":"claim_event","id":"%d","work_id":"%d","from_state":null,`+
+					`"to_state":"live","actor_uid":"7","reason":null,"site":"kungal",`+
+					`"product_work_id":"%d","created_at":"2026-07-30T10:00:00Z"}`,
+				id, 5000+id, 100+id)
+		}
+		items, more := []string{}, false
+		if q.Get("sort") == "recorded_desc" {
+			for id := f.total; id > 0 && len(items) < limit; id-- {
+				items = append(items, row(id))
+			}
+			more = f.total > int64(limit)
+		} else {
+			since := decodeWatermark(t, q.Get("cursor"))
+			id := since + 1
+			for ; id <= f.total && len(items) < limit; id++ {
+				items = append(items, row(id))
+			}
+			more = id <= f.total
+		}
+		body := fmt.Sprintf(`{"object":"list","items":[%s]`, strings.Join(items, ","))
+		if more {
+			body += fmt.Sprintf(`,"next_cursor":"cur_%s"`,
+				base64.RawURLEncoding.EncodeToString([]byte(strconv.FormatInt(int64(len(items)), 10))))
+		}
+		_, _ = w.Write([]byte(body + "}"))
 	}))
 	t.Cleanup(srv.Close)
-	return catalogclient.New(catalogclient.Config{
-		BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec",
-	})
+	return catalogclient.New(catalogclient.Config{BaseURL: srv.URL, AppKey: "nmk_test"})
 }
 
-func TestFeedHeadWalksToTheLastEvent(t *testing.T) {
-	stub := &claimFeedStub{total: 250, page: 100}
-	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
-	s.batch = stub.page
+func (f *claimFeedStub) calls() []url.Values {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]url.Values(nil), f.asked...)
+}
 
-	head, err := s.feedHead(t.Context())
+func TestClaimFeedHeadIsOneRequestNotAWalk(t *testing.T) {
+	stub := &claimFeedStub{total: 64996}
+	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
+
+	head, err := s.catalog.ClaimEventHead(t.Context(), claimSite)
 	if err != nil {
-		t.Fatalf("feedHead: %v", err)
+		t.Fatalf("ClaimEventHead: %v", err)
 	}
-	if head != 250 {
-		t.Errorf("head = %d, want 250 (the last id, not the first page's)", head)
+	if head != 64996 {
+		t.Errorf("head = %d, want the newest id 64996", head)
 	}
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	for _, site := range stub.sites {
-		if site != claimSite {
-			t.Fatalf("feed asked with site=%q, want %q — an unfiltered feed would "+
-				"hand kungal another product's claims to seed stubs for", site, claimSite)
-		}
+	// Seeding used to walk to the end. At the feed's 100-row ceiling that is 650
+	// pages, the 50-page cap stops at 5000, and the cron then replays 60k events
+	// — every one of them re-running the reward and the unpublish.
+	calls := stub.calls()
+	if len(calls) != 1 {
+		t.Fatalf("seeding took %d requests, want exactly 1", len(calls))
+	}
+	if calls[0].Get("sort") != "recorded_desc" || calls[0].Get("limit") != "1" {
+		t.Errorf("seed asked %v, want sort=recorded_desc&limit=1", calls[0])
+	}
+	if calls[0].Get("site") != claimSite {
+		t.Errorf("seed asked site=%q, want %q — an unfiltered feed seeds from another product's claims",
+			calls[0].Get("site"), claimSite)
 	}
 }
 
 func TestClaimFeedHeadOnEmptyFeed(t *testing.T) {
-	stub := &claimFeedStub{total: 0, page: 100}
+	stub := &claimFeedStub{total: 0}
 	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
-	s.batch = stub.page
 
-	head, err := s.feedHead(t.Context())
+	head, err := s.catalog.ClaimEventHead(t.Context(), claimSite)
 	if err != nil {
-		t.Fatalf("feedHead: %v", err)
+		t.Fatalf("ClaimEventHead: %v", err)
 	}
 	if head != 0 {
 		t.Errorf("head = %d, want 0", head)
+	}
+}
+
+func TestClaimFeedWalkSendsTheFeedsOwnVocabulary(t *testing.T) {
+	stub := &claimFeedStub{total: 250}
+	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
+
+	page, err := s.catalog.ClaimEventsSince(t.Context(), 120, s.batch, claimSite)
+	if err != nil {
+		t.Fatalf("ClaimEventsSince: %v", err)
+	}
+	q := stub.calls()[0]
+	// Catalog ignores a query parameter it does not declare, so a stale spelling
+	// never errors — it silently returns the newest events instead of the oldest
+	// unread ones, and the watermark walks backwards over history.
+	if q.Get("sort") != "recorded_asc" {
+		t.Errorf("sort = %q, want recorded_asc", q.Get("sort"))
+	}
+	if q.Has("since") {
+		t.Errorf("still sending since=%q; the keyset cursor replaced it", q.Get("since"))
+	}
+	if got := decodeWatermark(t, q.Get("cursor")); got != 120 {
+		t.Errorf("cursor carries %d, want the stored watermark 120", got)
+	}
+	if q.Get("site") != claimSite || q.Get("limit") != "100" {
+		t.Errorf("asked %v, want site=%s&limit=100", q, claimSite)
+	}
+
+	if len(page.Items) != 100 || !page.HasMore {
+		t.Fatalf("page = %d items HasMore=%v, want 100/true", len(page.Items), page.HasMore)
+	}
+	first := page.Items[0]
+	if first.ID != 121 || first.WorkID != 5121 || first.ActorUID != 7 {
+		t.Errorf("first = %+v, want the decimal STRING ids decoded to 121/5121/7", first)
+	}
+	if first.ProductWorkID == nil || *first.ProductWorkID != 221 {
+		t.Errorf("product_work_id = %v, want 221", first.ProductWorkID)
+	}
+}
+
+func TestClaimFeedStopsOnTheLastPage(t *testing.T) {
+	stub := &claimFeedStub{total: 130}
+	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
+
+	page, err := s.catalog.ClaimEventsSince(t.Context(), 100, s.batch, claimSite)
+	if err != nil {
+		t.Fatalf("ClaimEventsSince: %v", err)
+	}
+	// The walk used to stop on a short page. next_cursor is the feed's own
+	// end-of-collection signal and a full last page is not short.
+	if len(page.Items) != 30 || page.HasMore {
+		t.Fatalf("page = %d items HasMore=%v, want 30/false", len(page.Items), page.HasMore)
+	}
+}
+
+func TestClaimFeedNeverSendsALimitOverTheCeiling(t *testing.T) {
+	stub := &claimFeedStub{total: 10}
+	s := NewGalgameClaimEventSync(stub.client(t), nil, nil)
+
+	// The forum asked for 1000 a page until 2026-08-28. Over the ceiling the feed
+	// answers 400 LIMIT_TOO_LARGE rather than clamping, which stalls the cron
+	// outright, so the batch is capped on the way out and not merely configured
+	// low.
+	if _, err := s.catalog.ClaimEventsSince(t.Context(), 0, 1000, claimSite); err != nil {
+		t.Fatalf("a batch of 1000 reached the feed: %v", err)
+	}
+	if got := stub.calls()[0].Get("limit"); got != "100" {
+		t.Errorf("limit = %q, want it capped at 100", got)
+	}
+	if _, err := s.catalog.ClaimEventsSince(t.Context(), 0, s.batch, claimSite); err != nil {
+		t.Fatalf("the configured batch %d was rejected by the feed: %v", s.batch, err)
 	}
 }
 

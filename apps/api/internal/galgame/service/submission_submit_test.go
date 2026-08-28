@@ -71,7 +71,7 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 	t.Cleanup(srv.Close)
 	return NewSubmissionService(
 		client.New(srv.URL, "nm_test_key", ""),
-		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL}),
 		nil,
 	)
 }

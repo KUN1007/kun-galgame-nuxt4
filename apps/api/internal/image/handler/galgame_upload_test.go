@@ -157,7 +157,7 @@ func TestUploadGalgameImage_ForwardsTheUploadersToken(t *testing.T) {
 		return c.Next()
 	})
 	svc := service.NewImageService(&repository.ImageRepository{}, nil,
-		catalogclient.New(catalogclient.Config{BaseURL: catalog.URL, ClientID: "cid", ClientSecret: "sec"}))
+		catalogclient.New(catalogclient.Config{BaseURL: catalog.URL}))
 	app.Post("/image/galgame", NewImageHandler(svc).UploadGalgameImage)
 
 	body, ct := makeMultipart(t, map[string]string{"preset": "galgame_banner"}, "x.png", []byte("PNG!"))

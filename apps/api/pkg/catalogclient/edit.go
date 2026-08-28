@@ -1,12 +1,8 @@
 package catalogclient
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strconv"
 	"time"
@@ -174,16 +170,6 @@ type EditProposalFilter struct {
 	Limit       int
 }
 
-type EditAPIError struct {
-	Status  int
-	Code    int
-	Message string
-}
-
-func (e *EditAPIError) Error() string {
-	return fmt.Sprintf("catalog edit: status=%d code=%d %s", e.Status, e.Code, e.Message)
-}
-
 const EntityTypeWork = "catalog.work"
 
 const FieldKeyPrefix = EntityTypeWork + "."
@@ -327,51 +313,4 @@ func (c *Client) DiffEditRevisions(ctx context.Context, entityType string, entit
 		return nil, err
 	}
 	return &EditDiff{FromSeq: fromSeq, ToSeq: toSeq, Fields: rec.Diff}, nil
-}
-
-func editGet[T any](ctx context.Context, c *Client, path string) (*T, error) {
-	return editDo[T](ctx, c, http.MethodGet, path, nil)
-}
-
-func editDo[T any](ctx context.Context, c *Client, method, path string, body []byte) (*T, error) {
-	if !c.Configured() {
-		return nil, ErrNotConfigured
-	}
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
-	if err != nil {
-		return nil, err
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	req.Header.Set("Authorization", c.basicAuth)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUpstream, err)
-	}
-	defer resp.Body.Close()
-
-	var env struct {
-		Code    int             `json:"code"`
-		Message string          `json:"message"`
-		Data    json.RawMessage `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
-		return nil, fmt.Errorf("%w: malformed envelope", ErrUpstream)
-	}
-	if resp.StatusCode != http.StatusOK || env.Code != 0 {
-		return nil, &EditAPIError{Status: resp.StatusCode, Code: env.Code, Message: env.Message}
-	}
-	var out T
-	if len(env.Data) > 0 {
-		if err := json.Unmarshal(env.Data, &out); err != nil {
-			return nil, fmt.Errorf("%w: malformed data payload", ErrUpstream)
-		}
-	}
-	return &out, nil
 }

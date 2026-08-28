@@ -70,7 +70,7 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 	t.Cleanup(srv.Close)
 	return NewSubmissionService(
 		client.New(srv.URL, "nm_test_key", ""),
-		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL}),
 		nil,
 	)
 }
@@ -200,7 +200,7 @@ func TestWizard_PendingIsAnEmptyArrayWhenTheUserHasNone(t *testing.T) {
 	t.Cleanup(srv.Close)
 	svc := NewSubmissionService(
 		client.New(srv.URL, "nm_test_key", ""),
-		catalogclient.New(catalogclient.Config{BaseURL: srv.URL, ClientID: "cid", ClientSecret: "sec"}),
+		catalogclient.New(catalogclient.Config{BaseURL: srv.URL}),
 		nil,
 	)
 

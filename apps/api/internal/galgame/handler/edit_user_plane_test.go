@@ -15,7 +15,7 @@ import (
 
 func userPlaneApp(t *testing.T, catalogURL string, user *middleware.UserInfo, token string) *fiber.App {
 	t.Helper()
-	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, ClientID: "cid", ClientSecret: "sec", AppKey: "nmk_test"})
+	cc := catalogclient.New(catalogclient.Config{BaseURL: catalogURL, AppKey: "nmk_test"})
 	h := NewEditHandler(cc, client.New(fakeGalgame(t).URL, "nm_test", ""), nil, nil, nil).
 		WithOwners(fakeOwners{1: 7})
 

@@ -214,10 +214,20 @@ func editStatusError(status int, message string) *errors.AppError {
 	return nil
 }
 
+// The revision and proposal listings are read with the forum's own application
+// key, not the reader's token, so a 401/403 here is this deployment's key being
+// wrong and never the user's grant — routing it through userEditError would
+// prompt a perfectly valid session to log out and back in, which cannot fix it.
 func editError(c fiber.Ctx, err error) error {
-	var apiErr *catalogclient.EditAPIError
+	var apiErr *catalogclient.UserAPIError
 	switch {
 	case stderrors.Is(err, catalogclient.ErrNotConfigured):
+		return response.Error(c, errEditDown)
+	case stderrors.Is(err, catalogclient.ErrNotFound):
+		return response.Error(c, errors.ErrNotFound("条目或提案不存在"))
+	case stderrors.Is(err, catalogclient.ErrUnauthorized),
+		stderrors.Is(err, catalogclient.ErrInsufficientScope):
+		slog.Error("galgame edit: 应用 key 被 catalog 拒绝, 编辑历史全站不可读", "error", err)
 		return response.Error(c, errEditDown)
 	case stderrors.As(err, &apiErr):
 		if appErr := editStatusError(apiErr.Status, apiErr.Message); appErr != nil {
