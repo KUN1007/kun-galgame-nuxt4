@@ -35,8 +35,8 @@ onMounted(async () => {
 
     <KunOverlayScroll v-if="data.length" class="h-full">
       <MessageAsideSystem
-        v-for="(message, index) in data"
-        :key="index"
+        v-for="message in data"
+        :key="message.id"
         :message="message"
       />
     </KunOverlayScroll>

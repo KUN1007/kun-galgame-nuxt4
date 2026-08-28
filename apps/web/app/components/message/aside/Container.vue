@@ -41,8 +41,8 @@ const contact = computed(
     </MessageAsideSystemItem>
 
     <MessageAsideItem
-      v-for="(room, index) in contact"
-      :key="index"
+      v-for="room in contact"
+      :key="room.chatroom_name"
       :room="room"
     />
 

@@ -8,18 +8,22 @@ const props = withDefaults(
   { type: 'relative', showYear: false }
 )
 
-const isWithinDay = (value: number | string | Date): boolean => {
+const isWithinDay = (value: number | string | Date, now: number): boolean => {
   const date = new Date(value)
-  return (
-    !Number.isNaN(date.getTime()) && Date.now() - date.getTime() < 86_400_000
-  )
+  return !Number.isNaN(date.getTime()) && now - date.getTime() < 86_400_000
 }
 
-const render = (): string => {
+const now = ref(Date.now())
+
+const text = computed(() => {
+  // formatTimeDifference reads Date.now() itself, so `now` has to be read on
+  // every branch: read it only inside the 'auto' test and the 60s timer stops
+  // re-running this, which is how relative times froze once already.
+  const at = now.value
   const value = props.time ?? ''
   if (
     props.type === 'relative' ||
-    (props.type === 'auto' && value !== '' && isWithinDay(value))
+    (props.type === 'auto' && value !== '' && isWithinDay(value, at))
   ) {
     return formatTimeDifference(value)
   }
@@ -27,23 +31,13 @@ const render = (): string => {
     isShowYear: props.showYear,
     isPrecise: props.type === 'datetime' || props.type === 'auto'
   })
-}
-
-const text = ref(render())
-
-watch(
-  () => [props.time, props.type, props.showYear],
-  () => {
-    text.value = render()
-  }
-)
+})
 
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
-  text.value = render()
   if (props.type === 'relative' || props.type === 'auto') {
     timer = setInterval(() => {
-      text.value = render()
+      now.value = Date.now()
     }, 60_000)
   }
 })

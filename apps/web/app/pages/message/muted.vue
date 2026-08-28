@@ -59,8 +59,8 @@ const { data, status, refresh } = await useKunFetch<MessageList>(
 
     <KunOverlayScroll v-if="data.messages.length" class="h-full">
       <MessageAsideNotice
-        v-for="(message, index) in data.messages"
-        :key="index"
+        v-for="message in data.messages"
+        :key="message.id"
         :message="message"
         :refresh="refresh"
       />
