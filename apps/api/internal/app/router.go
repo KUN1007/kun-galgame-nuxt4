@@ -272,8 +272,6 @@ func (a *App) setupRoutes() {
 	authed.Put("/website/:domain/favorite", a.WebsiteHandler.ToggleFavorite)
 
 	authed.Post("/galgame/submit", a.GalgameSubmissionHandler.Submit)
-	authed.Post("/galgame/work/:workId/claim", a.GalgameSubmissionHandler.ClaimUnclaimed)
-	authed.Post("/galgame/:gid/claim", a.GalgameSubmissionHandler.Claim)
 	authed.Post("/galgame/:gid/resubmit", a.GalgameSubmissionHandler.Resubmit)
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
 

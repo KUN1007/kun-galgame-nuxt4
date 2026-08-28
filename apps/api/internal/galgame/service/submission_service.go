@@ -8,14 +8,10 @@ import (
 	"net/url"
 	"strconv"
 
-	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/galgame/client"
 	"kun-galgame-api/internal/galgame/repository"
-	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/pkg/catalogclient"
 	"kun-galgame-api/pkg/errors"
-
-	"gorm.io/gorm"
 )
 
 type SubmissionService struct {
@@ -93,86 +89,6 @@ func (s *SubmissionService) Submit(
 	return &SubmitResult{
 		GID: gid, WorkID: res.WorkID, ClaimState: res.ClaimState, BannerAttached: attached,
 	}, nil
-}
-
-func (s *SubmissionService) Claim(
-	ctx context.Context,
-	accessToken string,
-	uid int64,
-	gid int,
-) (*catalogclient.ClaimActionResult, *errors.AppError) {
-	res, appErr := s.act(ctx, accessToken, gid, catalogclient.ClaimActionPublish, "")
-	if appErr != nil {
-		return nil, appErr
-	}
-	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
-		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
-	}
-	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
-		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
-		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(uid, 10)))
-	return res, nil
-}
-
-// The wizard row for an unclaimed work carries no gid, so the response has to
-// name the one the claim just minted rather than let the caller assume it.
-type ClaimUnclaimedResult struct {
-	catalogclient.ClaimActionResult
-	GID int `json:"gid"`
-}
-
-// ClaimUnclaimed adopts a bodyless catalog work (claim state "none") for the
-// user and publishes it in one call: claim (none → draft) then publish
-// (draft → live).
-//
-// The claim anchors product_work_id at the catalog work id, which is what
-// Submit ends up with too (it omits the field and the registry mints an
-// identity the claim then adopts). It is also the only id the forum has here:
-// catalog rejects a claim with no product_work_id.
-//
-// That anchor is NOT free of collisions in principle. catalog_work's unique
-// index is (medium_id, site, product_work_id), and for the legacy rows the two
-// id spaces differ — 61,329 of the 62,250 claims in the dev registry carry a
-// product_work_id that is not their own catalog id. An unclaimed work whose
-// catalog id happens to equal one of those anchors cannot be adopted. Measured
-// against dev: 310 of 152,635 unclaimed works sit inside the anchor range at
-// all, and none of them collides. If one ever does, catalog refuses the claim
-// and the user sees the upstream error; there is no id the forum could pick
-// instead, because a forum-chosen anchor would break the gid = catalog id
-// convention every other path depends on.
-func (s *SubmissionService) ClaimUnclaimed(
-	ctx context.Context,
-	accessToken string,
-	uid int64,
-	workID int64,
-) (*ClaimUnclaimedResult, *errors.AppError) {
-	res, appErr := adoptAndPublish(ctx, s.catalog, accessToken, workID)
-	if appErr != nil {
-		return nil, appErr
-	}
-
-	gid := int(workID)
-	// Stamp the row now instead of waiting for the claim-event cron, exactly as
-	// Submit does: the caller is redirected to /galgame/:gid the moment this
-	// returns, and until the row exists that page renders IsOnForum=false — a
-	// "未收录" banner and no resource or comment section, right after telling
-	// the user 认领成功, 已发布.
-	if err := s.galgameRepo.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := s.galgameRepo.EnsureLocalStub(tx, gid); err != nil {
-			return err
-		}
-		return s.galgameRepo.SetCreatorIfUnset(tx, gid, int(uid))
-	}); err != nil {
-		slog.Warn("claim: 建立本地 galgame 行失败, 等待 claim 事件同步补齐",
-			"gid", gid, "uid", uid, "error", err)
-	}
-	if err := s.galgameRepo.Touch(s.galgameRepo.DB().WithContext(ctx), gid); err != nil {
-		slog.Warn("claim: 刷新本地 galgame resource_update_time 失败", "gid", gid, "error", err)
-	}
-	moemoepoint.Award(int(uid), constants.RewardCreateGalgame,
-		moemoepoint.ReasonContentApproved, moemoepoint.Ref("galgame", gid),
-		moemoepoint.Key("claim", strconv.Itoa(gid), strconv.FormatInt(uid, 10)))
-	return &ClaimUnclaimedResult{ClaimActionResult: *res, GID: gid}, nil
 }
 
 // adoptAndPublish is one user gesture but two transactions upstream, so the

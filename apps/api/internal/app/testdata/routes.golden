@@ -193,7 +193,6 @@ POST   /api/galgame-quiz/:id/comments                 cors.New → middleware.Na
 POST   /api/galgame-rating                            cors.New → middleware.NamePreference → OptionalAuth → Auth → RatingHandler.CreateRating
 POST   /api/galgame-rating/:id/comments               cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.RatingCreate
 POST   /api/galgame-resource/:id/comments             cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.ResourceCreate
-POST   /api/galgame/:gid/claim                        cors.New → middleware.NamePreference → OptionalAuth → Auth → SubmissionHandler.Claim
 POST   /api/galgame/:gid/comments                     cors.New → middleware.NamePreference → OptionalAuth → Auth → CommunityCommentHandler.Create
 POST   /api/galgame/:gid/edit/proposals               cors.New → middleware.NamePreference → OptionalAuth → Auth → EditHandler.Submit
 POST   /api/galgame/:gid/edit/revert                  cors.New → middleware.NamePreference → OptionalAuth → Auth → EditHandler.Revert
@@ -202,7 +201,6 @@ POST   /api/galgame/:gid/resubmit                     cors.New → middleware.Na
 POST   /api/galgame/collection                        cors.New → middleware.NamePreference → OptionalAuth → Auth → GalgameCollectionHandler.Create
 POST   /api/galgame/comments/:postId/flag             cors.New → middleware.NamePreference → OptionalAuth → Auth → CommunityCommentHandler.Flag
 POST   /api/galgame/submit                            cors.New → middleware.NamePreference → OptionalAuth → Auth → SubmissionHandler.Submit
-POST   /api/galgame/work/:workId/claim                cors.New → middleware.NamePreference → OptionalAuth → Auth → SubmissionHandler.ClaimUnclaimed
 POST   /api/image/cover                               cors.New → middleware.NamePreference → OptionalAuth → Auth → ImageHandler.UploadCoverImage
 POST   /api/image/galgame                             cors.New → middleware.NamePreference → OptionalAuth → Auth → ImageHandler.UploadGalgameImage
 POST   /api/image/message                             cors.New → middleware.NamePreference → OptionalAuth → Auth → ImageHandler.UploadMessageImage

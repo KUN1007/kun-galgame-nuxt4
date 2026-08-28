@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   galgameClaimGid,
   galgameClaimStateBadge,
-  isClaimableState,
-  isPublicState,
-  isUnclaimedState
+  isPublicState
 } from './galgameClaimState'
 import type { UserClaimItem } from '../types/galgame'
 
@@ -48,22 +46,6 @@ describe('galgameClaimStateBadge', () => {
       label: '未知',
       color: 'default'
     })
-  })
-
-  it('a draft and an unclaimed row are claimable, nothing else is', () => {
-    expect(isClaimableState('draft')).toBe(true)
-    expect(isClaimableState('none')).toBe(true)
-    expect(isClaimableState('pending')).toBe(false)
-    expect(isClaimableState('live')).toBe(false)
-    expect(isClaimableState('declined')).toBe(false)
-    expect(isClaimableState('hidden')).toBe(false)
-    expect(isClaimableState(undefined)).toBe(false)
-  })
-
-  it('separates adopting an unclaimed row from publishing an own draft', () => {
-    expect(isUnclaimedState('none')).toBe(true)
-    expect(isUnclaimedState('draft')).toBe(false)
-    expect(isUnclaimedState(undefined)).toBe(false)
   })
 
   it('only a live entry has a public page to link to', () => {

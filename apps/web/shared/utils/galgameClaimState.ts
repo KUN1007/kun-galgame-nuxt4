@@ -45,14 +45,5 @@ export const galgameClaimStateBadge = (
 export const galgameClaimGid = (item: UserClaimItem): number =>
   item.product_work_id ?? 0
 
-// A kungal draft is claimed already and only needs publishing; a `none` row is
-// not claimed by anyone yet and needs adopting first. Both end at the same
-// button, but they hit different endpoints — see isUnclaimedState.
-export const isClaimableState = (state: string | undefined): boolean =>
-  state === CLAIM_STATE_DRAFT || state === CLAIM_STATE_NONE
-
-export const isUnclaimedState = (state: string | undefined): boolean =>
-  state === CLAIM_STATE_NONE
-
 export const isPublicState = (state: string | undefined): boolean =>
   state === CLAIM_STATE_LIVE

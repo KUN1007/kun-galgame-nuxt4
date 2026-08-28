@@ -47,46 +47,6 @@ func (h *SubmissionHandler) Submit(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
-func (h *SubmissionHandler) Claim(c fiber.Ctx) error {
-	token, appErr := userToken(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	gid, appErr := submissionGID(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	user := middleware.GetUser(c)
-	if user == nil {
-		return response.Error(c, errors.ErrAuthExpired())
-	}
-	res, appErr := h.svc.Claim(c.Context(), token, int64(user.ID), gid)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, res)
-}
-
-func (h *SubmissionHandler) ClaimUnclaimed(c fiber.Ctx) error {
-	token, appErr := userToken(c)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	workID, parseErr := strconv.ParseInt(c.Params("workId"), 10, 64)
-	if parseErr != nil || workID <= 0 {
-		return response.Error(c, errors.ErrBadRequest("无效的作品 ID"))
-	}
-	user := middleware.GetUser(c)
-	if user == nil {
-		return response.Error(c, errors.ErrAuthExpired())
-	}
-	res, appErr := h.svc.ClaimUnclaimed(c.Context(), token, int64(user.ID), workID)
-	if appErr != nil {
-		return response.Error(c, appErr)
-	}
-	return response.OK(c, res)
-}
-
 func (h *SubmissionHandler) Resubmit(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
