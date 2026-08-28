@@ -188,3 +188,59 @@ func entryIDs(entries []galgameCommentEntry) []int64 {
 	}
 	return ids
 }
+
+func TestCollectAuthorGalgamePostsStopsAtThePageCap(t *testing.T) {
+	pages := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": 0,
+			"data": map[string]any{
+				"posts":       []communityclient.AuthorPostView{authorPost(int64(pages), "2026-08-20T10:00:00Z")},
+				"next_cursor": strconv.Itoa(pages),
+			},
+		})
+	}))
+	defer srv.Close()
+
+	s := &UserContentService{community: communityclient.New(communityclient.Config{
+		BaseURL: srv.URL, ClientID: "test", ClientSecret: "test",
+	})}
+	posts, err := s.collectAuthorGalgamePosts(context.Background(), 7)
+	if err != nil {
+		t.Fatalf("collectAuthorGalgamePosts: %v", err)
+	}
+	if pages != maxAuthorPostPages {
+		t.Errorf("read %d pages from a feed that never ends, want the cap of %d — "+
+			"an uncapped drain lets one profile issue unbounded upstream calls",
+			pages, maxAuthorPostPages)
+	}
+	if len(posts) != maxAuthorPostPages {
+		t.Errorf("kept %d posts, want the %d it did read", len(posts), maxAuthorPostPages)
+	}
+}
+
+func TestPaginateGalgameCommentEntriesEndsOnAConsumedCursor(t *testing.T) {
+	posts := []communityclient.AuthorPostView{
+		authorPost(10, "2026-08-20T10:00:00Z"),
+		authorPost(20, "2026-08-20T11:00:00Z"),
+	}
+	if _, cursor := paginateGalgameCommentEntries(authoredGalgameCommentEntries(posts), "", 2); cursor != "" {
+		t.Fatalf("a page that fit returned cursor %q", cursor)
+	}
+
+	_, next := paginateGalgameCommentEntries(authoredGalgameCommentEntries(posts), "", 1)
+	if next == "" {
+		t.Fatal("a truncated page must return a cursor")
+	}
+	second, _ := paginateGalgameCommentEntries(authoredGalgameCommentEntries(posts), next, 1)
+	if got, want := entryIDs(second), []int64{10}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("second page = %v, want %v", got, want)
+	}
+
+	exhausted := encodeGalgameCommentCursor(parseGalgameCommentTime("2026-08-20T10:00:00Z"), 10)
+	tail, _ := paginateGalgameCommentEntries(authoredGalgameCommentEntries(posts), exhausted, 1)
+	if len(tail) != 0 {
+		t.Fatalf("cursor past the last entry returned %v, want nothing", entryIDs(tail))
+	}
+}
