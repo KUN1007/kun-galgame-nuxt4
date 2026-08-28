@@ -89,13 +89,13 @@ func (c *GalgameClient) ContentLimitsByCatalogIDs(ctx context.Context, ids []int
 	}
 	for i := range rows {
 		row := &rows[i]
-		if !row.isRenderable() || row.ClaimedBy == nil {
+		if !row.isRenderable() || row.Claim == nil {
 			continue
 		}
-		if !isKungalClaim(row.ClaimedBy.Site) || row.ClaimedBy.WorkID <= 0 {
+		if !isKungalClaim(row.Claim.Site) || row.Claim.SiteWorkID <= 0 {
 			continue
 		}
-		out[row.ClaimedBy.WorkID] = contentLimitOf(row.ClaimedBy, row.ContentRating)
+		out[row.Claim.SiteWorkID] = contentLimitOf(row.Claim, row.ContentRating)
 	}
 	return out, nil
 }

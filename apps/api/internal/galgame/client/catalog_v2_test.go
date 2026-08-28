@@ -294,9 +294,9 @@ func TestLiveV2GIDBridge(t *testing.T) {
 			for id := range back {
 				row := back[id]
 				switch {
-				case row.ClaimedBy == nil:
+				case row.Claim == nil:
 					dropped[id] = "no claim"
-				case row.ClaimedBy.State == "live":
+				case row.Claim.State == "live":
 					dropped[id] = "LIVE and still lost"
 				default:
 					explained++

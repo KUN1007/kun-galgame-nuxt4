@@ -32,21 +32,21 @@ func (r *wizardRecorder) service(t *testing.T) *SubmissionService {
 			r.catalogQ = req.URL.Query()
 			body = `{"total":2,"items":[
 			  {"id":11,"display_name":"A","cover":"https://img/aa/bb/hash1.webp",
-			   "claimed_by":{"site":"kungal","work_id":292,"state":"live"},
+			   "claim":{"site":"kungal","site_work_id":"292","state":"live"},
 			   "localized":{"zh-Hans":{"value":"白恋樱","kind":"official"}},"refs":[{"source":"vndb","external_id":"v22610"}]},
 			  {"id":12,"display_name":"B","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":9978,"state":"draft"}},
+			   "claim":{"site":"kungal","site_work_id":"9978","state":"draft"}},
 			  {"id":13,"display_name":"withdrawn","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":404,"state":"hidden"}},
-			  {"id":14,"display_name":"unclaimed","cover":"","claimed_by":null},
+			   "claim":{"site":"kungal","site_work_id":"404","state":"hidden"}},
+			  {"id":14,"display_name":"unclaimed","cover":"","claim":null},
 			  {"id":15,"display_name":"declined","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":331,"state":"declined"}},
+			   "claim":{"site":"kungal","site_work_id":"331","state":"declined"}},
 			  {"id":16,"display_name":"pending","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":5150,"state":"pending"}},
+			   "claim":{"site":"kungal","site_work_id":"5150","state":"pending"}},
 			  {"id":17,"display_name":"gidless","cover":"",
-			   "claimed_by":{"site":"kungal","work_id":0,"state":"live"}},
+			   "claim":{"site":"kungal","site_work_id":"0","state":"live"}},
 			  {"id":18,"display_name":"foreign","cover":"",
-			   "claimed_by":{"site":"moyu","work_id":700,"state":"live"}}
+			   "claim":{"site":"moyu","site_work_id":"700","state":"live"}}
 			]}`
 		case strings.Contains(req.URL.Path, "/v2/me/claims") || strings.Contains(req.URL.Path, "/claims"):
 			r.claimsQ = req.URL.Query()

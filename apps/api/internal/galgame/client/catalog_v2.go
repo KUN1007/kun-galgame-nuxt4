@@ -454,18 +454,8 @@ func rewriteV2Object(v map[string]any, cdnBase string) bool {
 		}
 	}
 	if claim, ok := v["claim"].(map[string]any); ok {
-		if _, has := v["claimed_by"]; !has {
-			mapped := map[string]any{
-				"site":          claim["site"],
-				"state":         claim["state"],
-				"content_limit": claim["content_limit"],
-			}
-			if n, ok := digitString(claim["site_work_id"]); ok {
-				mapped["work_id"] = json.Number(n)
-			} else if n, ok := digitString(claim["work_id"]); ok {
-				mapped["work_id"] = json.Number(n)
-			}
-			v["claimed_by"] = mapped
+		if n, ok := digitString(claim["site_work_id"]); ok {
+			claim["site_work_id"] = json.Number(n)
 			changed = true
 		}
 	}

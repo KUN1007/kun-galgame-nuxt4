@@ -11,7 +11,7 @@ func CatalogDetailToFull(ctx context.Context, d *catWorkDetail, gid int) dto.Nex
 	characters := catalogRosterToNextMoe(ctx, d.Characters)
 	f := dto.NextMoeGalgameDetailFull{
 		ID:               gid,
-		ContentLimit:     contentLimitOf(d.ClaimedBy, d.ContentRating),
+		ContentLimit:     contentLimitOf(d.Claim, d.ContentRating),
 		AgeLimit:         ageLimitFromRating(d.ContentRating),
 		OriginalLanguage: productLocale(d.OLang),
 		ReleaseDate:      d.ReleaseDate,
@@ -32,8 +32,8 @@ func CatalogDetailToFull(ctx context.Context, d *catWorkDetail, gid int) dto.Nex
 
 	f.Intros = OrderIntros(d.introRows())
 
-	if d.ClaimedBy != nil {
-		f.Status = statusFromClaimState(d.ClaimedBy.State)
+	if d.Claim != nil {
+		f.Status = statusFromClaimState(d.Claim.State)
 	}
 
 	if hash, url, w, h, thumb := detailHero(d.CoverSlots, f.Covers); url != "" {

@@ -122,7 +122,7 @@ func atoi64(s string) int64 {
 func liveRow(catalogID int64, gid int, name string) string {
 	return `{"id":` + itoa(catalogID) + `,"medium":"galgame","display_name":"` + name +
 		`","content_rating":"all_ages","olang":"ja","release_date":"2024-06-14",` +
-		`"claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
+		`"claim":{"site":"kungal","site_work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
 		`"updated":"2026-01-01T00:00:00Z","latin":"` + name + `Latin",` +
 		`"localized":{"zh-Hans":{"value":"` + name + `CN","kind":"official","machine":true}},` +
 		`"covers":{"portrait":{"url":"https://cdn.example/ab/cd/abcdef.webp","width":600,"height":800,"thumbhash":"TH"},"banner":null},` +

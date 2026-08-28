@@ -21,7 +21,7 @@ func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.site, func(t *testing.T) {
-			it := &CatalogWorkListItem{ClaimedBy: &catClaimedBy{Site: tc.site, WorkID: 4321}}
+			it := &CatalogWorkListItem{Claim: &catClaim{Site: tc.site, SiteWorkID: 4321}}
 			if got := it.gid(); got != tc.want {
 				t.Errorf("gid() on site %q = %d, want %d", tc.site, got, tc.want)
 			}
@@ -32,6 +32,29 @@ func TestClaimSiteAcceptedOnBothSpellings(t *testing.T) {
 	}
 	if (&CatalogWorkListItem{}).gid() != 0 {
 		t.Error("a row with no catalog id has no gid")
+	}
+}
+
+// site_work_id and work_id are different numbers on the same row: the first is
+// the claiming site's, the second catalog's own. The forum read them as one for
+// a while because v1 spelled the claim's `work_id`, and every reader since has
+// had to re-derive which was which.
+func TestClaimCarriesTheSiteIDNotTheCatalogID(t *testing.T) {
+	var it CatalogWorkListItem
+	row := []byte(`{"id":4242,"claim":{"site":"kungal","site_work_id":777,"state":"live"},` +
+		`"work_id":4242}`)
+	if err := json.Unmarshal(row, &it); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if it.ID != 4242 {
+		t.Errorf("catalog id = %d, want 4242", it.ID)
+	}
+	if it.Claim.SiteWorkID != 777 {
+		t.Errorf("site_work_id = %d, want the forum gid 777", it.Claim.SiteWorkID)
+	}
+	if got := it.gid(); got != 777 {
+		t.Errorf("gid() = %d, want 777 — reading the catalog id as the gid names "+
+			"a different game on nine of every ten forum rows", got)
 	}
 }
 
@@ -137,7 +160,7 @@ func adoptedStub(t *testing.T, rows map[int64]string) *GalgameClient {
 
 func TestAdoptedIDResolvesWithoutAnAnchor(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
-		90210: `{"id":90210,"claimed_by":{"site":"kungal","work_id":90210,"state":"pending"}}`,
+		90210: `{"id":90210,"claim":{"site":"kungal","site_work_id":"90210","state":"pending"}}`,
 	})
 	ids, appErr := c.catalogIDsForGIDs(t.Context(), []int{90210})
 	if appErr != nil {
@@ -151,7 +174,7 @@ func TestAdoptedIDResolvesWithoutAnAnchor(t *testing.T) {
 
 func TestIdentityRouteRefusesAWorkThatNamesSomethingElse(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
-		42: `{"id":42,"claimed_by":{"site":"kungal","work_id":7,"state":"live"}}`,
+		42: `{"id":42,"claim":{"site":"kungal","site_work_id":"7","state":"live"}}`,
 	})
 	ids, appErr := c.catalogIDsForGIDs(t.Context(), []int{42})
 	if appErr != nil {
@@ -165,7 +188,7 @@ func TestIdentityRouteRefusesAWorkThatNamesSomethingElse(t *testing.T) {
 
 func TestIdentityRouteResolvesAForeignClaimByCatalogID(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
-		500: `{"id":500,"claimed_by":{"site":"moyu","work_id":500,"state":"live"}}`,
+		500: `{"id":500,"claim":{"site":"moyu","site_work_id":"500","state":"live"}}`,
 	})
 	ids, appErr := c.catalogIDsForGIDs(t.Context(), []int{500})
 	if appErr != nil {
@@ -178,7 +201,7 @@ func TestIdentityRouteResolvesAForeignClaimByCatalogID(t *testing.T) {
 
 func TestIdentityRouteResolvesAnUnclaimedWorkByCatalogID(t *testing.T) {
 	c := adoptedStub(t, map[int64]string{
-		600: `{"id":600,"claimed_by":null}`,
+		600: `{"id":600,"claim":null}`,
 	})
 	ids, appErr := c.catalogIDsForGIDs(t.Context(), []int{600})
 	if appErr != nil {

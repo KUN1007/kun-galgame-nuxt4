@@ -43,7 +43,7 @@ func fakeGalgame(t *testing.T) *httptest.Server {
 		switch {
 		case r.URL.Path == "/v2/catalog/works" && r.URL.Query().Get("refs") != "":
 			if strings.Contains(r.URL.Query().Get("refs"), ":1") {
-				_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claimed_by":{"site":"kungal","work_id":1,"state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
+				_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claim":{"site":"kungal","site_work_id":"1","state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
 				return
 			}
 			_, _ = w.Write([]byte(`{"object":"list","items":[],"missing":[]}`))

@@ -19,11 +19,11 @@ func detailStub(t *testing.T, gid int, catalogID int64, body string) (*httptest.
 		switch {
 		case req.URL.Path == "/v2/catalog/works" && req.URL.Query().Get("refs") != "":
 			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
-				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"},` +
+				`","claim":{"site":"kungal","site_work_id":"` + itoa(int64(gid)) + `","state":"live"},` +
 				`"refs":[{"source":"curated","external_id":"` + itoa(int64(gid)) + `"}]}]}`))
 		case req.URL.Path == "/v2/catalog/works" && strings.Contains(req.URL.Query().Get("ids"), itoa(catalogID)):
 			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"` + itoa(catalogID) +
-				`","claimed_by":{"site":"kungal","work_id":` + itoa(int64(gid)) + `,"state":"live"}}]}`))
+				`","claim":{"site":"kungal","site_work_id":"` + itoa(int64(gid)) + `","state":"live"}}]}`))
 		case req.URL.Path == "/v2/catalog/works/"+itoa(catalogID):
 			seen = req.URL.Query()
 			_, _ = w.Write([]byte(body))

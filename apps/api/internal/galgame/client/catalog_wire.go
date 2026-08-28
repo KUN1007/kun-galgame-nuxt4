@@ -10,9 +10,14 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 )
 
-type catClaimedBy struct {
+// SiteWorkID is the CLAIMING site's own id for the work — the forum's gid when
+// Site is kungal, moyu's id when it is moyu. Catalog's v1 wire called the field
+// work_id, which everywhere else in this package means the catalog registry id;
+// reading the two as one number links a row to whichever unrelated game happens
+// to carry that number.
+type catClaim struct {
 	Site         string `json:"site"`
-	WorkID       int    `json:"work_id"`
+	SiteWorkID   int    `json:"site_work_id"`
 	State        string `json:"state"`
 	ContentLimit string `json:"content_limit"`
 }
@@ -187,15 +192,15 @@ type catRating struct {
 }
 
 type CatalogWorkListItem struct {
-	ID            int64         `json:"id"`
-	Medium        string        `json:"medium"`
-	DisplayName   string        `json:"display_name"`
-	ContentRating string        `json:"content_rating"`
-	OLang         string        `json:"olang"`
-	ReleaseDate   *string       `json:"release_date"`
-	ClaimedBy     *catClaimedBy `json:"claimed_by"`
-	Cover         string        `json:"cover"`
-	Updated       string        `json:"updated"`
+	ID            int64     `json:"id"`
+	Medium        string    `json:"medium"`
+	DisplayName   string    `json:"display_name"`
+	ContentRating string    `json:"content_rating"`
+	OLang         string    `json:"olang"`
+	ReleaseDate   *string   `json:"release_date"`
+	Claim         *catClaim `json:"claim"`
+	Cover         string    `json:"cover"`
+	Updated       string    `json:"updated"`
 
 	Localized  map[string]catLocalizedName `json:"localized"`
 	Latin      string                      `json:"latin"`
@@ -263,7 +268,7 @@ func hashFromURL(u string) string {
 	return strings.TrimSuffix(base, ".webp")
 }
 
-func contentLimitOf(claimed *catClaimedBy, rating string) string {
+func contentLimitOf(claimed *catClaim, rating string) string {
 	if claimed != nil {
 		switch claimed.ContentLimit {
 		case "sfw", "nsfw":
@@ -327,7 +332,7 @@ const (
 )
 
 func (it *CatalogWorkListItem) isRenderable() bool {
-	return it.ClaimedBy == nil || it.ClaimedBy.State != claimStateHidden
+	return it.Claim == nil || it.Claim.State != claimStateHidden
 }
 
 func CatalogItemRenderable(it *CatalogWorkListItem) bool { return it.isRenderable() }
@@ -344,13 +349,13 @@ func CatalogItemGID(it *CatalogWorkListItem) int { return it.gid() }
 // already reading "declined", and a just-approved one is dropped by a facet it
 // no longer matches.
 func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
-	if it.ClaimedBy == nil {
+	if it.Claim == nil {
 		return true
 	}
-	if !isKungalClaim(it.ClaimedBy.Site) || it.ClaimedBy.WorkID <= 0 {
+	if !isKungalClaim(it.Claim.Site) || it.Claim.SiteWorkID <= 0 {
 		return false
 	}
-	switch it.ClaimedBy.State {
+	switch it.Claim.State {
 	case claimStateLive, claimStateDraft, claimStatePending:
 		return true
 	default:
@@ -361,15 +366,27 @@ func CatalogItemWizardEligible(it *CatalogWorkListItem) bool {
 func (it *CatalogWorkListItem) GID() int { return it.gid() }
 
 func (it *CatalogWorkListItem) ClaimState() string {
-	if it.ClaimedBy == nil {
+	if it.Claim == nil {
 		return ""
 	}
-	return it.ClaimedBy.State
+	return it.Claim.State
 }
 
+// A forum gid is two rules, not one rule and a fallback. A work kungal has
+// claimed is identified by the claim's site_work_id; a work nobody has claimed
+// is identified BY its catalog id, and the local galgame row minted when
+// someone views or publishes it takes that number as its primary key (125 rows
+// in production today, e.g. gid 210665 = catalog work 210665, "Lost Life").
+//
+// The second branch reads like carelessness and has been misread as a bug
+// twice. It is not optional: drop it and every unclaimed work becomes
+// unreachable at a forum URL. What it must never do is answer for a row the
+// caller reached by catalog id in the first place — every one of the forum's
+// 11,567 gids is also a live catalog work id, so a catalog id passed off as a
+// gid names a different game about nine times in ten.
 func (it *CatalogWorkListItem) gid() int {
-	if it.ClaimedBy != nil && isKungalClaim(it.ClaimedBy.Site) && it.ClaimedBy.WorkID > 0 {
-		return it.ClaimedBy.WorkID
+	if it.Claim != nil && isKungalClaim(it.Claim.Site) && it.Claim.SiteWorkID > 0 {
+		return it.Claim.SiteWorkID
 	}
 	if it.ID > 0 {
 		return int(it.ID)
@@ -447,15 +464,15 @@ func CatalogItemToBrief(ctx context.Context, it *CatalogWorkListItem) GalgameBri
 		Name:             name,
 		NameOriginal:     original,
 		AgeLimit:         ageLimitFromRating(it.ContentRating),
-		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
+		ContentLimit:     contentLimitOf(it.Claim, it.ContentRating),
 		OriginalLanguage: productLocale(it.OLang),
 		ReleaseDate:      it.ReleaseDate,
 		Refs:             refsMap(it.Refs),
 		Company:          makerName(ctx, it.Labels),
 	}
-	if it.ClaimedBy != nil {
-		b.Status = statusFromClaimState(it.ClaimedBy.State)
-		b.ClaimState = it.ClaimedBy.State
+	if it.Claim != nil {
+		b.Status = statusFromClaimState(it.Claim.State)
+		b.ClaimState = it.Claim.State
 	} else {
 		b.Status = galgameStatusVndbDraft
 		b.ClaimState = claimStateNone
@@ -498,12 +515,12 @@ func CatalogItemToNextMoeItem(ctx context.Context, it *CatalogWorkListItem) dto.
 		Name:             name,
 		NameOriginal:     original,
 		ReleaseDate:      it.ReleaseDate,
-		ContentLimit:     contentLimitOf(it.ClaimedBy, it.ContentRating),
+		ContentLimit:     contentLimitOf(it.Claim, it.ContentRating),
 		ReleasePrecision: releasePrecisionOf(it.ReleaseDate),
 		Company:          makerName(ctx, it.Labels),
 	}
-	if it.ClaimedBy != nil {
-		m.Status = statusFromClaimState(it.ClaimedBy.State)
+	if it.Claim != nil {
+		m.Status = statusFromClaimState(it.Claim.State)
 	} else {
 		m.Status = galgameStatusVndbDraft
 	}

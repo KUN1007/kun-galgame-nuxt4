@@ -25,7 +25,7 @@ func (r *coverPlaneRecorder) server(t *testing.T) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if req.URL.Path == "/v2/catalog/works" && req.URL.Query().Get("refs") != "" {
-			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claimed_by":{"site":"kungal","work_id":1,"state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
+			_, _ = w.Write([]byte(`{"object":"list","items":[{"id":"1000","claim":{"site":"kungal","site_work_id":"1","state":"live"},"refs":[{"source":"curated","external_id":"1"}]}]}`))
 			return
 		}
 

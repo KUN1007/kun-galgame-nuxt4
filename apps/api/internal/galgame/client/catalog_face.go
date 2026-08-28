@@ -191,7 +191,7 @@ func (c *GalgameClient) catalogIDsForGIDs(ctx context.Context, gids []int) (map[
 // THE ROUND-TRIP CHECK IS NOT DEFENSIVE, IT IS THE WHOLE CORRECTNESS ARGUMENT:
 // a legacy gid is also a syntactically valid work id, so resolving gid 42 by
 // fetching work 42 would hand back a different game. An adopted id satisfies
-// `claimed_by.work_id == the id asked for` by construction; a coincidence does not.
+// `claim.site_work_id == the id asked for` by construction; a coincidence does not.
 //
 // The content gates are open because this resolves an IDENTITY. Filtering it by
 // the reader's preference would make an r18 entry unresolvable rather than
@@ -315,7 +315,7 @@ func (c *GalgameClient) ContentLimitsByGIDs(ctx context.Context, gids []int) (ma
 	out := make(map[int]string, len(rows))
 	for gid := range rows {
 		row := rows[gid]
-		out[gid] = contentLimitOf(row.ClaimedBy, row.ContentRating)
+		out[gid] = contentLimitOf(row.Claim, row.ContentRating)
 	}
 	return out, nil
 }
@@ -330,7 +330,7 @@ type catWorkDetail struct {
 	ReleaseDate   *string                     `json:"release_date"`
 	Updated       string                      `json:"updated"`
 	Created       string                      `json:"created"`
-	ClaimedBy     *catClaimedBy               `json:"claimed_by"`
+	Claim         *catClaim                   `json:"claim"`
 
 	Titles []struct {
 		Lang    string `json:"lang"`
@@ -469,7 +469,7 @@ func (c *GalgameClient) CatalogWorkDetail(ctx context.Context, gid int) (*catWor
 	if err := json.Unmarshal(data, &d); err != nil {
 		return nil, false, errors.ErrInternal("解析 Catalog 作品详情响应失败")
 	}
-	if d.ClaimedBy != nil && d.ClaimedBy.State == claimStateHidden {
+	if d.Claim != nil && d.Claim.State == claimStateHidden {
 		return nil, false, nil
 	}
 	c.hydrateRosterArt(d.Characters)
