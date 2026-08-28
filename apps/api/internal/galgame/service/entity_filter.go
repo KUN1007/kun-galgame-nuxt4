@@ -8,7 +8,7 @@ import (
 	"kun-galgame-api/internal/galgame/model"
 )
 
-func buildEntityFilter(q url.Values, restrictIDs []int) model.GalgameListFilter {
+func buildEntityFilter(q url.Values) model.GalgameListFilter {
 	sortOrder := q.Get("sortOrder")
 	if sortOrder == "" {
 		sortOrder = "desc"
@@ -23,8 +23,37 @@ func buildEntityFilter(q url.Values, restrictIDs []int) model.GalgameListFilter 
 		Page:           atoiOr(q.Get("page"), 1),
 		Limit:          atoiOr(q.Get("limit"), 24),
 		ShowNoResource: q.Get("showNoResource") == "true",
-		RestrictIDs:    restrictIDs,
 	}
+}
+
+// catalogMemberSort is the walk order catalog can answer for itself. The release
+// date is the only sort field on these pages that is catalog's own data — every
+// member carries one, while view/rating/update exist only for the members that
+// are also forum rows — so it is the only one worth asking catalog for.
+//
+// /v2/catalog/works takes a closed vocabulary (id, updated, relevance,
+// released_desc, released_asc, popularity) and answers 400 UNKNOWN_SORT to
+// anything else; there is no page parameter, so the whole membership is walked
+// either way and asking for an order costs nothing.
+//
+// A non-empty result means the walk has already ordered the page and the local
+// ranking pass must leave it alone, or it reshuffles what the walk established.
+func catalogMemberSort(f model.GalgameListFilter) string {
+	if f.SortField != "release_date" {
+		return ""
+	}
+	if f.SortOrder == "asc" {
+		return "released_asc"
+	}
+	return "released_desc"
+}
+
+func entityMemberQuery(key, id string, f model.GalgameListFilter) url.Values {
+	q := url.Values{key: {id}}
+	if sort := catalogMemberSort(f); sort != "" {
+		q.Set("sort", sort)
+	}
+	return q
 }
 
 func listCardsToEntityCards(cards []dto.GalgameListCard) []dto.GalgameCard {

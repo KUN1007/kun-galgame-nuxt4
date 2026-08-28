@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -29,26 +30,30 @@ var allProviders = []string{
 	"caiyun", "xunlei", "uc", "lanzou", "other",
 }
 
-func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, total int64) {
-	sortCol := "g.resource_update_time"
-	viewOneDay := "COALESCE((SELECT SUM(d.count) FROM galgame_view_daily d " +
-		"WHERE d.entity_id = g.id AND d.day = CURRENT_DATE), 0)"
-	switch f.SortField {
-	case "time":
-		sortCol = "g.resource_update_time"
+const viewOneDayExpr = "COALESCE((SELECT SUM(d.count) FROM galgame_view_daily d " +
+	"WHERE d.entity_id = g.id AND d.day = CURRENT_DATE), 0)"
+
+func listSortColumn(field string) string {
+	switch field {
 	case "created":
-		sortCol = "g.created"
+		return "g.created"
 	case "view":
-		sortCol = "g.view"
+		return "g.view"
 	case "view_1d":
-		sortCol = viewOneDay
+		return viewOneDayExpr
 	case "view_7d":
-		sortCol = "g.view_7d"
+		return "g.view_7d"
 	case "view_30d":
-		sortCol = "g.view_30d"
+		return "g.view_30d"
 	case "release_date":
-		sortCol = "g.release_date"
+		return "g.release_date"
+	default:
+		return "g.resource_update_time"
 	}
+}
+
+func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, total int64) {
+	sortCol := listSortColumn(f.SortField)
 	isSubquerySort := f.SortField == "view_1d"
 
 	ratingSort := f.SortField == "rating"
@@ -165,6 +170,53 @@ func (r *GalgameListRepository) ListIDs(f model.GalgameListFilter) (ids []int, t
 		ids[i] = row.ID
 	}
 	return
+}
+
+// OrderRestrictIDs ranks one entity's catalog membership by a forum-side column.
+// The members are catalog's, so a large share of them have no row in `galgame`
+// at all and no value to rank on; those keep the order the walk delivered them
+// in and follow everything that could be ranked. `g.id IS NULL` is what carries
+// that, not NULLS LAST: view_1d COALESCEs to 0 and the bayesian score falls back
+// to the prior mean, so a member the forum has never seen would otherwise tie
+// with real rows instead of dropping out of the ranking.
+func (r *GalgameListRepository) OrderRestrictIDs(ids []int, f model.GalgameListFilter) []int {
+	if len(ids) < 2 {
+		return ids
+	}
+	order := "DESC"
+	if f.SortOrder == "asc" {
+		order = "ASC"
+	}
+
+	q := r.db.Table("unnest(?::int[]) WITH ORDINALITY AS m(id, ord)", intArrayLit(ids)).
+		Joins("LEFT JOIN galgame g ON g.id = m.id")
+
+	orderClause := listSortColumn(f.SortField) + " " + order + " NULLS LAST"
+	if f.SortField == "rating" {
+		q = q.Joins(ratingAggJoin)
+		orderClause = "(rt.rcnt IS NULL), " + r.bayesianExpr() + " " + order
+	}
+
+	type idRow struct {
+		ID int `gorm:"column:id"`
+	}
+	var rows []idRow
+	err := q.Select("m.id").
+		Order("(g.id IS NULL), " + orderClause + ", m.ord").
+		Scan(&rows).Error
+	if err != nil || len(rows) != len(ids) {
+		// Catalog's order is the correct page either way, so the fallback costs
+		// the ranking and nothing else — but it is invisible from the page, and
+		// a short count would quietly drop members off the end of the list.
+		slog.Error("order catalog members: 排序失败, 回退到目录顺序",
+			"sort_field", f.SortField, "members", len(ids), "ranked", len(rows), "error", err)
+		return ids
+	}
+	out := make([]int, len(rows))
+	for i, row := range rows {
+		out[i] = row.ID
+	}
+	return out
 }
 
 func (r *GalgameListRepository) bayesianExpr() string {

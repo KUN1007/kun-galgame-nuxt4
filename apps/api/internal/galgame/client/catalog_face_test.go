@@ -435,6 +435,38 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 
 }
 
+// An entity with no members must restrict the local list to nothing. ListIDs
+// reads a nil RestrictIDs as "no restriction at all", so a nil here would list
+// the whole forum on the page of a tag nobody uses.
+func TestCatalogMemberGIDsIsNeverNil(t *testing.T) {
+	rec := &catalogRecorder{}
+	srv := catalogStub(t, rec, map[string]int64{}, map[int64]string{})
+	c := New(srv.URL, "nm_test_key", "")
+
+	gids, err := c.CatalogMemberGIDs(context.Background(),
+		url.Values{"tag_id": {"5"}}, true, 200)
+	if err != nil {
+		t.Fatalf("CatalogMemberGIDs: %v", err)
+	}
+	if gids == nil {
+		t.Fatal("an empty membership walk returned nil, which restricts nothing")
+	}
+}
+
+func TestCatalogMemberGIDsCarriesTheWalkSort(t *testing.T) {
+	rec := &catalogRecorder{}
+	srv := catalogStub(t, rec, map[string]int64{}, map[int64]string{})
+	c := New(srv.URL, "nm_test_key", "")
+
+	if _, err := c.CatalogMemberGIDs(context.Background(),
+		url.Values{"tag_id": {"5"}, "sort": {"released_desc"}}, true, 200); err != nil {
+		t.Fatalf("CatalogMemberGIDs: %v", err)
+	}
+	if got := rec.queryAt(0).Get("sort"); got != "released_desc" {
+		t.Errorf("sort = %q, want released_desc — the walk order is the page order", got)
+	}
+}
+
 func TestCatalogMemberGIDs_DoesNotGateOnClaimState(t *testing.T) {
 	// The forum's own vocabulary is v1's; only the wire is v2's, and the company
 	// filter is the one that gets renamed on the way out.
@@ -608,7 +640,7 @@ func TestCatalogLabelRollupMembers_AsksForTheHopAndKeepsTheAttribution(t *testin
 	t.Cleanup(srv.Close)
 	c := New(srv.URL, "nm_test_key", "")
 
-	members, err := c.CatalogLabelRollupMembers(context.Background(), "993", false, 5)
+	members, err := c.CatalogLabelRollupMembers(context.Background(), "993", "", false, 5)
 	if err != nil {
 		t.Fatalf("CatalogLabelRollupMembers: %v", err)
 	}

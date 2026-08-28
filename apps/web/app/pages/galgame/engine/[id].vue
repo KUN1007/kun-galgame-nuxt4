@@ -90,7 +90,7 @@ useKunSeoMeta({
       </template>
     </KunHeader>
 
-    <GalgameCardNav :show-advanced="false" />
+    <GalgameCardNav :is-show-advanced="false" />
 
     <KunInfo
       v-if="isSfwMode"

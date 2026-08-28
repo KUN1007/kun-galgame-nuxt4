@@ -64,12 +64,14 @@ func (s *EngineService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该引擎")
 	}
 
+	filter := buildEntityFilter(rawQuery)
 	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"engine_id": {id}}, isSFW, taxonomyMemberPageCap)
+		entityMemberQuery("engine_id", id, filter), isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	filter.RestrictIDs = memberIDs
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, filter, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}

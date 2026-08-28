@@ -96,3 +96,74 @@ func sameSet(got, want []int) bool {
 	}
 	return true
 }
+
+// The catalog membership behind an entity page is mostly works the forum has no
+// row for, so ranking it by a forum column has to answer two questions at once:
+// order the rows that can be ranked, and keep the rest where catalog put them.
+func TestOrderRestrictIDsKeepsUnknownMembersLast(t *testing.T) {
+	db := testdb.Open(t)
+
+	const base = 2_000_300_000
+	quiet, busy, middling := base, base+1, base+2
+	absent, absentToo := base+3, base+4
+	local := []int{quiet, busy, middling}
+	all := []int{absent, quiet, busy, absentToo, middling}
+
+	cleanup := func() {
+		db.Exec("DELETE FROM galgame_resource WHERE galgame_id = ANY(?::int[])", intArrayLit(local))
+		db.Exec("DELETE FROM galgame WHERE id = ANY(?::int[])", intArrayLit(local))
+	}
+	cleanup()
+	defer cleanup()
+
+	for id, views := range map[int]int{quiet: 1, busy: 900, middling: 50} {
+		seed(t, db, id, nil)
+		if err := db.Model(&model.GalgameLocal{}).Where("id = ?", id).
+			Update("view", views).Error; err != nil {
+			t.Fatalf("set view on %d: %v", id, err)
+		}
+	}
+
+	repo := NewGalgameListRepository(db)
+	got := repo.OrderRestrictIDs(all, model.GalgameListFilter{
+		SortField: "view", SortOrder: "desc",
+	})
+	want := []int{busy, middling, quiet, absent, absentToo}
+	if len(got) != len(want) {
+		t.Fatalf("ordered %d ids, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v — ranked rows first, then catalog's own order", got, want)
+		}
+	}
+
+	// Ascending must not promote the members with no row: their view count is
+	// unknown, not zero, and treating it as zero buries every ranked entry.
+	got = repo.OrderRestrictIDs(all, model.GalgameListFilter{
+		SortField: "view", SortOrder: "asc",
+	})
+	want = []int{quiet, middling, busy, absent, absentToo}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("asc order = %v, want %v", got, want)
+		}
+	}
+
+	// A field whose SQL does not run falls back to catalog's order, which puts
+	// `absent` first — so every chip is covered by asserting only the tail.
+	for _, field := range []string{
+		"time", "created", "view", "view_1d", "view_7d", "view_30d", "release_date", "rating",
+	} {
+		got = repo.OrderRestrictIDs(all, model.GalgameListFilter{
+			SortField: field, SortOrder: "desc",
+		})
+		if len(got) != len(all) {
+			t.Errorf("%s: ordered %d ids, want %d", field, len(got), len(all))
+			continue
+		}
+		if got[3] != absent || got[4] != absentToo {
+			t.Errorf("%s: order = %v, want the two members with no forum row last", field, got)
+		}
+	}
+}

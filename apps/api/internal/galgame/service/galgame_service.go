@@ -299,7 +299,7 @@ func (s *GalgameService) hydrateListCards(
 	isSFW bool,
 ) (*dto.GalgameListPage, *errors.AppError) {
 	if len(filter.RestrictIDs) > 0 && !entityUsesLocalList(filter) {
-		return s.hydrateIDPage(ctx, filter.RestrictIDs, filter.Page, filter.Limit, isSFW)
+		return s.hydrateIDPage(ctx, filter, isSFW)
 	}
 	filter.SFWOnly = isSFW
 	ids, total := s.listRepo.ListIDs(filter)

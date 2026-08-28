@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"kun-galgame-api/internal/galgame/dto"
+	"kun-galgame-api/internal/galgame/model"
 )
 
 func TestBuildEntityFilter(t *testing.T) {
@@ -19,7 +20,7 @@ func TestBuildEntityFilter(t *testing.T) {
 	q.Set("limit", "24")
 	q.Set("showNoResource", "true")
 
-	f := buildEntityFilter(q, []int{5, 9, 12})
+	f := buildEntityFilter(q)
 
 	if f.Type != "patch" || f.Language != "zh-cn" || f.Platform != "windows" {
 		t.Errorf("resource filters not read: %+v", f)
@@ -36,13 +37,10 @@ func TestBuildEntityFilter(t *testing.T) {
 	if !f.ShowNoResource {
 		t.Error("ShowNoResource should be true")
 	}
-	if len(f.RestrictIDs) != 3 || f.RestrictIDs[0] != 5 {
-		t.Errorf("RestrictIDs = %v, want [5 9 12]", f.RestrictIDs)
-	}
 }
 
 func TestBuildEntityFilterDefaults(t *testing.T) {
-	f := buildEntityFilter(url.Values{}, []int{})
+	f := buildEntityFilter(url.Values{})
 
 	if f.SortOrder != "desc" {
 		t.Errorf("SortOrder default = %q, want desc", f.SortOrder)
@@ -53,8 +51,38 @@ func TestBuildEntityFilterDefaults(t *testing.T) {
 	if f.ShowNoResource {
 		t.Error("ShowNoResource default should be false")
 	}
-	if f.RestrictIDs == nil {
-		t.Error("RestrictIDs must stay non-nil so an empty entity restricts to nothing")
+}
+
+// The sort chips on an entity page are the forum's, and only the release date is
+// a column catalog also holds. Answering the rest out of catalog's vocabulary
+// would silently rank the page by something the reader did not ask for.
+func TestCatalogMemberSortOnlyClaimsTheReleaseDate(t *testing.T) {
+	for _, tc := range []struct{ field, order, want string }{
+		{"release_date", "desc", "released_desc"},
+		{"release_date", "asc", "released_asc"},
+		{"view", "desc", ""},
+		{"rating", "desc", ""},
+		{"time", "desc", ""},
+		{"", "desc", ""},
+	} {
+		f := model.GalgameListFilter{SortField: tc.field, SortOrder: tc.order}
+		if got := catalogMemberSort(f); got != tc.want {
+			t.Errorf("catalogMemberSort(%q/%q) = %q, want %q", tc.field, tc.order, got, tc.want)
+		}
+	}
+}
+
+func TestEntityMemberQueryCarriesTheWalkOrder(t *testing.T) {
+	q := entityMemberQuery("tag_id", "1337", model.GalgameListFilter{
+		SortField: "release_date", SortOrder: "asc",
+	})
+	if q.Get("tag_id") != "1337" || q.Get("sort") != "released_asc" {
+		t.Errorf("query = %v, want tag_id=1337 and sort=released_asc", q)
+	}
+	q = entityMemberQuery("tag_id", "1337", model.GalgameListFilter{SortField: "view"})
+	if q.Has("sort") {
+		t.Errorf("sort = %q reached the walk; catalog cannot rank the forum's own counters",
+			q.Get("sort"))
 	}
 }
 

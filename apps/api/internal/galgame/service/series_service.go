@@ -165,12 +165,14 @@ func (s *SeriesService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该系列")
 	}
 
+	filter := buildEntityFilter(rawQuery)
 	memberIDs, appErr := s.galgameClient.CatalogMemberGIDs(ctx,
-		url.Values{"series_id": {id}}, isSFW, taxonomyMemberPageCap)
+		entityMemberQuery("series_id", id, filter), isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	filter.RestrictIDs = memberIDs
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, filter, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}

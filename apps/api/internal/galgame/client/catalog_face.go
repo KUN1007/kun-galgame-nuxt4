@@ -534,9 +534,12 @@ type CatalogRollupMember struct {
 	Via *CatalogLabelVia
 }
 
-func (c *GalgameClient) CatalogLabelRollupMembers(ctx context.Context, labelID string, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
-	return c.catalogMembers(ctx,
-		url.Values{"label_id": {labelID}, "label_rollup": {"1"}}, isSFW, pageCap)
+func (c *GalgameClient) CatalogLabelRollupMembers(ctx context.Context, labelID, sort string, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {
+	q := url.Values{"label_id": {labelID}, "label_rollup": {"1"}}
+	if sort != "" {
+		q.Set("sort", sort)
+	}
+	return c.catalogMembers(ctx, q, isSFW, pageCap)
 }
 
 func (c *GalgameClient) catalogMembers(ctx context.Context, filter url.Values, isSFW bool, pageCap int) ([]CatalogRollupMember, *errors.AppError) {

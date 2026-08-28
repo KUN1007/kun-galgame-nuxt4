@@ -68,7 +68,9 @@ func (s *OfficialService) GetDetail(
 		return nil, errors.ErrNotFound("未找到该会社")
 	}
 
-	members, appErr := s.galgameClient.CatalogLabelRollupMembers(ctx, id, isSFW, taxonomyMemberPageCap)
+	filter := buildEntityFilter(rawQuery)
+	members, appErr := s.galgameClient.CatalogLabelRollupMembers(ctx, id,
+		catalogMemberSort(filter), isSFW, taxonomyMemberPageCap)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -84,13 +86,16 @@ func (s *OfficialService) GetDetail(
 		viaByGID[m.GID] = &dto.OfficialBrief{ID: int(m.Via.ID), Name: m.Via.Name(ctx)}
 	}
 
-	page, appErr := s.galgameSvc.hydrateListCards(ctx, buildEntityFilter(rawQuery, memberIDs), isSFW)
+	filter.RestrictIDs = memberIDs
+	page, appErr := s.galgameSvc.hydrateListCards(ctx, filter, isSFW)
 	if appErr != nil {
 		return nil, appErr
 	}
 	var imprintCount int64
 	if len(viaIDs) > 0 {
-		imprintCount = s.galgameSvc.countMembers(buildEntityFilter(rawQuery, viaIDs), isSFW)
+		viaFilter := filter
+		viaFilter.RestrictIDs = viaIDs
+		imprintCount = s.galgameSvc.countMembers(viaFilter, isSFW)
 	}
 	cards := listCardsToEntityCards(page.Galgames)
 	for i := range cards {

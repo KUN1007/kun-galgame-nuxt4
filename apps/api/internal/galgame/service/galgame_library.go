@@ -93,15 +93,19 @@ func catalogLibrarySort(field, order string) string {
 
 func (s *GalgameService) hydrateIDPage(
 	ctx context.Context,
-	ids []int,
-	page, limit int,
+	filter model.GalgameListFilter,
 	isSFW bool,
 ) (*dto.GalgameListPage, *errors.AppError) {
+	page, limit := filter.Page, filter.Limit
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 {
 		limit = 24
+	}
+	ids := filter.RestrictIDs
+	if catalogMemberSort(filter) == "" {
+		ids = s.listRepo.OrderRestrictIDs(ids, filter)
 	}
 	total := int64(len(ids))
 	start := (page - 1) * limit
