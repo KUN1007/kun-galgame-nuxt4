@@ -87,13 +87,14 @@ x-kungal-api-env: &kungal-api-env
   MEILISEARCH_URL: http://meilisearch:7700
   MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (= infra 的同名值)}
   # NextMoe catalog galgame read surface (host base with no path suffix): the
-  # client calls {base}/v1/catalog/* with X-API-Key.
+  # client calls {base}/v2/catalog/* with Authorization: Bearer nmk_… . The /v1
+  # family is being retired upstream, so no suffix belongs on this value.
   KUN_NEXTMOE_API_BASE: http://catalog:9281
-  # Developer API key for the read face (X-API-Key). REQUIRED whenever a base
+  # Developer API key for the read face (nmk_ Bearer). REQUIRED whenever a base
   # is set: an empty key fails fast at config load. Set in Dokploy; plaintext in
   # kungal-neo /root/phase2-internal-keys.env (kungal-forum-internal-s2s).
   KUN_NEXTMOE_API_KEY: ${KUN_NEXTMOE_API_KEY:-}
-  # NextMoe news face (/v1/news) — the home page's Gal 情报 tab. A SECOND key,
+  # NextMoe news face (/v2/news) — the home page's Gal 情报 tab. A SECOND key,
   # NOT the catalog one above: the face is gated on scope news:read, which the
   # catalog key does not carry, so a leak of this one cannot reach the
   # catalogue's write endpoints. Empty → /news answers 503 情报服务未配置 and
@@ -102,7 +103,7 @@ x-kungal-api-env: &kungal-api-env
   # shipped without it and answered 503 in prod even with KUN_NEWS_API_KEY set in
   # the panel — the same moyu/image lesson as LINK_CHECKER_* and KUN_TRUST_* above.
   # KUN_NEWS_API_BASE is deliberately unset: it defaults to KUN_NEXTMOE_API_BASE,
-  # and /v1/news is served by the same catalog process.
+  # and /v2/news is served by the same catalog process.
   KUN_NEWS_API_KEY: ${KUN_NEWS_API_KEY:-}
   # catalog read proxy (step 36): credits / entity reverse-lookups. Reuses the
   # OAuth client pair for S2S Basic auth; unset → those routes degrade to 503.
