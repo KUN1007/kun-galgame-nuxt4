@@ -334,3 +334,72 @@ func TestV2CatalogPath(t *testing.T) {
 		}
 	}
 }
+
+// The mirror channel replaced a nightly full sweep, so its two silent failure
+// modes are the ones to drive live: a cursor that does not advance re-reads page
+// one forever, and a hydrated row keyed by its catalog id writes one game's
+// display verdict onto another game's row.
+func TestLiveMirrorChannel(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+
+	pages := 5
+	if n, err := strconv.Atoi(os.Getenv("SMOKE_MIRROR_PAGES")); err == nil && n > 0 {
+		pages = n
+	}
+
+	cursor := ""
+	seen := map[int64]bool{}
+	limits := map[int]string{}
+	var rows, gone int
+	for range pages {
+		page, appErr := c.CatalogChanges(ctx, cursor, CatalogChangesLimit)
+		if appErr != nil {
+			t.Fatalf("CatalogChanges(%q): %v", cursor, appErr)
+		}
+		if len(page.Items) == 0 {
+			t.Fatalf("empty page at cursor %q", cursor)
+		}
+		ids := make([]int64, 0, len(page.Items))
+		for _, it := range page.Items {
+			if seen[it.ID] {
+				t.Fatalf("id %d served twice — the cursor is inclusive, "+
+					"and a mirror that re-reads its own page never reaches the tail", it.ID)
+			}
+			seen[it.ID] = true
+			rows++
+			if it.Gone {
+				gone++
+				continue
+			}
+			ids = append(ids, it.ID)
+		}
+		got, appErr := c.ContentLimitsByCatalogIDs(ctx, ids)
+		if appErr != nil {
+			t.Fatalf("ContentLimitsByCatalogIDs: %v", appErr)
+		}
+		for gid, limit := range got {
+			limits[gid] = limit
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		if page.NextCursor == cursor {
+			t.Fatalf("next_cursor did not move off %q", cursor)
+		}
+		cursor = page.NextCursor
+	}
+
+	if len(limits) == 0 {
+		t.Fatalf("read %d changed works and matched none to a forum row — "+
+			"the claim block is how a catalog id becomes a gid", rows)
+	}
+	for gid, limit := range limits {
+		if limit != "sfw" && limit != "nsfw" {
+			t.Fatalf("gid %d carries verdict %q", gid, limit)
+		}
+	}
+	t.Logf("changes: rows=%d gone=%d matched=%d", rows, gone, len(limits))
+	for gid, limit := range limits {
+		t.Logf("gid=%d limit=%s", gid, limit)
+	}
+}

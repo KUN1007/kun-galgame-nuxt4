@@ -407,7 +407,7 @@ func New(cfg *config.Config) *App {
 	galgameClaimSync := galgameService.NewGalgameClaimEventSync(catalogCli, galgameLocalRepo, rdb)
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
 	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
-	galgameContentLimitSync := galgameService.NewGalgameContentLimitSync(gc, galgameLocalRepo)
+	galgameContentLimitSync := galgameService.NewGalgameContentLimitSync(gc, galgameLocalRepo, rdb)
 
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
@@ -558,11 +558,11 @@ func New(cfg *config.Config) *App {
 		ToolsetResourceHandler:     toolsetHandler.NewResourceHandler(toolsetResourceSvc),
 		ToolsetUploadHandler:       toolsetHandler.NewUploadHandler(toolsetUploadSvc),
 		CronStop: cronPkg.Start(db, rdb, imgCli, cronPkg.Jobs{
-			GalgameClaimSync:         galgameClaimSync.Run,
-			GalgameRevisionSync:      galgameRevisionSync.Run,
-			GalgameContributorSync:   galgameContributorSync.Run,
-			GalgameContentLimitSweep: galgameContentLimitSync.RunAll,
-			GalgameContentLimitFill:  galgameContentLimitSync.RunPending,
+			GalgameClaimSync:          galgameClaimSync.Run,
+			GalgameRevisionSync:       galgameRevisionSync.Run,
+			GalgameContributorSync:    galgameContributorSync.Run,
+			GalgameContentLimitMirror: galgameContentLimitSync.RunMirror,
+			GalgameContentLimitFill:   galgameContentLimitSync.RunPending,
 		}),
 	}
 
