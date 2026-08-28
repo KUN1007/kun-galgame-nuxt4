@@ -27,6 +27,12 @@ const selectedCategories = ref<string[]>(
     ? ['content', 'meta', 'technical', 'sexual']
     : ['content', 'meta', 'technical']
 )
+
+// The server drops every sexual tag from the detail payload for an SFW reader,
+// so the 成人内容 box had nothing to match no matter how it was ticked.
+const isCategoryLocked = (category: string) =>
+  category === 'sexual' && !isNsfwEnabled.value
+
 const selectedSpoilerLevels = ref<KunGalgameTagSpoiler[]>([0])
 
 const toggleItemInArray = <T,>(arrayRef: Ref<T[]>, item: T) => {
@@ -94,6 +100,7 @@ const countColorByCategory = (category: string): string => {
           :key="key"
           class-name="gap-2"
           :model-value="selectedCategories.includes(key)"
+          :disabled="isCategoryLocked(key)"
           color="primary"
           @click="toggleCategory(key)"
         >
@@ -154,6 +161,10 @@ const countColorByCategory = (category: string): string => {
       />
     </KunScrollShadow>
 
+    <p v-if="!isNsfwEnabled" class="text-default-400 text-xs">
+      成人内容标签未加载, 在设置面板打开 NSFW 开关后可见
+    </p>
+
     <KunPopover v-if="!isMobile" position="top-start" full-width>
       <template #trigger>
         <KunButton variant="flat" color="primary" size="sm" full-width>
@@ -171,12 +182,16 @@ const countColorByCategory = (category: string): string => {
               :key="key"
               class-name="gap-2"
               :model-value="selectedCategories.includes(key)"
+              :disabled="isCategoryLocked(key)"
               color="primary"
               @click="toggleCategory(key)"
             >
               {{ name }}
             </KunCheckBox>
           </div>
+          <p v-if="!isNsfwEnabled" class="text-default-400 text-xs">
+            成人内容标签未加载, 在设置面板打开 NSFW 开关后可见
+          </p>
         </div>
 
         <div class="space-y-2">

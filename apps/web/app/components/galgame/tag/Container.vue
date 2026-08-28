@@ -14,6 +14,9 @@ const { data, status } = await useKunFetch<{
   query: pageData
 })
 
+const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
+const isSfwMode = computed(() => showKUNGalgameContentLimit.value !== 'nsfw')
+
 const searchResult = ref<GalgameTaxonomySearchItem[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
@@ -50,7 +53,8 @@ const isDropdownOpen = computed(
     searchMode.value === 'multi' &&
     inputFocused.value &&
     !!searchQuery.value.trim() &&
-    !!searchResult.value.length
+    !isSearching.value &&
+    (!!searchResult.value.length || isSfwMode.value)
 )
 
 const handleSearch = async () => {
@@ -153,8 +157,8 @@ watch(matchMode, () => {
       <template #endContent>
         <div class="space-y-3">
           <p class="text-default-500">
-            默认仅显示了 SFW 的标签, 查看 NSFW 标签请在设置面板打开 NSFW
-            开关。如果有数据错误请
+            默认仅显示了 SFW 的标签, 成人标签既不会出现在列表里, 也搜不到,
+            查看它们请在设置面板打开 NSFW 开关。如果有数据错误请
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
@@ -227,6 +231,13 @@ watch(matchMode, () => {
                   >
                     <div class="truncate">{{ tag.name }}</div>
                   </div>
+
+                  <div
+                    v-if="!searchResult.length"
+                    class="text-default-400 px-3 py-2 text-sm"
+                  >
+                    没有匹配的标签, 成人标签需要打开 NSFW 开关才能搜到
+                  </div>
                 </KunScrollShadow>
               </div>
             </div>
@@ -254,6 +265,11 @@ watch(matchMode, () => {
         !isSearching &&
         !displayTags.length &&
         (searchMode === 'single' || !selectedTags.length)
+      "
+      :description="
+        isSfwMode
+          ? '没有匹配的标签。成人标签在 SFW 模式下搜不到, 请在设置面板打开 NSFW 开关'
+          : undefined
       "
     />
     <KunLoading
