@@ -274,6 +274,7 @@ func (a *App) setupRoutes() {
 	authed.Post("/galgame/submit", a.GalgameSubmissionHandler.Submit)
 	authed.Post("/galgame/:gid/resubmit", a.GalgameSubmissionHandler.Resubmit)
 	authed.Delete("/galgame/:gid", a.GalgameSubmissionHandler.Withdraw)
+	authed.Delete("/galgame/:gid/draft", a.GalgameSubmissionHandler.DeleteDraft)
 
 	authed.Get("/galgame/interactions/mine", a.GalgameHandler.MyInteractions)
 	authed.Get("/galgame/playtime/mine", a.GalgamePlaytimeHandler.ListMine)

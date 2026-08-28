@@ -14,13 +14,17 @@ import (
 )
 
 type submitRecorder struct {
-	mu         sync.Mutex
-	body       map[string]any
-	submitPath string
-	submitAuth string
-	editBody   map[string]any
-	editPath   string
-	editAuth   string
+	mu             sync.Mutex
+	body           map[string]any
+	submitPath     string
+	submitAuth     string
+	editBody       map[string]any
+	editPath       string
+	editAuth       string
+	mergePath      string
+	mergeAuth      string
+	mergedOnCreate bool
+	mergeStatus    int
 }
 
 func (r *submitRecorder) service(t *testing.T) *SubmissionService {
@@ -40,6 +44,9 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 			r.editBody = body
 			r.editPath = req.URL.Path
 			r.editAuth = req.Header.Get("Authorization")
+		case strings.HasSuffix(req.URL.Path, "/decisions"):
+			r.mergePath = req.URL.Path
+			r.mergeAuth = req.Header.Get("Authorization")
 		}
 		r.mu.Unlock()
 
@@ -64,6 +71,22 @@ func (r *submitRecorder) service(t *testing.T) *SubmissionService {
 			_, _ = w.Write([]byte(`{"object":"list","items":[` +
 				`{"object":"work","id":"90210","claim":{"site":"kungal","site_work_id":"90210","state":"pending"}}` +
 				`],"next_cursor":null}`))
+		case req.Method == http.MethodDelete && strings.HasPrefix(req.URL.Path, "/v2/me/claims/"):
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"code":"INVALID_STATE_TRANSITION","detail":"claim is live"}`))
+		case req.Method == http.MethodPost && req.URL.Path == "/v2/me/proposals":
+			state := "open"
+			if r.mergedOnCreate {
+				state = "merged"
+			}
+			_, _ = w.Write([]byte(`{"object":"proposal","id":"1","state":"` + state + `","status":"` + state + `"}`))
+		case strings.HasSuffix(req.URL.Path, "/decisions"):
+			if r.mergeStatus != 0 {
+				w.WriteHeader(r.mergeStatus)
+				_, _ = w.Write([]byte(`{"code":"FORBIDDEN","detail":"not yours"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"object":"revision","id":"9","seq":2,"action":"merged"}`))
 		default:
 			_, _ = w.Write([]byte(`{"object":"proposal","id":"1","state":"open"}`))
 		}
@@ -143,6 +166,49 @@ func TestSubmitAttachesTheBannerAsAFollowUpEdit(t *testing.T) {
 	if _, ok := rec.editBody["site"]; ok {
 		t.Errorf("the banner edit must assert no site: %v", rec.editBody)
 	}
+	if rec.mergePath != "/v2/moderation/proposals/1/decisions" {
+		t.Errorf("open banner proposal decided at %q, want the v2 decision face — "+
+			"approving the claim never touches an open proposal, so an unmerged "+
+			"banner is a banner nobody ever sees", rec.mergePath)
+	}
+	if rec.mergeAuth != "Bearer user-jwt" {
+		t.Errorf("banner merge auth = %q, want the submitter's bearer", rec.mergeAuth)
+	}
+}
+
+func TestSubmitLeavesAnAlreadyMergedBannerAlone(t *testing.T) {
+	rec := &submitRecorder{mergedOnCreate: true}
+	svc := rec.service(t)
+
+	res, appErr := svc.Submit(t.Context(), "user-jwt", 0,
+		&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw", BannerHash: "abc123"})
+	if appErr != nil {
+		t.Fatalf("Submit: %v", appErr)
+	}
+	if !res.BannerAttached {
+		t.Error("an auto-merged banner is attached")
+	}
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if rec.mergePath != "" {
+		t.Errorf("decided an already-merged proposal at %q", rec.mergePath)
+	}
+}
+
+func TestSubmitReportsABannerItCouldNotMerge(t *testing.T) {
+	rec := &submitRecorder{mergeStatus: http.StatusForbidden}
+	svc := rec.service(t)
+
+	res, appErr := svc.Submit(t.Context(), "user-jwt", 0,
+		&SubmissionForm{NameJaJP: "x", AgeLimit: "all", ContentLimit: "sfw", BannerHash: "abc123"})
+	if appErr != nil {
+		t.Fatalf("Submit: %v — a lost banner does not undo the submission", appErr)
+	}
+	if res.BannerAttached {
+		t.Error("banner_attached = true after a refused merge; silence here is what " +
+			"hid a broken cover patch for the whole life of the feature")
+	}
 }
 
 func TestSubmittedEntryIsReachableByItsOwnID(t *testing.T) {
@@ -176,5 +242,19 @@ func TestSubmitRefusesATitlelessForm(t *testing.T) {
 	defer rec.mu.Unlock()
 	if rec.body != nil {
 		t.Error("local validation must not reach the registry")
+	}
+}
+
+// The local delete cascades (galgame_resource) and can be refused outright
+// (galgame_rating is ON DELETE RESTRICT), so it must never run before catalog —
+// the authority on owner and draft-only — has agreed. A nil repo here is the
+// assertion: reaching it at all panics.
+func TestDeleteDraftStopsAtAnUpstreamRefusal(t *testing.T) {
+	rec := &submitRecorder{}
+	svc := rec.service(t)
+
+	appErr := svc.DeleteDraft(t.Context(), "user-jwt", 90210)
+	if appErr == nil {
+		t.Fatal("want the upstream refusal surfaced; the stub answers no claim delete")
 	}
 }

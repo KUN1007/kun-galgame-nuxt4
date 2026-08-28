@@ -88,6 +88,19 @@ func (c *Client) patchMyClaim(ctx context.Context, accessToken, workID, state st
 	return &ClaimActionResult{WorkID: parseFlexID(out.ID), To: out.State}, nil
 }
 
+// DeleteMyClaim removes a draft the caller owns; catalog refuses anything else,
+// including a live or pending claim (those have to be withdrawn to draft first).
+// It soft-deletes the catalog work and, unlike every other claim transition,
+// writes NO claim event — nothing downstream ever hears about it, so whatever
+// the caller keeps locally is the caller's to clean up.
+//
+// The spec does not list If-Match on this operation the way it does on PATCH,
+// but it does list 412 and 428 among the responses, so send the precondition.
+func (c *Client) DeleteMyClaim(ctx context.Context, accessToken string, workID int64) error {
+	return c.userV2JSON(ctx, http.MethodDelete, accessToken,
+		"/v2/me/claims/"+strconv.FormatInt(workID, 10), nil, nil, ifMatchStar())
+}
+
 func (c *Client) MyClaims(ctx context.Context, accessToken string, f UserClaimFilter) (*UserClaimPage, error) {
 	q := url.Values{}
 	if len(f.ClaimStates) > 0 {

@@ -77,14 +77,7 @@ func (s *SubmissionService) Submit(
 	patch := form.CoverPatch()
 	attached := patch == nil
 	if patch != nil {
-		if _, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
-			EntityType: catalogclient.EntityTypeWork, EntityID: res.WorkID,
-			Patch: patch, Note: "投稿时提交的横幅图",
-		}); err != nil {
-			slog.Error("submit: 附加横幅图失败, 投稿已建立但封面丢失", "work", res.WorkID, "error", err)
-		} else {
-			attached = true
-		}
+		attached = s.attachBanner(ctx, accessToken, res.WorkID, patch)
 	}
 	return &SubmitResult{
 		GID: gid, WorkID: res.WorkID, ClaimState: res.ClaimState, BannerAttached: attached,
@@ -132,6 +125,57 @@ func (s *SubmissionService) Withdraw(
 	gid int,
 ) (*catalogclient.ClaimActionResult, *errors.AppError) {
 	return s.act(ctx, accessToken, gid, catalogclient.ClaimActionWithdraw, "")
+}
+
+// Approving a submission moves the claim state and nothing else, so a banner
+// proposal left open at submit time is never decided by anyone and the cover
+// simply never appears — which is why the only way to get one on used to be
+// editing the entry a second time. The submitter owns the work, so merge it here.
+func (s *SubmissionService) attachBanner(
+	ctx context.Context,
+	accessToken string,
+	workID int64,
+	patch map[string]any,
+) bool {
+	created, err := s.catalog.CreateEditProposalUser(ctx, accessToken, catalogclient.UserEditCreateRequest{
+		EntityType: catalogclient.EntityTypeWork, EntityID: workID,
+		Patch: patch, Note: "投稿时提交的横幅图",
+	})
+	if err != nil {
+		slog.Error("submit: 附加横幅图失败, 投稿已建立但封面丢失", "work", workID, "error", err)
+		return false
+	}
+	if created.Merged {
+		return true
+	}
+	if _, err := s.catalog.MergeEditProposalUser(ctx, accessToken, created.Proposal.ID, ""); err != nil {
+		slog.Error("submit: 合并横幅图提案失败, 投稿已建立但封面未落地",
+			"work", workID, "proposal", created.Proposal.ID, "error", err)
+		return false
+	}
+	return true
+}
+
+func (s *SubmissionService) DeleteDraft(
+	ctx context.Context,
+	accessToken string,
+	gid int,
+) *errors.AppError {
+	workID, appErr := s.workIDOf(ctx, gid)
+	if appErr != nil {
+		return appErr
+	}
+	// Owner-only and draft-only are catalog's checks, and they have to stay
+	// catalog's: the local delete below cascades, so it must not run until the
+	// authority has agreed this row is a disposable draft.
+	if err := s.catalog.DeleteMyClaim(ctx, accessToken, workID); err != nil {
+		return claimActionError(err)
+	}
+	if err := s.galgameRepo.DeleteLocalDraft(gid); err != nil {
+		slog.Error("delete draft: 上游草稿已删除, 本地行未能清理", "gid", gid, "error", err)
+		return errors.ErrInternal("草稿已删除, 但本站条目清理失败, 请联系管理员")
+	}
+	return nil
 }
 
 func (s *SubmissionService) act(

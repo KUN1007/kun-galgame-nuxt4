@@ -58,12 +58,12 @@ const handleSubmitGalgame = async () => {
 
   const { banner: _bannerBlob, ...jsonFields } = data
   let bannerHash = ''
-  if (banner instanceof File) {
-    const uploaded = await uploadGalgameImage(
-      banner,
-      'galgame_banner',
-      banner.name
-    )
+  // KunUpload emits what canvas.toBlob produces and getImage returns a Blob, so
+  // `banner instanceof File` was false for every submission ever made: no
+  // upload, no banner_hash, no cover patch, and the wizard has never once
+  // attached a cover.
+  if (banner) {
+    const uploaded = await uploadGalgameImage(banner, 'galgame_banner')
     if (uploaded) {
       bannerHash = uploaded.hash
     }

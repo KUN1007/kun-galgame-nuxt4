@@ -124,6 +124,17 @@ func (r *GalgameRepository) UnpublishLocal(galgameID int) error {
 		UpdateColumn("published", false).Error
 }
 
+// DeleteLocalDraft is the only cleanup a deleted draft will ever get — catalog's
+// delete writes no claim event, so no cron comes along behind it. It refuses
+// rather than cascades: galgame_resource is ON DELETE CASCADE, and a draft claim
+// carrying a published resource is reachable, because publishing a resource sets
+// `published` without moving the claim state.
+func (r *GalgameRepository) DeleteLocalDraft(galgameID int) error {
+	return r.db.Exec(`DELETE FROM galgame WHERE id = ?
+		AND NOT EXISTS (SELECT 1 FROM galgame_resource r WHERE r.galgame_id = galgame.id)`,
+		galgameID).Error
+}
+
 func (r *GalgameRepository) EnsureLocalStub(tx *gorm.DB, galgameID int) error {
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).
 		Create(&model.GalgameLocal{ID: galgameID}).Error

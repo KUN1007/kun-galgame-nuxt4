@@ -78,6 +78,21 @@ func (h *SubmissionHandler) Withdraw(c fiber.Ctx) error {
 	return response.OKMessage(c, "撤回成功")
 }
 
+func (h *SubmissionHandler) DeleteDraft(c fiber.Ctx) error {
+	token, appErr := userToken(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	gid, appErr := submissionGID(c)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	if appErr := h.svc.DeleteDraft(c.Context(), token, gid); appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OKMessage(c, "删除成功")
+}
+
 func (h *SubmissionHandler) ListMine(c fiber.Ctx) error {
 	token, appErr := userToken(c)
 	if appErr != nil {
