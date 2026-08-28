@@ -28,10 +28,11 @@ const scrolled = computed(() => y.value > 8)
     <div
       :class="
         cn(
-          'mx-auto flex h-16 w-full max-w-7xl transform-gpu items-center justify-between rounded-b-lg border transition-[background-color,border-color,box-shadow,padding] duration-200',
-          scrolled
-            ? 'bg-content1 border-kun shadow-kun-sm px-3 backdrop-blur-md'
-            : 'desktop-nav:px-0 border-transparent bg-transparent px-3 shadow-none'
+          'mx-auto flex h-16 w-full transform-gpu items-center justify-between px-3 transition-[background-color,border-color,box-shadow,padding] duration-200',
+          'bg-content1 border-kun shadow-kun-sm border-b backdrop-blur-md',
+          'desktop-nav:max-w-7xl desktop-nav:rounded-b-lg desktop-nav:border',
+          !scrolled &&
+            'desktop-nav:border-transparent desktop-nav:bg-transparent desktop-nav:px-0 desktop-nav:shadow-none desktop-nav:backdrop-blur-none'
         )
       "
     >

@@ -17,7 +17,7 @@ const activeTab = ref('appearance')
   <KunModal
     :model-value="showKUNGalgamePanel"
     @update:model-value="(value) => (showKUNGalgamePanel = value)"
-    inner-class-name="overflow-visible w-[92vw] sm:max-w-3xl"
+    inner-class-name="w-[92vw] sm:max-w-3xl"
   >
     <div class="space-y-4">
       <div class="flex items-center gap-2 text-lg">
