@@ -29,7 +29,14 @@ const render = (): string => {
   })
 }
 
-const text = useState(`kun-time-${useId()}`, render)
+const text = ref(render())
+
+watch(
+  () => [props.time, props.type, props.showYear],
+  () => {
+    text.value = render()
+  }
+)
 
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
