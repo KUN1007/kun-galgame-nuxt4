@@ -6,6 +6,10 @@ export const markdownToText = (
 ) => {
   if (!markdown) return ''
   const stripped = maskSpoilers(markdown)
+    .replace(/\\\\/g, '\uE000')
+    .replace(/\\\n/g, '\n')
+    .replace(/\\([\\`*_{}[\]()#+\-.!_>~|])/g, '$1')
+    .replace(/\uE000/g, '\\')
     .replace(/^[ \t]*```+.*$/gm, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, '')
