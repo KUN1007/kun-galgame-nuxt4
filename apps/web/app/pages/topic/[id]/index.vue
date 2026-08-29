@@ -74,7 +74,7 @@ if (data.value) {
   const created = new Date(topic.created).toString()
   const updated = topic.edited ? new Date(topic.edited).toString() : ''
   const description = computed(() =>
-    truncateRunes(markdownToText(markdown).trim(), 233).replace(/\\|\n/g, '')
+    truncateRunes(markdownToText(markdown).trim(), 233)
   )
 
   const jsonLd = computed<WithContext<DiscussionForumPosting>>(() => {
