@@ -17,7 +17,7 @@ export const markdownToText = (
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/(\*\*|__)(.*?)\1/g, '$2')
     .replace(/~~(.*?)~~/g, '$1')
-    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/(\*)(.*?)\1/g, '$2')
     .replace(/^\s*#{1,6}\s+(.*)/gm, '$1')
     .replace(/`/g, '')
     .replace(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/gm, '')
