@@ -295,6 +295,7 @@ type GalgameDetail struct {
 	Updated                    string                   `json:"updated"`
 	DlsitePurchaseURL          string                   `json:"dlsite_purchase_url,omitempty"`
 	DlsiteCouponURL            string                   `json:"dlsite_coupon_url,omitempty"`
+	DlsiteCampaignName         string                   `json:"dlsite_campaign_name,omitempty"`
 	MyPlaytime                 *GalgameMyPlaytime       `json:"my_playtime,omitempty"`
 }
 

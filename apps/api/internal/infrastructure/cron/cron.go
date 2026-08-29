@@ -23,6 +23,7 @@ type Jobs struct {
 	GalgameContributorSync    func()
 	GalgameContentLimitMirror func()
 	GalgameContentLimitFill   func()
+	DlsiteCampaignRefresh     func()
 }
 
 func Start(
@@ -85,6 +86,10 @@ func Start(
 
 	if jobs.GalgameContentLimitFill != nil {
 		schedule(c, "*/10 * * * *", "galgame content_limit 增量同步", jobs.GalgameContentLimitFill)
+	}
+
+	if jobs.DlsiteCampaignRefresh != nil {
+		schedule(c, "*/10 * * * *", "dlsite 优惠券活动刷新", jobs.DlsiteCampaignRefresh)
 	}
 
 	c.Start()

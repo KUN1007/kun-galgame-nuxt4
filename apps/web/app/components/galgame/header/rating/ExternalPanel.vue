@@ -200,6 +200,7 @@ const link = computed(() => {
       <GalgameDlsitePurchase
         :purchase-url="purchaseUrl"
         :coupon-url="galgame.dlsite_coupon_url"
+        :campaign-name="galgame.dlsite_campaign_name"
       />
       <span class="text-default-500 text-xs">
         本站与 DLsite 官方合作, 从这里购买正版, 分成会全部回馈给用户

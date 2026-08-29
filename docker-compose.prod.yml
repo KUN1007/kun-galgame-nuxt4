@@ -66,9 +66,16 @@ x-kungal-api-env: &kungal-api-env
   # DLsite 的联盟路径可能按站点段不同 (/soft/ 是 pro/VJ 路径), 换路径只改这里。
   # 空模板 = 功能关闭, 补票提示回落成原来的纯文案。
   KUN_DLSITE_LINK_TEMPLATE: ${KUN_DLSITE_LINK_TEMPLATE:-https://dlaf.jp/soft/dlaf/=/t/s/link/work/aid/kungal/locale/zh_CN/id/{workno}.html/?locale=zh_CN}
-  # 优惠券落地页。必须是短链 (合作方要求, 防网络审查拦截) —— 自建短链服务就绪前
-  # 先用 umami 短链承载。
+  # 优惠券落地页。必须是短链 (合作方要求, 防网络审查拦截)。这条是常设落地页,
+  # 不是 campaign; store 面报告有活动时会被 coupon_url 顶掉, 没有活动时仍然展示。
   KUN_DLSITE_COUPON_URL: ${KUN_DLSITE_COUPON_URL:-https://umami.kungal.org/q/N3TmTZJ9X}
+  # infra 的 /v2/store 面。给出 key 后购买按钮改用它铸的本站专属短链 —— 短链背后
+  # 的点击计数就是结算依据, 直链虽然照样能买但这笔销售 infra 看不见。
+  # 第三把 developer key (scope 只要 store:read), 不与 catalog/news 共用: v2 限流
+  # 按 key 分桶, 铸链不能吃掉目录读的每分钟预算; 而短链归属按 OAuth client 算,
+  # 所以另开一把 key 不会拆散归因。空 = 只用上面的联盟直链模板, 站点行为不变。
+  # KUN_STORE_API_BASE 默认取 KUN_NEXTMOE_API_BASE (同一个 catalog 进程)。
+  KUN_STORE_API_KEY: ${KUN_STORE_API_KEY:-}
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in Dokploy (kungal 自己的会话密钥)}
   # toolset archive uploads (Backblaze B2). 空则上传路由仍注册、调用 500(应用只 warn 不拦);要开 toolset 上传就填全 5 个
   # (内嵌/内容图不走这里 — 全部经 image_service,详见 KUN_IMAGE_CLIENT_*)

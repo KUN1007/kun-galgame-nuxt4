@@ -13,11 +13,11 @@ func Link(template, workno string) string {
 	return strings.ReplaceAll(template, worknoPlaceholder, workno)
 }
 
-func LinkFor(template string, galgameID int, refsWorkno string) string {
-	if url := Link(template, refsWorkno); url != "" {
-		return url
+func WorknoFor(galgameID int, refsWorkno string) string {
+	if ValidWorkno(refsWorkno) {
+		return refsWorkno
 	}
-	return Link(template, VerifiedWorkno(galgameID))
+	return VerifiedWorkno(galgameID)
 }
 
 func ValidWorkno(s string) bool {

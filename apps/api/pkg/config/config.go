@@ -85,12 +85,23 @@ type NewsAPIConfig struct {
 //
 // LinkTemplate is a whole template, not assembled parts: DLsite's affiliate path
 // differs per site segment, so a path change stays an env edit.
+//
+// StoreAPIKey reaches infra's /v2/store face, which mints the per-site short
+// link that carries click attribution. It is a THIRD developer key, separate
+// from the catalog and news ones: the face is gated on the scope store:read and
+// the v2 limiter buckets per key, so minting a few thousand links must not spend
+// the catalogue's minute budget. The links belong to the OAuth client rather
+// than the key, so a separate key does not split attribution.
 type DlsiteConfig struct {
 	LinkTemplate string
 	CouponURL    string
+	StoreAPIBase string
+	StoreAPIKey  string
 }
 
 func (c DlsiteConfig) Configured() bool { return c.LinkTemplate != "" }
+
+func (c DlsiteConfig) StoreConfigured() bool { return c.StoreAPIBase != "" && c.StoreAPIKey != "" }
 
 type ServerConfig struct {
 	Port string
@@ -251,6 +262,8 @@ func Load() (*Config, error) {
 		Dlsite: DlsiteConfig{
 			LinkTemplate: envOrDefault("KUN_DLSITE_LINK_TEMPLATE", ""),
 			CouponURL:    envOrDefault("KUN_DLSITE_COUPON_URL", ""),
+			StoreAPIBase: envOrDefault("KUN_STORE_API_BASE", nextMoeBase),
+			StoreAPIKey:  envOrDefault("KUN_STORE_API_KEY", ""),
 		},
 	}, nil
 }

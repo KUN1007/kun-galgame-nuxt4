@@ -164,6 +164,7 @@ const handleEditDone = () => {
             :galgame-id="resource.galgame_id"
             :purchase-url="resource.dlsite_purchase_url"
             :coupon-url="resource.dlsite_coupon_url"
+            :campaign-name="resource.dlsite_campaign_name"
           />
 
           <div class="flex justify-end">

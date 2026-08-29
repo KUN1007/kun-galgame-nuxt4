@@ -20,6 +20,7 @@ export interface GalgameResource {
   edited: Date | string | null
   dlsite_purchase_url?: string
   dlsite_coupon_url?: string
+  dlsite_campaign_name?: string
 }
 
 export interface GalgameResourceDetailLink extends GalgameResource {

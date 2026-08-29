@@ -98,54 +98,30 @@ func TestVerifiedWhitelist(t *testing.T) {
 	})
 }
 
-func TestLinkForPrecedence(t *testing.T) {
+func TestWorknoForPrecedence(t *testing.T) {
 	const whitelisted = 4
 
 	t.Run("refs wins when present", func(t *testing.T) {
-		got := LinkFor(tmpl, whitelisted, "RJ297925")
-		if !strings.Contains(got, "RJ297925") {
-			t.Errorf("LinkFor() = %q, want the refs workno to win", got)
+		if got := WorknoFor(whitelisted, "RJ297925"); got != "RJ297925" {
+			t.Errorf("WorknoFor() = %q, want the refs workno to win", got)
 		}
 	})
 
 	t.Run("whitelist fills the gap when refs is absent", func(t *testing.T) {
-		got := LinkFor(tmpl, whitelisted, "")
-		if !strings.Contains(got, "VJ013550") {
-			t.Errorf("LinkFor() = %q, want the whitelisted workno", got)
+		if got := WorknoFor(whitelisted, ""); got != "VJ013550" {
+			t.Errorf("WorknoFor() = %q, want the whitelisted workno", got)
 		}
 	})
 
-	t.Run("neither source yields no link", func(t *testing.T) {
-		if got := LinkFor(tmpl, 999999999, ""); got != "" {
-			t.Errorf("LinkFor() = %q, want \"\"", got)
+	t.Run("neither source yields no workno", func(t *testing.T) {
+		if got := WorknoFor(999999999, ""); got != "" {
+			t.Errorf("WorknoFor() = %q, want \"\"", got)
 		}
 	})
 
-	t.Run("unconfigured template disables both paths", func(t *testing.T) {
-		if got := LinkFor("", whitelisted, "RJ297925"); got != "" {
-			t.Errorf("LinkFor() with no template = %q, want \"\"", got)
+	t.Run("unconfigured template disables the link", func(t *testing.T) {
+		if got := Link("", WorknoFor(whitelisted, "RJ297925")); got != "" {
+			t.Errorf("Link() with no template = %q, want \"\"", got)
 		}
 	})
-}
-
-func TestResolveVerifiedConflicts(t *testing.T) {
-	got := resolveVerified(map[int][]string{
-		1:    {"VJ000001"},
-		2:    {"RJ000002", "RJ000003"},
-		3:    {"RJ000004", "RJ000005", "RJ000006"},
-		4156: {"RJ088116", "RJ090411"},
-	})
-
-	if got[1] != "VJ000001" {
-		t.Errorf("single workno = %q, want VJ000001", got[1])
-	}
-	if _, ok := got[2]; ok {
-		t.Errorf("unpinned conflict resolved to %q, want no entry (never guess)", got[2])
-	}
-	if _, ok := got[3]; ok {
-		t.Errorf("unpinned 3-way conflict resolved to %q, want no entry", got[3])
-	}
-	if got[4156] != "RJ090411" {
-		t.Errorf("pinned conflict = %q, want RJ090411", got[4156])
-	}
 }

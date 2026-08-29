@@ -4,9 +4,16 @@ import { KUN_DLSITE_ANNOUNCE_TOPIC_ID } from '~/constants/dlsite'
 const props = defineProps<{
   purchaseUrl: string
   couponUrl?: string
+  campaignName?: string
 }>()
 
 const hasCoupon = computed(() => Boolean(props.couponUrl))
+
+// Falls back to the standing landing page's own terms: an empty campaignName
+// means the coupon link is that page, not a campaign infra is running.
+const couponLabel = computed(
+  () => props.campaignName || '每 3 个月一张 ¥400 券, 单笔满 ¥1200 可用'
+)
 </script>
 
 <template>
@@ -49,7 +56,7 @@ const hasCoupon = computed(() => Boolean(props.couponUrl))
               >
             </span>
             <span class="text-default-500 mt-0.5 block text-xs">
-              每 3 个月一张 ¥400 券, 单笔满 ¥1200 可用
+              {{ couponLabel }}
             </span>
           </span>
         </a>

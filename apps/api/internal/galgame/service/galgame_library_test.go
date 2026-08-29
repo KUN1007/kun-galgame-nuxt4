@@ -43,7 +43,7 @@ func TestCatalogLibrary_OnlyTheLibraryFlagLeavesTheForum(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	svc := NewGalgameService(nil, nil, nil, nil, nil, nil, nil,
-		client.New(srv.URL, "nm_test_key", ""), nil, nil, "", "")
+		client.New(srv.URL, "nm_test_key", ""), nil, nil, nil)
 	func() {
 		// The local branch dereferences a repository this unit test has no
 		// database for. Panicking there IS the assertion: it can only be reached
@@ -69,7 +69,7 @@ func TestCatalogLibrary_DoesNotSendClaimState(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	svc := NewGalgameService(nil, nil, nil, nil, nil, nil, nil,
-		client.New(srv.URL, "nm_test_key", ""), nil, nil, "", "")
+		client.New(srv.URL, "nm_test_key", ""), nil, nil, nil)
 	page, appErr := svc.GetList(context.Background(), &dto.GalgameListRequest{
 		Page: 1, Limit: 24, SortField: "popularity", SortOrder: "desc", Library: true,
 	}, true)

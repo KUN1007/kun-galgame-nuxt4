@@ -9,10 +9,10 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
+	"kun-galgame-api/internal/infrastructure/storelink"
 	"kun-galgame-api/internal/moemoepoint"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/catalogclient"
-	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 	"kun-galgame-api/pkg/utils"
@@ -21,19 +21,18 @@ import (
 )
 
 type GalgameService struct {
-	galgameRepo        *repository.GalgameRepository
-	interactionRepo    *repository.GalgameInteractionRepository
-	listRepo           *repository.GalgameListRepository
-	resourceMetaRepo   *repository.GalgameResourceMetaRepository
-	detailRatingRepo   *repository.GalgameDetailRatingRepository
-	contributorRepo    *repository.GalgameContributorRepository
-	stateRepo          *userRepo.StateRepository
-	galgameClient      *client.GalgameClient
-	userClient         *userclient.Client
-	catalog            *catalogclient.Client
-	helpers            InteractionHelpers
-	dlsiteLinkTemplate string
-	dlsiteCouponURL    string
+	galgameRepo      *repository.GalgameRepository
+	interactionRepo  *repository.GalgameInteractionRepository
+	listRepo         *repository.GalgameListRepository
+	resourceMetaRepo *repository.GalgameResourceMetaRepository
+	detailRatingRepo *repository.GalgameDetailRatingRepository
+	contributorRepo  *repository.GalgameContributorRepository
+	stateRepo        *userRepo.StateRepository
+	galgameClient    *client.GalgameClient
+	userClient       *userclient.Client
+	catalog          *catalogclient.Client
+	helpers          InteractionHelpers
+	storeLinks       *storelink.Resolver
 }
 
 func NewGalgameService(
@@ -47,22 +46,20 @@ func NewGalgameService(
 	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
 	catalog *catalogclient.Client,
-	dlsiteLinkTemplate string,
-	dlsiteCouponURL string,
+	storeLinks *storelink.Resolver,
 ) *GalgameService {
 	return &GalgameService{
-		galgameRepo:        galgameRepo,
-		interactionRepo:    interactionRepo,
-		listRepo:           listRepo,
-		resourceMetaRepo:   resourceMetaRepo,
-		dlsiteLinkTemplate: dlsiteLinkTemplate,
-		dlsiteCouponURL:    dlsiteCouponURL,
-		detailRatingRepo:   detailRatingRepo,
-		contributorRepo:    contributorRepo,
-		stateRepo:          stateRepo,
-		galgameClient:      galgameClient,
-		userClient:         userClient,
-		catalog:            catalog,
+		galgameRepo:      galgameRepo,
+		interactionRepo:  interactionRepo,
+		listRepo:         listRepo,
+		resourceMetaRepo: resourceMetaRepo,
+		storeLinks:       storeLinks,
+		detailRatingRepo: detailRatingRepo,
+		contributorRepo:  contributorRepo,
+		stateRepo:        stateRepo,
+		galgameClient:    galgameClient,
+		userClient:       userClient,
+		catalog:          catalog,
 	}
 }
 
@@ -162,10 +159,10 @@ func (s *GalgameService) GetDetail(
 	g.Contributor = s.contributorsOf(galgameID)
 	users := s.hydrateDetailUsers(ctx, g)
 	detail := galgameDetailFromNextMoe(g, users)
-	if purchase := dlsite.LinkFor(s.dlsiteLinkTemplate, g.ID, g.Refs["dlsite"]); purchase != "" {
-		detail.DlsitePurchaseURL = purchase
-		detail.DlsiteCouponURL = s.dlsiteCouponURL
-	}
+	store := s.storeLinks.Resolve(g.ID, g.Refs["dlsite"])
+	detail.DlsitePurchaseURL = store.PurchaseURL
+	detail.DlsiteCouponURL = store.CouponURL
+	detail.DlsiteCampaignName = store.CampaignName
 	detail.View = local.View
 	detail.ResourceUpdateTime = utils.RFC3339OrEmpty(local.ResourceUpdateTime)
 	detail.LikeCount = local.LikeCount

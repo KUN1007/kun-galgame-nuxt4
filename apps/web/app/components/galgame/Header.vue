@@ -242,6 +242,7 @@ const hasMoreCovers = computed(() => (props.galgame.covers?.length ?? 0) > 1)
               v-if="galgame.dlsite_purchase_url"
               :purchase-url="galgame.dlsite_purchase_url"
               :coupon-url="galgame.dlsite_coupon_url"
+              :campaign-name="galgame.dlsite_campaign_name"
             />
 
             <KunButton

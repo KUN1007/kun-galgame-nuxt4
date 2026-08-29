@@ -150,6 +150,7 @@ export interface GalgameDetail {
   resource_publish_banned: boolean
   dlsite_purchase_url?: string
   dlsite_coupon_url?: string
+  dlsite_campaign_name?: string
   alias: string[]
   engine: GalgameEngineItem[]
   official: GalgameOfficialItem[]

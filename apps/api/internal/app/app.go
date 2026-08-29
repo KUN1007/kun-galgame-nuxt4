@@ -32,6 +32,7 @@ import (
 	"kun-galgame-api/internal/infrastructure/database"
 	"kun-galgame-api/internal/infrastructure/markdown"
 	"kun-galgame-api/internal/infrastructure/storage"
+	"kun-galgame-api/internal/infrastructure/storelink"
 	msgHandler "kun-galgame-api/internal/message/handler"
 	msgRepo "kun-galgame-api/internal/message/repository"
 	msgService "kun-galgame-api/internal/message/service"
@@ -77,6 +78,7 @@ import (
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/newsclient"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/storeclient"
 	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
 
@@ -151,6 +153,7 @@ type App struct {
 	ToolsetUploadHandler           *toolsetHandler.UploadHandler
 	CronStop                       func()
 	RolePermStop                   func()
+	StoreLinkStop                  func()
 }
 
 func New(cfg *config.Config) *App {
@@ -318,12 +321,27 @@ func New(cfg *config.Config) *App {
 		slog.Warn("community comment backend NOT configured; comments degrade (reads empty / writes 503) — set KUN_COMMUNITY_API_BASE + OAuth creds")
 	}
 
-	if cfg.Dlsite.Configured() {
-		slog.Info("dlsite affiliate link configured",
+	var storeCli *storeclient.Client
+	if cfg.Dlsite.StoreConfigured() {
+		storeCli = storeclient.New(storeclient.Config{
+			BaseURL: cfg.Dlsite.StoreAPIBase,
+			APIKey:  cfg.Dlsite.StoreAPIKey,
+		})
+	}
+	storeLinks := storelink.New(storelink.Options{
+		DB:           db,
+		Client:       storeCli,
+		LinkTemplate: cfg.Dlsite.LinkTemplate,
+		StaticCoupon: cfg.Dlsite.CouponURL,
+	})
+	if cfg.Dlsite.Configured() || storeLinks.Configured() {
+		slog.Info("dlsite purchase link configured",
 			"verified_whitelist", dlsite.VerifiedCount(),
-			"coupon", cfg.Dlsite.CouponURL != "")
+			"short_links", storeLinks.Configured(),
+			"template_fallback", cfg.Dlsite.Configured(),
+			"static_coupon", cfg.Dlsite.CouponURL != "")
 	} else {
-		slog.Info("dlsite affiliate link off (KUN_DLSITE_LINK_TEMPLATE unset); 补票提示 renders its plain form")
+		slog.Info("dlsite purchase link off (KUN_DLSITE_LINK_TEMPLATE and KUN_STORE_API_KEY both unset); 补票提示 renders its plain form")
 	}
 	communityBooster := communitytrust.New(communityCli, rdb, db)
 
@@ -370,7 +388,7 @@ func New(cfg *config.Config) *App {
 	galgameCommunityCommentSvc := galgameService.NewCommunityCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	resourceCommentSvc := galgameService.NewResourceCommentService(communityCli, galgameCommunityPostRepo, uc, db)
 	galgameResourceRepo := galgameRepo.NewResourceRepository(db)
-	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, galgameLocalRepo, gc, catalogCli, uc, linkChecker, trustCheck, trustScan, cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL)
+	galgameResourceSvc := galgameService.NewResourceService(galgameResourceRepo, galgameLocalRepo, gc, catalogCli, uc, linkChecker, trustCheck, trustScan, storeLinks)
 	galgameRatingRepo := galgameRepo.NewRatingRepository(db)
 	galgameRatingSvc := galgameService.NewRatingService(galgameRatingRepo, gc, uc, trustCheck, trustScan)
 	galgameQuizRepo := galgameRepo.NewQuizRepository(db)
@@ -387,8 +405,7 @@ func New(cfg *config.Config) *App {
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, galgameContributorRepo,
-		userStateRepo, gc, uc, catalogCli,
-		cfg.Dlsite.LinkTemplate, cfg.Dlsite.CouponURL,
+		userStateRepo, gc, uc, catalogCli, storeLinks,
 	)
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
@@ -563,7 +580,9 @@ func New(cfg *config.Config) *App {
 			GalgameContributorSync:    galgameContributorSync.Run,
 			GalgameContentLimitMirror: galgameContentLimitSync.RunMirror,
 			GalgameContentLimitFill:   galgameContentLimitSync.RunPending,
+			DlsiteCampaignRefresh:     storeLinks.RefreshCampaign,
 		}),
+		StoreLinkStop: storeLinks.Start(),
 	}
 
 	if err := adminPermSync.Load(context.Background()); err != nil {

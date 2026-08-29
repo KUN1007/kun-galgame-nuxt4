@@ -10,10 +10,10 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/internal/galgame/model"
 	"kun-galgame-api/internal/galgame/repository"
+	"kun-galgame-api/internal/infrastructure/storelink"
 	"kun-galgame-api/internal/moemoepoint"
 	"kun-galgame-api/internal/trust/gate"
 	"kun-galgame-api/pkg/catalogclient"
-	"kun-galgame-api/pkg/dlsite"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/userclient"
@@ -24,17 +24,16 @@ import (
 )
 
 type ResourceService struct {
-	resourceRepo       *repository.ResourceRepository
-	galgameRepo        *repository.GalgameRepository
-	galgameClient      *client.GalgameClient
-	catalog            *catalogclient.Client
-	userClient         *userclient.Client
-	check              *gate.CheckService
-	scan               *gate.ScanService
-	helpers            InteractionHelpers
-	linkChecker        *linkcheck.Client
-	dlsiteLinkTemplate string
-	dlsiteCouponURL    string
+	resourceRepo  *repository.ResourceRepository
+	galgameRepo   *repository.GalgameRepository
+	galgameClient *client.GalgameClient
+	catalog       *catalogclient.Client
+	userClient    *userclient.Client
+	check         *gate.CheckService
+	scan          *gate.ScanService
+	helpers       InteractionHelpers
+	linkChecker   *linkcheck.Client
+	storeLinks    *storelink.Resolver
 }
 
 func NewResourceService(
@@ -46,29 +45,23 @@ func NewResourceService(
 	linkChecker *linkcheck.Client,
 	check *gate.CheckService,
 	scan *gate.ScanService,
-	dlsiteLinkTemplate string,
-	dlsiteCouponURL string,
+	storeLinks *storelink.Resolver,
 ) *ResourceService {
 	return &ResourceService{
-		resourceRepo:       resourceRepo,
-		galgameRepo:        galgameRepo,
-		galgameClient:      galgameClient,
-		catalog:            catalog,
-		userClient:         userClient,
-		check:              check,
-		scan:               scan,
-		linkChecker:        linkChecker,
-		dlsiteLinkTemplate: dlsiteLinkTemplate,
-		dlsiteCouponURL:    dlsiteCouponURL,
+		resourceRepo:  resourceRepo,
+		galgameRepo:   galgameRepo,
+		galgameClient: galgameClient,
+		catalog:       catalog,
+		userClient:    userClient,
+		check:         check,
+		scan:          scan,
+		linkChecker:   linkChecker,
+		storeLinks:    storeLinks,
 	}
 }
 
-func (s *ResourceService) dlsiteLinks(b client.GalgameBrief) (purchase, coupon string) {
-	purchase = dlsite.LinkFor(s.dlsiteLinkTemplate, b.ID, b.DlsiteWorkno())
-	if purchase == "" {
-		return "", ""
-	}
-	return purchase, s.dlsiteCouponURL
+func (s *ResourceService) dlsiteLinks(b client.GalgameBrief) storelink.Links {
+	return s.storeLinks.Resolve(b.ID, b.DlsiteWorkno())
 }
 
 func resourceModerationText(note string, links []string) string {
@@ -109,7 +102,8 @@ func (s *ResourceService) GetResourceList(
 		}
 		card := rowToCard(r, u, likedSet[r.ID])
 		card.GalgameName = b.Name
-		card.DlsitePurchaseURL, card.DlsiteCouponURL = s.dlsiteLinks(b)
+		store := s.dlsiteLinks(b)
+		card.DlsitePurchaseURL, card.DlsiteCouponURL, card.DlsiteCampaignName = store.PurchaseURL, store.CouponURL, store.CampaignName
 		cards = append(cards, card)
 	}
 
@@ -141,7 +135,8 @@ func (s *ResourceService) GetResourceDetail(
 	resource := rowToMeta(row, links, isLiked, ownerUser)
 
 	if b, ok := s.fetchGalgameBriefs(ctx, []int{row.GalgameID})[row.GalgameID]; ok {
-		resource.DlsitePurchaseURL, resource.DlsiteCouponURL = s.dlsiteLinks(b)
+		store := s.dlsiteLinks(b)
+		resource.DlsitePurchaseURL, resource.DlsiteCouponURL, resource.DlsiteCampaignName = store.PurchaseURL, store.CouponURL, store.CampaignName
 	}
 
 	galgameSummary := s.buildGalgameSummary(ctx, row.GalgameID)
@@ -196,10 +191,10 @@ func (s *ResourceService) GetGalgameResources(
 	userMap := s.userClient.Hydrate(ctx, userIDs)
 	likedSet := s.resourceRepo.FindLikedSet(currentUserID, resourceIDs)
 
-	dlsiteURL, dlsiteCoupon := "", ""
+	var store storelink.Links
 	if len(rows) > 0 {
 		if b, ok := s.fetchGalgameBriefs(ctx, []int{req.GalgameID})[req.GalgameID]; ok {
-			dlsiteURL, dlsiteCoupon = s.dlsiteLinks(b)
+			store = s.dlsiteLinks(b)
 		}
 	}
 
@@ -210,7 +205,7 @@ func (s *ResourceService) GetGalgameResources(
 			continue
 		}
 		card := rowToCard(r, u, likedSet[r.ID])
-		card.DlsitePurchaseURL, card.DlsiteCouponURL = dlsiteURL, dlsiteCoupon
+		card.DlsitePurchaseURL, card.DlsiteCouponURL, card.DlsiteCampaignName = store.PurchaseURL, store.CouponURL, store.CampaignName
 		cards = append(cards, card)
 	}
 	return cards, nil
