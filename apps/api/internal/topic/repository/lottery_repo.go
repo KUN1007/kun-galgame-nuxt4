@@ -296,6 +296,26 @@ func (r *LotteryRepository) ClaimPollsPastDeadline(now time.Time, limit int) ([]
 	return rows, err
 }
 
+// ClaimExpiredCodeWins flips past-deadline pending code wins to 'forfeited' in
+// the same statement that selects them, so the every-minute sweep cannot notify
+// the same winner twice.
+func (r *LotteryRepository) ClaimExpiredCodeWins(now time.Time, limit int) ([]model.TopicLotteryEntry, error) {
+	var rows []model.TopicLotteryEntry
+	err := r.db.Raw(`
+		UPDATE topic_lottery_entry SET fulfillment = 'forfeited', updated = ?
+		WHERE id IN (
+			SELECT id FROM topic_lottery_entry
+			WHERE fulfillment = 'pending'
+			  AND code_id <> 0
+			  AND claim_deadline IS NOT NULL AND claim_deadline <= ?
+			ORDER BY id ASC
+			LIMIT ?
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING *`, now, now, limit).Scan(&rows).Error
+	return rows, err
+}
+
 func (r *LotteryRepository) FindPollVoterIDs(pollID int) ([]int, error) {
 	var ids []int
 	err := r.db.Table("topic_poll_vote").Distinct("user_id").

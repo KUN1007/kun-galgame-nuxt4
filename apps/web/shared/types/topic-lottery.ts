@@ -58,6 +58,7 @@ export interface TopicLottery {
   my_delivery: string
   my_fulfillment: string
   my_code_ready: boolean
+  my_claim_deadline: string | Date | null
 
   created: string | Date
   updated: string | Date

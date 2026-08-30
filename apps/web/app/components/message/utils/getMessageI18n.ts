@@ -14,6 +14,7 @@ const messageTemplates: Partial<Record<MessageType, string>> = {
   'quiz-answered': ' 回答了您的题目!',
   'lottery-won': ' 的抽奖开奖了, 您中奖了!',
   'lottery-closed': ' 的抽奖开奖了',
+  'lottery-expired': ' 的抽奖兑换码已过领取期限',
   'poll-closed': ' 的投票已经截止'
 }
 

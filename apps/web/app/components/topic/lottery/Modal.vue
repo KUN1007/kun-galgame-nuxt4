@@ -33,6 +33,7 @@ const emptyPrize = (): LotteryPrizeFormData => ({
   name: '',
   description: '',
   image_hash: '',
+  image_url: '',
   delivery: 'manual',
   point_amount: 0,
   slots: 1,
@@ -62,6 +63,7 @@ const getInitialFormData = (): LotteryFormData => {
         name: p.name,
         description: p.description,
         image_hash: p.image_hash,
+        image_url: p.image_url,
         delivery: p.delivery,
         point_amount: p.point_amount,
         slots: p.slots,
@@ -302,6 +304,12 @@ const handleSubmit = async () => {
                 :rows="2"
               />
 
+              <KunCoverUpload
+                v-model="prize.image_hash"
+                :preview-url="prize.image_url"
+                label="奖品图片 (可选)"
+              />
+
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <KunSelect
                   v-model="prize.delivery"
@@ -327,7 +335,7 @@ const handleSubmit = async () => {
                 <p class="text-default-500 mt-1 text-xs">
                   已填写 {{ codeCount(prize) }} 个, 需要 {{ prize.slots }} 个。
                   兑换码提交后即加密托管, 页面上永远不会再显示,
-                  只有中奖者本人能揭示。
+                  只有中奖者本人能揭示, 且需在开奖后 7 天内领取, 逾期自动作废。
                 </p>
               </div>
 

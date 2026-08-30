@@ -27,9 +27,10 @@ const (
 	NotifyMerged    NotifyKind = "merged"
 	NotifyDeclined  NotifyKind = "declined"
 
-	NotifyLotteryWon    NotifyKind = "lottery-won"
-	NotifyLotteryClosed NotifyKind = "lottery-closed"
-	NotifyPollClosed    NotifyKind = "poll-closed"
+	NotifyLotteryWon     NotifyKind = "lottery-won"
+	NotifyLotteryClosed  NotifyKind = "lottery-closed"
+	NotifyLotteryExpired NotifyKind = "lottery-expired"
+	NotifyPollClosed     NotifyKind = "poll-closed"
 )
 
 const notifyContentLimit = 233

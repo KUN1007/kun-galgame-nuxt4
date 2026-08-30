@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { TOPIC_MINI_APPS } from './registry'
+import { TOPIC_MINI_APPS, type TopicMiniAppKey } from './registry'
 
 const emits = defineEmits<{
-  create: [key: 'poll' | 'lottery']
+  create: [key: TopicMiniAppKey]
 }>()
 
 const openHelp = ref<string>('')

@@ -57,6 +57,7 @@ export const notificationCategoryGroups: NotificationCategoryGroup[] = [
     items: [
       { key: 'lottery-won', label: '抽奖中奖' },
       { key: 'lottery-closed', label: '参与的抽奖开奖' },
+      { key: 'lottery-expired', label: '兑换码过期作废' },
       { key: 'poll-closed', label: '参与的投票截止' }
     ]
   },

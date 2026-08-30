@@ -15,6 +15,7 @@ export type MessageType =
   | 'quiz-answered'
   | 'lottery-won'
   | 'lottery-closed'
+  | 'lottery-expired'
   | 'poll-closed'
 
 type MessageStatus = 'read' | 'unread'

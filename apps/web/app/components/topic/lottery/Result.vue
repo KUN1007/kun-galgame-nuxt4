@@ -102,7 +102,21 @@ const advance = async (entryId: number, fulfillment: string) => {
         <p v-else-if="lottery.my_delivery === 'point'">
           萌萌点已自动发放到您的账户。
         </p>
-        <div v-if="myEntry.fulfillment !== 'received'" class="flex gap-2">
+        <p v-else-if="myEntry.fulfillment === 'forfeited'">
+          该兑换码已作废, 无法再领取。
+        </p>
+        <p v-else-if="lottery.my_claim_deadline">
+          请在
+          <KunTime :time="lottery.my_claim_deadline" type="datetime" show-year />
+          前领取兑换码, 逾期作废。
+        </p>
+        <div
+          v-if="
+            myEntry.fulfillment !== 'received' &&
+            myEntry.fulfillment !== 'forfeited'
+          "
+          class="flex gap-2"
+        >
           <KunButton
             size="sm"
             color="primary"

@@ -1,7 +1,13 @@
+import type { KunUIColor } from '@kungal/ui-core'
+
+export type TopicMiniAppKey = 'poll' | 'lottery'
+
 export interface TopicMiniApp {
-  key: 'poll' | 'lottery'
+  key: TopicMiniAppKey
   label: string
   icon: string
+  badge: string
+  badgeColor: KunUIColor
   help: string[]
 }
 
@@ -13,6 +19,8 @@ export const TOPIC_MINI_APPS: TopicMiniApp[] = [
     key: 'poll',
     label: '投票',
     icon: 'lucide:bar-chart-3',
+    badge: '投票话题',
+    badgeColor: 'primary',
     help: [
       '让读者在若干选项里表态, 结果实时统计。',
       '可以设置单选/多选、截止时间、匿名与否, 以及结果什么时候公开。',
@@ -23,12 +31,22 @@ export const TOPIC_MINI_APPS: TopicMiniApp[] = [
     key: 'lottery',
     label: '抽奖',
     icon: 'lucide:gift',
+    badge: '抽奖话题',
+    badgeColor: 'secondary',
     help: [
       '送激活码、实物周边或萌萌点, 由系统产生中奖名单。',
       '开奖前公示随机数承诺 (哈希), 开奖后公布随机数, 任何人都能自己验算一遍。',
       '楼层抽奖不使用随机数, 中奖楼层数出来就是, 读者数楼即可核对。',
       '激活码由系统托管, 只有中奖者本人能揭示一次; 实物请与中奖者私聊沟通。',
+      '兑换码需在开奖后 7 天内领取, 逾期自动作废。',
       '本站只负责产生名单, 不担保实物履约, 请自行与对方确认。'
     ]
   }
 ]
+
+// The list surfaces get bare kind strings from the API (`mini_apps`), matching
+// pkg/miniapp on the Go side.
+export const topicMiniAppsOf = (keys?: string[]): TopicMiniApp[] =>
+  (keys ?? [])
+    .map((key) => TOPIC_MINI_APPS.find((app) => app.key === key))
+    .filter((app): app is TopicMiniApp => !!app)

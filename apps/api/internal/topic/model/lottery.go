@@ -102,6 +102,8 @@ type TopicLotteryEntry struct {
 	Fulfillment string     `gorm:"column:fulfillment;default:''" json:"fulfillment"`
 	WonAt       *time.Time `gorm:"column:won_at" json:"won_at"`
 
+	ClaimDeadline *time.Time `gorm:"column:claim_deadline" json:"claim_deadline"`
+
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
 }

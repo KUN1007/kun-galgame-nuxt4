@@ -134,6 +134,9 @@ func (s *LotteryService) ClaimCode(userID, lotteryID int) (string, *errors.AppEr
 	if lottery.Status != topicModel.LotteryStatusDrawn {
 		return "", errors.ErrBadRequest("抽奖尚未开奖")
 	}
+	if entry.Fulfillment == topicModel.LotteryFulfillForfeited {
+		return "", errors.ErrBadRequest("该兑换码已超过领取期限, 无法再领取")
+	}
 	code, err := s.lotteryRepo.FindCodeByID(entry.CodeID)
 	if err != nil {
 		return "", errors.ErrInternal("兑换码丢失, 请联系管理员")

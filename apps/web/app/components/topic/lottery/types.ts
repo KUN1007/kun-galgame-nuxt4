@@ -2,6 +2,7 @@ export interface LotteryPrizeFormData {
   name: string
   description: string
   image_hash: string
+  image_url: string
   delivery: 'code' | 'manual' | 'point'
   point_amount: number
   slots: number

@@ -198,6 +198,7 @@ func (s *LotteryService) buildLotteryResponse(
 			resp.MyPrizeName = prizeByID[mine.PrizeID].Name
 			resp.MyDelivery = prizeByID[mine.PrizeID].Delivery
 			resp.MyCodeReady = mine.CodeID > 0
+			resp.MyClaimDeadline = mine.ClaimDeadline
 		}
 	}
 	return resp

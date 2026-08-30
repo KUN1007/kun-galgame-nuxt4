@@ -310,7 +310,12 @@ const handleClaim = async () => {
         </span>
 
         <KunButton
-          v-if="myWin && lottery.my_code_ready && !revealedCode"
+          v-if="
+            myWin &&
+            lottery.my_code_ready &&
+            lottery.my_fulfillment !== 'forfeited' &&
+            !revealedCode
+          "
           color="success"
           :loading="isLoading"
           @click="handleClaim"

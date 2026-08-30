@@ -129,6 +129,9 @@ type TopicLotteryResponse struct {
 	MyDelivery    string `json:"my_delivery"`
 	MyFulfillment string `json:"my_fulfillment"`
 	MyCodeReady   bool   `json:"my_code_ready"`
+	// Only set for a code prize: the moment the sweep stops letting the winner
+	// reveal it.
+	MyClaimDeadline *time.Time `json:"my_claim_deadline"`
 
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`

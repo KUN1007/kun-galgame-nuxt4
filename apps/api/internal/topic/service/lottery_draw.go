@@ -97,6 +97,9 @@ type LotteryDrawer struct {
 	running sync.Mutex
 }
 
+// How long a winner has to reveal a code prize before the sweep voids it.
+const lotteryClaimGrace = 7 * 24 * time.Hour
+
 func NewLotteryDrawer(svc *LotteryService) *LotteryDrawer {
 	return &LotteryDrawer{svc: svc}
 }
@@ -114,8 +117,10 @@ func (d *LotteryDrawer) Run() {
 	ctx := context.Background()
 	drawn := d.svc.sweepDueLotteries(ctx)
 	closed := d.svc.sweepClosedPolls()
-	if drawn > 0 || closed > 0 {
-		slog.Info("话题小程序到点处理完成", "lotteries_drawn", drawn, "polls_closed", closed)
+	expired := d.svc.sweepExpiredClaims()
+	if drawn > 0 || closed > 0 || expired > 0 {
+		slog.Info("话题小程序到点处理完成",
+			"lotteries_drawn", drawn, "polls_closed", closed, "claims_expired", expired)
 	}
 }
 
@@ -224,6 +229,7 @@ func (s *LotteryService) draw(ctx context.Context, lottery *topicModel.TopicLott
 						"lottery_id", lottery.ID, "prize_id", prize.ID, "user_id", winners[i].UserID)
 				} else {
 					fields["code_id"] = code.ID
+					fields["claim_deadline"] = now.Add(lotteryClaimGrace)
 				}
 			}
 			if winners[i].ID == 0 {
@@ -238,6 +244,9 @@ func (s *LotteryService) draw(ctx context.Context, lottery *topicModel.TopicLott
 				}
 				if codeID, ok := fields["code_id"].(int); ok {
 					entry.CodeID = codeID
+				}
+				if deadline, ok := fields["claim_deadline"].(time.Time); ok {
+					entry.ClaimDeadline = &deadline
 				}
 				if err := s.lotteryRepo.CreateEntry(tx, entry); err != nil {
 					return err
@@ -353,11 +362,16 @@ func (s *LotteryService) afterDraw(
 	for i := range winners {
 		prize := slots[i]
 		won[winners[i].UserID] = true
+		content := fmt.Sprintf("恭喜您在抽奖「%s」中获得 %s", lottery.Title, prize.Name)
+		if prize.Delivery == topicModel.LotteryDeliveryCode && winners[i].ClaimDeadline != nil {
+			content += fmt.Sprintf(", 请在 %s 前领取兑换码",
+				winners[i].ClaimDeadline.Format("2006-01-02 15:04"))
+		}
 		specs = append(specs, msgService.Spec{
 			SenderID:   lottery.UserID,
 			ReceiverID: winners[i].UserID,
 			Kind:       msgService.NotifyLotteryWon,
-			Content:    fmt.Sprintf("恭喜您在抽奖「%s」中获得 %s", lottery.Title, prize.Name),
+			Content:    content,
 			TopicID:    lottery.TopicID,
 		})
 		if prize.Delivery == topicModel.LotteryDeliveryPoint && prize.PointAmount > 0 {
@@ -421,4 +435,37 @@ func (s *LotteryService) sweepClosedPolls() int {
 		}
 	}
 	return len(polls)
+}
+
+// sweepExpiredClaims voids a code prize the winner never revealed. The code
+// stays sealed and stays attached to the entry: nothing on the site can read it
+// back out, so handing it to someone else is not something this can offer.
+func (s *LotteryService) sweepExpiredClaims() int {
+	expired, err := s.lotteryRepo.ClaimExpiredCodeWins(time.Now(), drawSweepBatch)
+	if err != nil {
+		slog.Warn("兑换码领取期限扫描失败", "error", err)
+		return 0
+	}
+	if len(expired) == 0 {
+		return 0
+	}
+	specs := make([]msgService.Spec, 0, len(expired))
+	for _, entry := range expired {
+		lottery, err := s.lotteryRepo.FindByID(entry.LotteryID)
+		if err != nil {
+			continue
+		}
+		specs = append(specs, msgService.Spec{
+			SenderID:   lottery.UserID,
+			ReceiverID: entry.UserID,
+			Kind:       msgService.NotifyLotteryExpired,
+			Content: fmt.Sprintf("您在抽奖「%s」中的兑换码超过领取期限未领取, 已作废",
+				lottery.Title),
+			TopicID: lottery.TopicID,
+		})
+	}
+	if err := s.notifier.EmitMany(nil, specs); err != nil {
+		slog.Warn("兑换码过期通知发送失败", "error", err)
+	}
+	return len(expired)
 }
