@@ -93,8 +93,32 @@ const thresholdProgress = computed(() => {
 })
 
 const anyPrizeImage = computed(() =>
-  props.lottery.prizes.some((prize) => prize.image_urls.length > 0)
+  props.lottery.prizes.some((prize) => prize.image_hashes.length > 0)
 )
+
+// image_urls is parallel to image_hashes and the server blanks the entries this
+// reader may not see, so a missing URL is the whole withholding signal.
+const visibleImages = (prize: TopicLotteryPrize) =>
+  prize.image_hashes
+    .map((hash, index) => ({
+      hash,
+      url: prize.image_urls[index] ?? '',
+      isNSFW: prize.nsfw_hashes.includes(hash)
+    }))
+    .filter((image) => !!image.url)
+
+const hiddenCount = (prize: TopicLotteryPrize) =>
+  prize.image_hashes.length - visibleImages(prize).length
+
+const hiddenImageTotal = computed(() =>
+  props.lottery.prizes.reduce((sum, prize) => sum + hiddenCount(prize), 0)
+)
+
+const { showKUNGalgameContentLimit } = storeToRefs(usePersistSettingsStore())
+const enableNsfw = () => {
+  showKUNGalgameContentLimit.value = 'nsfw'
+  location.reload()
+}
 
 const pointLine = (prize: TopicLotteryPrize) => {
   if (prize.delivery !== 'point') {
@@ -228,39 +252,61 @@ const handleClaim = async () => {
         :key="prize.id"
         class="border-default-200 flex items-start gap-3 rounded-lg border p-3"
       >
-        <KunLightboxGallery v-if="prize.image_urls.length">
-          <div class="flex shrink-0 gap-1">
-            <KunLightboxGalleryItem
-              v-for="(url, imageIndex) in prize.image_urls"
-              :key="url"
-              :src="url"
-              :alt="prize.name"
-              :wrap="false"
-            >
-              <template #default="{ open }">
-                <button
-                  v-if="imageIndex < 2"
-                  type="button"
-                  class="relative size-14 shrink-0 cursor-zoom-in overflow-hidden rounded-md"
-                  :aria-label="`查看 ${prize.name} 的图片`"
-                  @click="open"
-                >
-                  <KunImage
-                    :src="url"
-                    :alt="prize.name"
-                    class="size-full object-cover"
-                  />
-                  <span
-                    v-if="imageIndex === 1 && prize.image_urls.length > 2"
-                    class="absolute inset-0 flex items-center justify-center bg-black/55 text-xs font-medium text-white"
+        <div
+          v-if="prize.image_hashes.length"
+          class="flex shrink-0 items-start gap-1"
+        >
+          <KunLightboxGallery v-if="visibleImages(prize).length">
+            <div class="flex shrink-0 gap-1">
+              <KunLightboxGalleryItem
+                v-for="(image, imageIndex) in visibleImages(prize)"
+                :key="image.hash"
+                :src="image.url"
+                :alt="prize.name"
+                :wrap="false"
+              >
+                <template #default="{ open }">
+                  <button
+                    v-if="imageIndex < 2"
+                    type="button"
+                    class="relative size-14 shrink-0 cursor-zoom-in overflow-hidden rounded-md"
+                    :aria-label="`查看 ${prize.name} 的图片`"
+                    @click="open"
                   >
-                    +{{ prize.image_urls.length - 2 }}
-                  </span>
-                </button>
-              </template>
-            </KunLightboxGalleryItem>
-          </div>
-        </KunLightboxGallery>
+                    <KunImage
+                      :src="image.url"
+                      :alt="prize.name"
+                      class="size-full object-cover"
+                    />
+                    <span
+                      v-if="image.isNSFW"
+                      class="bg-danger absolute top-0.5 left-0.5 rounded px-1 py-0.5 text-[10px] leading-none font-medium text-white"
+                    >
+                      R18
+                    </span>
+                    <span
+                      v-if="imageIndex === 1 && visibleImages(prize).length > 2"
+                      class="absolute inset-0 flex items-center justify-center bg-black/55 text-xs font-medium text-white"
+                    >
+                      +{{ visibleImages(prize).length - 2 }}
+                    </span>
+                  </button>
+                </template>
+              </KunLightboxGalleryItem>
+            </div>
+          </KunLightboxGallery>
+
+          <span
+            v-if="hiddenCount(prize)"
+            class="border-default-300 text-default-400 flex size-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md border border-dashed"
+            :title="`${hiddenCount(prize)} 张成人内容图片已按您的内容设置隐藏`"
+          >
+            <KunIcon name="lucide:eye-off" class="size-4 text-inherit" />
+            <span class="text-[10px] leading-none tabular-nums">
+              {{ hiddenCount(prize) }} 张
+            </span>
+          </span>
+        </div>
         <span
           v-else-if="anyPrizeImage"
           class="bg-default-100 text-default-400 flex size-14 shrink-0 items-center justify-center rounded-md"
@@ -287,6 +333,19 @@ const handleClaim = async () => {
         </div>
       </div>
     </div>
+
+    <p v-if="hiddenImageTotal" class="text-default-500 text-xs">
+      该抽奖有 {{ hiddenImageTotal }} 张奖品图片被标记为成人内容,
+      已按您的内容设置隐藏。
+      <button
+        type="button"
+        class="text-primary cursor-pointer underline-offset-2 hover:underline"
+        @click="enableNsfw"
+      >
+        开启 NSFW 模式
+      </button>
+      后可以看到它们。
+    </p>
 
     <div
       v-if="countdown || isThresholdOpen"

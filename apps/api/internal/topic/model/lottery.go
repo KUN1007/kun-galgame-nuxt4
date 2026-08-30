@@ -70,6 +70,7 @@ type TopicLotteryPrize struct {
 	Name        string   `gorm:"type:varchar(100);not null" json:"name"`
 	Description string   `gorm:"type:varchar(500);default:''" json:"description"`
 	ImageHashes []string `gorm:"column:image_hashes;serializer:json;type:jsonb;default:'[]'" json:"image_hashes"`
+	NSFWHashes  []string `gorm:"column:nsfw_hashes;serializer:json;type:jsonb;default:'[]'" json:"nsfw_hashes"`
 	Delivery    string   `gorm:"column:delivery;default:'manual'" json:"delivery"`
 	PointMode   string   `gorm:"column:point_mode;default:'fixed'" json:"point_mode"`
 	PointAmount int      `gorm:"column:point_amount;default:0" json:"point_amount"`

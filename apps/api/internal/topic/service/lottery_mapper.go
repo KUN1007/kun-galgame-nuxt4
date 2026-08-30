@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"kun-galgame-api/internal/middleware"
@@ -58,6 +59,7 @@ func (s *LotteryService) GetLotteriesByTopic(
 	ctx context.Context,
 	topicID int,
 	userInfo *middleware.UserInfo,
+	isSFW bool,
 ) ([]dto.TopicLotteryResponse, *errors.AppError) {
 	lotteries, err := s.lotteryRepo.FindByTopicID(topicID)
 	if err != nil {
@@ -105,7 +107,7 @@ func (s *LotteryService) GetLotteriesByTopic(
 	for i := range lotteries {
 		out = append(out, s.buildLotteryResponse(ctx, &lotteries[i],
 			prizeByLottery[lotteries[i].ID], winnerByLottery[lotteries[i].ID],
-			prizeByID, myEntries, userMap, codeCounts, viewerID))
+			prizeByID, myEntries, userMap, codeCounts, viewerID, isSFW))
 	}
 	return out, nil
 }
@@ -120,6 +122,7 @@ func (s *LotteryService) buildLotteryResponse(
 	userMap map[int]userclient.User,
 	codeCounts map[int]int,
 	viewerID int,
+	isSFW bool,
 ) dto.TopicLotteryResponse {
 	author := userMap[lottery.UserID]
 	if author.ID == 0 {
@@ -134,13 +137,15 @@ func (s *LotteryService) buildLotteryResponse(
 		if hashes == nil {
 			hashes = []string{}
 		}
-		urls := make([]string, 0, len(hashes))
-		for _, hash := range hashes {
-			urls = append(urls, imageclient.ResolveURL(s.cdnBase, hash, ""))
+		nsfw := p.NSFWHashes
+		if nsfw == nil {
+			nsfw = []string{}
 		}
 		prizeResp = append(prizeResp, dto.LotteryPrizeResponse{
 			ID: p.ID, Name: p.Name, Description: p.Description,
-			ImageHashes: hashes, ImageURLs: urls,
+			ImageHashes: hashes,
+			ImageURLs:   prizeImageURLs(s.cdnBase, hashes, nsfw, isSFW),
+			NSFWHashes:  nsfw,
 			Delivery:    p.Delivery,
 			PointMode:   p.PointMode,
 			PointAmount: p.PointAmount,
@@ -215,6 +220,24 @@ func (s *LotteryService) buildLotteryResponse(
 		}
 	}
 	return resp
+}
+
+// prizeImageURLs is parallel to hashes. A hash the author marked adult gets an
+// empty URL for a reader whose content setting is SFW rather than being dropped
+// from the list, so the author's edit form still round-trips every image
+// instead of saving a silently shortened gallery. Withholding the URL is the
+// whole gate — nothing renders an <img> without one, so the adult bytes are
+// never requested.
+func prizeImageURLs(cdnBase string, hashes, nsfw []string, isSFW bool) []string {
+	urls := make([]string, 0, len(hashes))
+	for _, hash := range hashes {
+		if isSFW && slices.Contains(nsfw, hash) {
+			urls = append(urls, "")
+			continue
+		}
+		urls = append(urls, imageclient.ResolveURL(cdnBase, hash, ""))
+	}
+	return urls
 }
 
 func derefTime(t *time.Time) time.Time {

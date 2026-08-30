@@ -2,12 +2,14 @@
 const props = withDefaults(
   defineProps<{
     modelValue: string[]
+    nsfw?: string[]
     previewUrls?: string[]
     label?: string
     description?: string
     max?: number
   }>(),
   {
+    nsfw: () => [],
     previewUrls: () => [],
     label: '图片',
     description: '',
@@ -17,6 +19,7 @@ const props = withDefaults(
 
 const emits = defineEmits<{
   'update:modelValue': [value: string[]]
+  'update:nsfw': [value: string[]]
 }>()
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -24,6 +27,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 interface Slot {
   hash: string
   url: string
+  nsfw: boolean
 }
 
 // The hash is what gets submitted, but only the upload response carries the URL
@@ -33,8 +37,8 @@ const urlByHash = new Map<string, string>()
 const slots = ref<Slot[]>([])
 
 watch(
-  [() => props.modelValue, () => props.previewUrls],
-  ([hashes, urls]) => {
+  [() => props.modelValue, () => props.previewUrls, () => props.nsfw],
+  ([hashes, urls, nsfw]) => {
     hashes.forEach((hash, index) => {
       const url = urls[index]
       if (url && !urlByHash.has(hash)) {
@@ -43,7 +47,8 @@ watch(
     })
     slots.value = hashes.map((hash) => ({
       hash,
-      url: urlByHash.get(hash) ?? ''
+      url: urlByHash.get(hash) ?? '',
+      nsfw: nsfw.includes(hash)
     }))
   },
   { immediate: true, deep: true }
@@ -57,12 +62,18 @@ const remaining = computed(
   () => props.max - slots.value.length - uploadingCount.value
 )
 const isFull = computed(() => remaining.value <= 0)
+const nsfwCount = computed(() => slots.value.filter((s) => s.nsfw).length)
 
-const commit = () =>
+const commit = () => {
   emits(
     'update:modelValue',
     slots.value.map((s) => s.hash)
   )
+  emits(
+    'update:nsfw',
+    slots.value.filter((s) => s.nsfw).map((s) => s.hash)
+  )
+}
 
 const uploadOne = async (file: File) => {
   const body = new FormData()
@@ -76,7 +87,7 @@ const uploadOne = async (file: File) => {
     return null
   }
   urlByHash.set(res.hash, res.url)
-  return { hash: res.hash, url: res.url }
+  return { hash: res.hash, url: res.url, nsfw: false }
 }
 
 const addFiles = async (files: File[]) => {
@@ -116,6 +127,15 @@ const addFiles = async (files: File[]) => {
 
 const removeAt = (index: number) => {
   slots.value.splice(index, 1)
+  commit()
+}
+
+const toggleNsfw = (index: number) => {
+  const slot = slots.value[index]
+  if (!slot) {
+    return
+  }
+  slot.nsfw = !slot.nsfw
   commit()
 }
 
@@ -178,6 +198,7 @@ const endReorder = () => {
           :class="
             cn(
               'group border-default-200 relative size-24 cursor-grab overflow-hidden rounded-md border',
+              slot.nsfw && 'border-danger',
               dragIndex === index && 'opacity-40'
             )
           "
@@ -188,10 +209,18 @@ const endReorder = () => {
           @drop.stop.prevent="endReorder"
         >
           <KunImage
+            v-if="slot.url"
             :src="slot.url"
             :alt="`${label} ${index + 1}`"
             class="size-full object-cover"
           />
+          <div
+            v-else
+            class="bg-default-100 text-default-400 flex size-full flex-col items-center justify-center gap-1 px-1 text-center"
+          >
+            <KunIcon name="lucide:eye-off" class="size-4 text-inherit" />
+            <span class="text-[10px] leading-tight">已按内容设置隐藏</span>
+          </div>
 
           <span
             v-if="index === 0"
@@ -199,6 +228,31 @@ const endReorder = () => {
           >
             主图
           </span>
+
+          <!-- Marked and unmarked have to differ in shape, not only in colour:
+               a red R18 pill on a red photo is not a state anyone can read. -->
+          <button
+            type="button"
+            :aria-pressed="slot.nsfw"
+            :aria-label="`将第 ${index + 1} 张图片标记为成人内容`"
+            :title="slot.nsfw ? '已标记为成人内容, 点击取消' : '标记为成人内容'"
+            :class="
+              cn(
+                'absolute right-1 bottom-1 flex items-center justify-center rounded text-white ring-1 transition-colors',
+                slot.nsfw
+                  ? 'bg-danger px-1.5 py-0.5 text-[10px] leading-none font-semibold ring-white/70'
+                  : 'size-6 bg-black/55 ring-transparent hover:bg-black/75'
+              )
+            "
+            @click="toggleNsfw(index)"
+          >
+            <template v-if="slot.nsfw">R18</template>
+            <KunIcon
+              v-else
+              name="lucide:eye-off"
+              class="size-3.5 text-inherit"
+            />
+          </button>
 
           <button
             type="button"
@@ -250,8 +304,15 @@ const endReorder = () => {
       >
         可以直接把图片拖进这里, 支持一次选择多张。
       </p>
-      <p v-else-if="slots.length > 1" class="text-default-400 mt-2 text-xs">
-        拖动可以调整顺序, 第一张会作为奖品卡片上的封面。
+      <p v-else class="text-default-400 mt-2 text-xs">
+        <template v-if="slots.length > 1">
+          拖动可以调整顺序, 第一张会作为奖品卡片上的封面。
+        </template>
+        点图片右下角的图标可以把它标为成人内容 (R18), 未开启 NSFW
+        显示的读者看不到它。
+      </p>
+      <p v-if="nsfwCount" class="text-danger mt-1 text-xs">
+        已标记 {{ nsfwCount }} 张成人内容图片。
       </p>
     </div>
 

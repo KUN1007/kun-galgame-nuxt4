@@ -3,7 +3,10 @@ export interface TopicLotteryPrize {
   name: string
   description: string
   image_hashes: string[]
+  // Parallel to image_hashes. Empty where this reader is not allowed to see
+  // the image.
   image_urls: string[]
+  nsfw_hashes: string[]
   delivery: 'code' | 'manual' | 'point'
   point_mode: TopicLotteryPointMode
   point_amount: number

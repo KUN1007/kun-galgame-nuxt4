@@ -6,6 +6,7 @@ type LotteryPrizeInput struct {
 	Name        string   `json:"name" validate:"required,min=1,max=100"`
 	Description string   `json:"description" validate:"max=500"`
 	ImageHashes []string `json:"image_hashes" validate:"max=9,dive,min=1,max=128"`
+	NSFWHashes  []string `json:"nsfw_hashes" validate:"max=9,dive,min=1,max=128"`
 	Delivery    string   `json:"delivery" validate:"required,oneof=code manual point"`
 	PointMode   string   `json:"point_mode" validate:"omitempty,oneof=fixed split random"`
 	PointAmount int      `json:"point_amount" validate:"min=0,max=10000"`
@@ -71,7 +72,11 @@ type LotteryPrizeResponse struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	ImageHashes []string `json:"image_hashes"`
+	// Parallel to ImageHashes. An entry is empty when the reader is not allowed
+	// to see that image, which keeps the hash list intact for the author's edit
+	// form instead of silently shortening what a save would write back.
 	ImageURLs   []string `json:"image_urls"`
+	NSFWHashes  []string `json:"nsfw_hashes"`
 	Delivery    string   `json:"delivery"`
 	PointMode   string   `json:"point_mode"`
 	PointAmount int      `json:"point_amount"`

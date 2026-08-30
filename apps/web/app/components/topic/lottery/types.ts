@@ -3,6 +3,7 @@ export interface LotteryPrizeFormData {
   description: string
   image_hashes: string[]
   image_urls: string[]
+  nsfw_hashes: string[]
   delivery: 'code' | 'manual' | 'point'
   point_mode: TopicLotteryPointMode
   point_amount: number

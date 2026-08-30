@@ -7,6 +7,10 @@ const prizeSchema = z.object({
     .array(z.string().max(128))
     .max(9, '单个奖项最多 9 张图片')
     .default([]),
+  nsfw_hashes: z
+    .array(z.string().max(128))
+    .max(9, '单个奖项最多 9 张图片')
+    .default([]),
   delivery: z.enum(['code', 'manual', 'point'], {
     message: '奖品发放方式不正确'
   }),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -203,6 +204,12 @@ func (s *LotteryService) validateShape(
 			return errors.ErrBadRequest(fmt.Sprintf(
 				"奖项 %q 最多 %d 张图片", p.Name, constants.MaxImagesPerPrize))
 		}
+		for _, hash := range p.NSFWHashes {
+			if !slices.Contains(p.ImageHashes, hash) {
+				return errors.ErrBadRequest(fmt.Sprintf(
+					"奖项 %q 标记的成人内容图片不在该奖项的图片里", p.Name))
+			}
+		}
 		switch p.Delivery {
 		case topicModel.LotteryDeliveryCode:
 			if !s.box.Enabled() {
@@ -281,11 +288,16 @@ func (s *LotteryService) writePrizes(tx *gorm.DB, lotteryID int, prizes []dto.Lo
 		if hashes == nil {
 			hashes = []string{}
 		}
+		nsfw := p.NSFWHashes
+		if nsfw == nil {
+			nsfw = []string{}
+		}
 		prize := &topicModel.TopicLotteryPrize{
 			LotteryID:   lotteryID,
 			Name:        p.Name,
 			Description: p.Description,
 			ImageHashes: hashes,
+			NSFWHashes:  nsfw,
 			Delivery:    p.Delivery,
 			PointMode:   pointMode,
 			PointAmount: p.PointAmount,

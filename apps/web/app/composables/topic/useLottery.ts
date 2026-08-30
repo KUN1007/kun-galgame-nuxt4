@@ -15,6 +15,7 @@ const toPayload = (data: LotteryFormData) => ({
     name: p.name,
     description: p.description,
     image_hashes: p.image_hashes,
+    nsfw_hashes: p.nsfw_hashes.filter((hash) => p.image_hashes.includes(hash)),
     delivery: p.delivery,
     point_mode: p.point_mode,
     point_amount: p.delivery === 'point' ? p.point_amount : 0,

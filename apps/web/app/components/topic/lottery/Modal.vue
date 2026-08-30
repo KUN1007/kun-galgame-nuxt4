@@ -36,6 +36,7 @@ const emptyPrize = (): LotteryPrizeFormData => ({
   description: '',
   image_hashes: [],
   image_urls: [],
+  nsfw_hashes: [],
   delivery: 'manual',
   point_mode: 'fixed',
   point_amount: 0,
@@ -67,6 +68,7 @@ const getInitialFormData = (): LotteryFormData => {
         description: p.description,
         image_hashes: [...p.image_hashes],
         image_urls: [...p.image_urls],
+        nsfw_hashes: [...p.nsfw_hashes],
         delivery: p.delivery,
         point_mode: p.point_mode,
         point_amount: p.point_amount,
@@ -351,6 +353,7 @@ const handleSubmit = async () => {
 
               <KunImagesUpload
                 v-model="prize.image_hashes"
+                v-model:nsfw="prize.nsfw_hashes"
                 :preview-urls="prize.image_urls"
                 label="奖品图片 (可选)"
                 :max="9"
