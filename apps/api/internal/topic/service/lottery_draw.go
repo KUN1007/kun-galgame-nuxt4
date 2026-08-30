@@ -43,7 +43,9 @@ func newDrawSeed() (seed, seedHash string) {
 
 func rankKey(seed string, lotteryID, userID int) string {
 	mac := hmac.New(sha256.New, []byte(seed))
-	fmt.Fprintf(mac, "%d:%d", lotteryID, userID)
+	// errcheck ships a default exclusion for (hash.Hash).Write but not for
+	// fmt.Fprintf to a hash, so writing this the Fprintf way fails CI.
+	mac.Write(fmt.Appendf(nil, "%d:%d", lotteryID, userID))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
