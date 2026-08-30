@@ -83,8 +83,8 @@ const getInitialFormData = (): LotteryFormData => {
     draw_mode: 'deadline',
     draw_threshold: 0,
     deadline: undefined,
-    min_account_age_days: 0,
-    min_moemoepoint: 0,
+    min_account_age_days: 3,
+    min_moemoepoint: 20,
     show_entrants: true,
     prizes: [emptyPrize()]
   }
