@@ -241,6 +241,7 @@ type GalgameIntro struct {
 
 type GalgameDetail struct {
 	ID                         int                      `json:"id"`
+	MovedTo                    int                      `json:"moved_to,omitempty"`
 	VndbID                     string                   `json:"vndb_id"`
 	User                       UserBrief                `json:"user"`
 	Name                       string                   `json:"name"`

@@ -27,6 +27,7 @@ type GalgameService struct {
 	resourceMetaRepo *repository.GalgameResourceMetaRepository
 	detailRatingRepo *repository.GalgameDetailRatingRepository
 	contributorRepo  *repository.GalgameContributorRepository
+	mergeRepo        *repository.GalgameMergeRepository
 	stateRepo        *userRepo.StateRepository
 	galgameClient    *client.GalgameClient
 	userClient       *userclient.Client
@@ -42,6 +43,7 @@ func NewGalgameService(
 	resourceMetaRepo *repository.GalgameResourceMetaRepository,
 	detailRatingRepo *repository.GalgameDetailRatingRepository,
 	contributorRepo *repository.GalgameContributorRepository,
+	mergeRepo *repository.GalgameMergeRepository,
 	stateRepo *userRepo.StateRepository,
 	galgameClient *client.GalgameClient,
 	userClient *userclient.Client,
@@ -56,6 +58,7 @@ func NewGalgameService(
 		storeLinks:       storeLinks,
 		detailRatingRepo: detailRatingRepo,
 		contributorRepo:  contributorRepo,
+		mergeRepo:        mergeRepo,
 		stateRepo:        stateRepo,
 		galgameClient:    galgameClient,
 		userClient:       userClient,
@@ -139,6 +142,13 @@ func (s *GalgameService) GetDetail(
 		return nil, appErr
 	}
 	if !found {
+		// The catalog merge that killed this gid also erased the claim that named
+		// it, so the survivor is only knowable from the ledger the merge sync
+		// writes. Without this the page 404s and the resources posted under it
+		// are unreachable rather than moved.
+		if newGID, moved := s.mergeRepo.RedirectTarget(galgameID); moved {
+			return &dto.GalgameDetail{MovedTo: newGID}, nil
+		}
 		return nil, errors.ErrNotFound("未找到该 Galgame")
 	}
 	g := client.CatalogDetailToFull(ctx, d, galgameID)

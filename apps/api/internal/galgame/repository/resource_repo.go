@@ -36,17 +36,31 @@ func NewResourceRepository(db *gorm.DB) *ResourceRepository {
 
 func (r *ResourceRepository) DB() *gorm.DB { return r.db }
 
-func (r *ResourceRepository) CountAll() int64 {
+// The count and the page must apply the same gate, and it has to be in SQL.
+// Dropping the hidden rows only after the page was cut answered an anonymous
+// reader 7 cards for a requested 30 while the pager still counted all 37,840
+// resources. NULL is "the content-limit sync has not seen this galgame yet" and
+// passes, same as on /galgame.
+func sfwResources(q *gorm.DB, sfw bool) *gorm.DB {
+	if !sfw {
+		return q
+	}
+	return q.Joins("JOIN galgame g ON g.id = galgame_resource.galgame_id").
+		Where("g.content_limit IS NULL OR g.content_limit = 'sfw'")
+}
+
+func (r *ResourceRepository) CountAll(sfw bool) int64 {
 	var total int64
-	r.db.Table("galgame_resource").Count(&total)
+	sfwResources(r.db.Table("galgame_resource"), sfw).Count(&total)
 	return total
 }
 
-func (r *ResourceRepository) ListPaginated(page, limit int) []model.GalgameResourceRow {
+func (r *ResourceRepository) ListPaginated(page, limit int, sfw bool) []model.GalgameResourceRow {
 	offset := (page - 1) * limit
 	var rows []model.GalgameResourceRow
-	r.db.Table("galgame_resource").
-		Order("created DESC").
+	sfwResources(r.db.Table("galgame_resource"), sfw).
+		Select("galgame_resource.*").
+		Order("galgame_resource.created DESC").
 		Offset(offset).Limit(limit).
 		Scan(&rows)
 	return rows

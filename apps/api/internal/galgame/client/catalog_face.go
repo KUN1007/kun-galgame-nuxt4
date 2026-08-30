@@ -612,3 +612,48 @@ func (c *GalgameClient) CatalogCalendar(ctx context.Context, bucket string, q ur
 	}
 	return page, nil
 }
+
+// GIDsToCatalogIDs is the gid bridge exported for the merge sync, which reads it
+// as a negative: a gid that resolves to nothing is a gid whose catalog work is
+// gone, and only such a gid may be folded into a survivor.
+func (c *GalgameClient) GIDsToCatalogIDs(ctx context.Context, gids []int) (map[int]int64, *errors.AppError) {
+	return c.catalogIDsForGIDs(ctx, gids)
+}
+
+// ForgetGIDs drops cached resolutions so the next lookup asks catalog.
+//
+// The merge sync must call this before it decides a gid is dead. gidLookupHitTTL
+// is 30 minutes, and the redirect cursor advances whether or not a fold happened
+// — one stale hit is one page that stays 404 forever.
+func (c *GalgameClient) ForgetGIDs(gids []int) {
+	if len(gids) == 0 {
+		return
+	}
+	c.gidMu.Lock()
+	for _, gid := range gids {
+		delete(c.gidCache, gid)
+	}
+	c.gidMu.Unlock()
+}
+
+// GIDsForCatalogIDs reads the bridge the other way: catalog id to the forum gid
+// that names the work. It is the claim's site_work_id, or for an unclaimed work
+// the catalog id itself — which is a CANDIDATE, not an answer, because 10,289 of
+// the forum's gids are also the catalog id of a different work. The caller has
+// to round-trip it through GIDsToCatalogIDs before acting on it.
+func (c *GalgameClient) GIDsForCatalogIDs(ctx context.Context, ids []int64) (map[int64]int, *errors.AppError) {
+	if len(ids) == 0 {
+		return map[int64]int{}, nil
+	}
+	rows, appErr := c.worksByCatalogIDs(ctx, ids, "", "all")
+	if appErr != nil {
+		return nil, appErr
+	}
+	out := make(map[int64]int, len(rows))
+	for i := range rows {
+		if gid := rows[i].gid(); gid > 0 {
+			out[rows[i].ID] = gid
+		}
+	}
+	return out, nil
+}

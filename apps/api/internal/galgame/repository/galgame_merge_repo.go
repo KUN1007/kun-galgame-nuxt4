@@ -1,0 +1,210 @@
+package repository
+
+import (
+	"fmt"
+
+	"kun-galgame-api/internal/galgame/model"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+type GalgameMergeRepository struct {
+	db *gorm.DB
+}
+
+func NewGalgameMergeRepository(db *gorm.DB) *GalgameMergeRepository {
+	return &GalgameMergeRepository{db: db}
+}
+
+// A child table whose galgame_id may simply be rewritten: nothing in it is
+// unique per game, so both games' rows can coexist under the survivor.
+var mergeMovableTables = []string{
+	"galgame_resource",
+	"galgame_activity",
+	"galgame_quiz",
+	"galgame_comment_community_map",
+}
+
+// A child table with a unique key over (galgame_id, peer). When the same peer
+// already has a row under the survivor the two rows cannot both survive, so the
+// dead game's row is dropped rather than moved — a user who liked both copies
+// keeps one like, not two.
+var mergeUniqueTables = []struct{ table, peer string }{
+	{"galgame_like", "user_id"},
+	{"galgame_favorite", "user_id"},
+	{"galgame_rating", "user_id"},
+	{"galgame_contributor", "user_id"},
+	{"galgame_collection_item", "collection_id"},
+	{"galgame_quiz_galgame", "quiz_id"},
+}
+
+type MergeCounts struct {
+	Moved    int64
+	Dropped  int64
+	Comments int
+}
+
+// LocalIDsIn narrows a page of catalog redirect ids to the ones that are also a
+// row in the local galgame table.
+func (r *GalgameMergeRepository) LocalIDsIn(ids []int) []int {
+	if len(ids) == 0 {
+		return nil
+	}
+	var out []int
+	r.db.Table("galgame").Where("id IN ?", ids).Order("id").Pluck("id", &out)
+	return out
+}
+
+// Fold moves every row the dead gid owns onto the survivor, deletes the dead
+// galgame row, and records where it went.
+//
+// Order is load-bearing. galgame_favorite / galgame_like / galgame_resource are
+// ON DELETE CASCADE, so anything still pointing at the dead row when it is
+// deleted is deleted with it; galgame_rating is ON DELETE RESTRICT, so a rating
+// left behind aborts the whole transaction instead. Both are why the children
+// move first and the parent goes last.
+//
+// feed_activity is deliberately absent: every source table here carries an
+// AFTER UPDATE trigger that re-upserts its feed row with the new galgame_id and
+// link, and deleting the dead galgame row deletes its own GALGAME_CREATION entry.
+func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
+	var counts MergeCounts
+	if oldGID == newGID || oldGID <= 0 || newGID <= 0 {
+		return counts, fmt.Errorf("拒绝合并 galgame %d -> %d", oldGID, newGID)
+	}
+
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).
+			Create(&model.GalgameLocal{ID: newGID}).Error; err != nil {
+			return err
+		}
+
+		var dead model.GalgameLocal
+		if err := tx.Where("id = ?", oldGID).First(&dead).Error; err != nil {
+			return err
+		}
+		counts.Comments = dead.CommentCount
+
+		for _, table := range mergeMovableTables {
+			res := tx.Exec(fmt.Sprintf("UPDATE %s SET galgame_id = ? WHERE galgame_id = ?", table), newGID, oldGID)
+			if res.Error != nil {
+				return res.Error
+			}
+			counts.Moved += res.RowsAffected
+		}
+
+		// Two contributors of the same game are one contributor after the fold,
+		// and their edit counts add up: dropping the dead row instead would
+		// silently reduce someone's revision_count on the survivor.
+		if err := tx.Exec(`
+			UPDATE galgame_contributor t SET
+				revision_count = t.revision_count + s.revision_count,
+				first_at = LEAST(t.first_at, s.first_at),
+				last_at  = GREATEST(t.last_at, s.last_at)
+			FROM galgame_contributor s
+			WHERE s.galgame_id = ? AND t.galgame_id = ? AND t.user_id = s.user_id`,
+			oldGID, newGID).Error; err != nil {
+			return err
+		}
+
+		for _, t := range mergeUniqueTables {
+			moved := tx.Exec(fmt.Sprintf(`
+				UPDATE %[1]s SET galgame_id = ? WHERE galgame_id = ?
+				  AND NOT EXISTS (
+					SELECT 1 FROM %[1]s x WHERE x.galgame_id = ? AND x.%[2]s = %[1]s.%[2]s)`,
+				t.table, t.peer), newGID, oldGID, newGID)
+			if moved.Error != nil {
+				return moved.Error
+			}
+			counts.Moved += moved.RowsAffected
+
+			dropped := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE galgame_id = ?", t.table), oldGID)
+			if dropped.Error != nil {
+				return dropped.Error
+			}
+			counts.Dropped += dropped.RowsAffected
+		}
+
+		// entity_id, not galgame_id, which is why a column sweep does not find
+		// this one. Same-day buckets add rather than collide.
+		if err := tx.Exec(`
+			INSERT INTO galgame_view_daily (entity_id, day, count)
+			SELECT ?, day, count FROM galgame_view_daily WHERE entity_id = ?
+			ON CONFLICT (entity_id, day) DO UPDATE SET count = galgame_view_daily.count + EXCLUDED.count`,
+			newGID, oldGID).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec("DELETE FROM galgame_view_daily WHERE entity_id = ?", oldGID).Error; err != nil {
+			return err
+		}
+
+		// published is sticky since 078 and a ban must not be shed by merging
+		// into an unbanned duplicate, so both fold as OR.
+		if err := tx.Exec(`
+			UPDATE galgame t SET
+				view = t.view + s.view,
+				published = t.published OR s.published,
+				resource_publish_banned = t.resource_publish_banned OR s.resource_publish_banned,
+				creator_user_id = COALESCE(t.creator_user_id, s.creator_user_id),
+				created = LEAST(t.created, s.created),
+				resource_update_time = GREATEST(t.resource_update_time, s.resource_update_time)
+			FROM galgame s WHERE t.id = ? AND s.id = ?`, newGID, oldGID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DELETE FROM galgame WHERE id = ?", oldGID).Error; err != nil {
+			return err
+		}
+
+		if err := recountAfterFold(tx, newGID); err != nil {
+			return err
+		}
+
+		if err := tx.Exec(`
+			INSERT INTO galgame_redirect (old_gid, new_gid) VALUES (?, ?)
+			ON CONFLICT (old_gid) DO UPDATE SET new_gid = EXCLUDED.new_gid`,
+			oldGID, newGID).Error; err != nil {
+			return err
+		}
+		// Catalog merges chain: a survivor can itself be merged later. Chase the
+		// ledger forward so an old link still lands on the game that exists,
+		// rather than on a gid that was deleted one merge ago.
+		return tx.Exec("UPDATE galgame_redirect SET new_gid = ? WHERE new_gid = ? AND old_gid <> ?",
+			newGID, oldGID, newGID).Error
+	})
+	if err != nil {
+		return MergeCounts{}, err
+	}
+	return counts, nil
+}
+
+// comment_count is absent on purpose: it mirrors the community thread anchored
+// at site_game:<gid>, which lives in infra and does not move when the forum
+// folds two local rows. The survivor keeps its own count and the merge sync logs
+// the abandoned thread.
+func recountAfterFold(tx *gorm.DB, gid int) error {
+	return tx.Exec(`
+		UPDATE galgame SET
+			like_count        = (SELECT COUNT(*) FROM galgame_like WHERE galgame_id = galgame.id),
+			favorite_count    = (SELECT COUNT(DISTINCT user_id) FROM galgame_collection_item WHERE galgame_id = galgame.id),
+			resource_count    = (SELECT COUNT(*) FROM galgame_resource WHERE galgame_id = galgame.id),
+			rating_count      = (SELECT COUNT(*) FROM galgame_rating WHERE galgame_id = galgame.id),
+			contributor_count = (SELECT COUNT(*) FROM galgame_contributor WHERE galgame_id = galgame.id),
+			view_7d           = (SELECT COALESCE(SUM(count), 0) FROM galgame_view_daily
+			                      WHERE entity_id = galgame.id AND day >= CURRENT_DATE - INTERVAL '6 days'),
+			view_30d          = (SELECT COALESCE(SUM(count), 0) FROM galgame_view_daily
+			                      WHERE entity_id = galgame.id AND day >= CURRENT_DATE - INTERVAL '29 days')
+		WHERE id = ?`, gid).Error
+}
+
+// RedirectTarget follows the ledger to the gid that still exists. A chain is
+// already collapsed on write, so one hop is the answer.
+func (r *GalgameMergeRepository) RedirectTarget(oldGID int) (int, bool) {
+	var newGID []int
+	r.db.Table("galgame_redirect").Where("old_gid = ?", oldGID).Pluck("new_gid", &newGID)
+	if len(newGID) == 0 || newGID[0] <= 0 {
+		return 0, false
+	}
+	return newGID[0], true
+}

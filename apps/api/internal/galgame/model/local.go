@@ -44,3 +44,11 @@ type GalgameFavorite struct {
 }
 
 func (GalgameFavorite) TableName() string { return "galgame_favorite" }
+
+type GalgameRedirect struct {
+	OldGID  int       `gorm:"column:old_gid;primaryKey" json:"old_gid"`
+	NewGID  int       `gorm:"column:new_gid;not null" json:"new_gid"`
+	Created time.Time `gorm:"column:created" json:"created"`
+}
+
+func (GalgameRedirect) TableName() string { return "galgame_redirect" }

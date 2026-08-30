@@ -23,7 +23,14 @@ const { data } = await useKunFetch<GalgameDetail>(`/galgame/${gid.value}`, {
   query: { galgame_id: gid.value }
 })
 
-const galgame = data.value
+if (data.value?.moved_to) {
+  await navigateTo(`/galgame/${data.value.moved_to}`, {
+    redirectCode: 301,
+    replace: true
+  })
+}
+
+const galgame = data.value?.moved_to ? null : data.value
 const isShowGalgame = ref(true)
 
 if (galgame) {
@@ -177,7 +184,7 @@ if (galgame) {
 
 <template>
   <div>
-    <div v-if="data">
+    <div v-if="data && !data.moved_to">
       <Galgame v-if="isShowGalgame" :galgame="data" />
 
       <KunCard v-else :is-hoverable="false" :is-transparent="false">
@@ -186,6 +193,6 @@ if (galgame) {
       </KunCard>
     </div>
 
-    <KunNull v-else description="未找到这个 Galgame" />
+    <KunNull v-else-if="!data?.moved_to" description="未找到这个 Galgame" />
   </div>
 </template>

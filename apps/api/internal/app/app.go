@@ -361,6 +361,7 @@ func New(cfg *config.Config) *App {
 	}
 
 	galgameLocalRepo := galgameRepo.NewGalgameRepository(db)
+	galgameMergeRepo := galgameRepo.NewGalgameMergeRepository(db)
 	galgameUserStatsSvc := galgameService.NewGalgameUserStatsService(catalogCli, gc, galgameLocalRepo)
 
 	authService := service.NewAuthService(userStateRepo, rdb, oauthClient, uc)
@@ -405,7 +406,7 @@ func New(cfg *config.Config) *App {
 	galgameCoreSvc := galgameService.NewGalgameService(
 		galgameLocalRepo, galgameInteractionRepo, galgameListRepo,
 		galgameResourceMetaRepo, galgameDetailRatingRepo, galgameContributorRepo,
-		userStateRepo, gc, uc, catalogCli, storeLinks,
+		galgameMergeRepo, userStateRepo, gc, uc, catalogCli, storeLinks,
 	)
 	galgameCollectionRepo := galgameRepo.NewGalgameCollectionRepository(db)
 	galgameCollectionSvc := galgameService.NewCollectionService(galgameCollectionRepo, galgameCoreSvc, gc, uc, trustCheck, trustScan)
@@ -425,6 +426,7 @@ func New(cfg *config.Config) *App {
 	galgameRevisionSync := galgameService.NewGalgameEditRevisionSync(catalogCli, gc, db, rdb)
 	galgameContributorSync := galgameService.NewGalgameContributorSync(catalogCli, galgameContributorRepo, rdb)
 	galgameContentLimitSync := galgameService.NewGalgameContentLimitSync(gc, galgameLocalRepo, rdb)
+	galgameMergeSync := galgameService.NewGalgameMergeSync(gc, galgameMergeRepo, rdb)
 
 	websiteRepository := websiteRepo.NewWebsiteRepository(db)
 	websiteCategoryRepo := websiteRepo.NewCategoryRepository(db)
@@ -580,6 +582,7 @@ func New(cfg *config.Config) *App {
 			GalgameContributorSync:    galgameContributorSync.Run,
 			GalgameContentLimitMirror: galgameContentLimitSync.RunMirror,
 			GalgameContentLimitFill:   galgameContentLimitSync.RunPending,
+			GalgameMergeSync:          galgameMergeSync.Run,
 			DlsiteCampaignRefresh:     storeLinks.RefreshCampaign,
 		}),
 		StoreLinkStop: storeLinks.Start(),

@@ -77,8 +77,8 @@ func (s *ResourceService) GetResourceList(
 	currentUserID int,
 	isSFW bool,
 ) (*dto.ResourceListPage, *errors.AppError) {
-	total := s.resourceRepo.CountAll()
-	rows := s.resourceRepo.ListPaginated(req.Page, req.Limit)
+	total := s.resourceRepo.CountAll(isSFW)
+	rows := s.resourceRepo.ListPaginated(req.Page, req.Limit, isSFW)
 
 	galgameIDs, userIDs := collectIDs(rows)
 	briefMap := s.fetchGalgameBriefsPublic(ctx, galgameIDs, isSFW)

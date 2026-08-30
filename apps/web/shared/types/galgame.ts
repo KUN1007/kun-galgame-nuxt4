@@ -111,6 +111,7 @@ export interface GalgameIntro {
 
 export interface GalgameDetail {
   id: number
+  moved_to?: number
   vndb_id: string
   user: KunUser
   name: string
