@@ -3,7 +3,8 @@ import {
   formatFileSize,
   formatNumber,
   formatNumberWithCommas,
-  camelToSnakeCase
+  camelToSnakeCase,
+  truncateRunes
 } from './format'
 
 describe('formatFileSize', () => {
@@ -67,5 +68,22 @@ describe('camelToSnakeCase', () => {
     expect(camelToSnakeCase('already_snake')).toBe('already_snake')
     expect(camelToSnakeCase('lowercase')).toBe('lowercase')
     expect(camelToSnakeCase('')).toBe('')
+  })
+})
+
+describe('truncateRunes', () => {
+  it('never leaves half of a surrogate pair', () => {
+    const text = '@ #6 你确定访问是  而不是  ？🙃'
+    expect(text.slice(0, 20)).toMatch(/[\uD800-\uDBFF]$/)
+    expect(truncateRunes(text, 20)).not.toMatch(/[\uD800-\uDBFF]$/)
+    expect(truncateRunes(text, 20)).toBe(text)
+    expect(truncateRunes(text, 19)).toBe('@ #6 你确定访问是  而不是  ？')
+  })
+  it('counts an astral char as one', () => {
+    expect(truncateRunes('🙃🙃🙃', 2)).toBe('🙃🙃')
+  })
+  it('returns the input when it is short enough', () => {
+    expect(truncateRunes('abc', 3)).toBe('abc')
+    expect(truncateRunes('', 5)).toBe('')
   })
 })

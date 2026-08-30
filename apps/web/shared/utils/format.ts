@@ -36,3 +36,13 @@ export const formatNumberWithCommas = (number: number): string => {
 export const camelToSnakeCase = (str: string) => {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 }
+
+// String.prototype.slice cuts at a UTF-16 boundary, so a fixed length landing
+// inside an emoji leaves a lone surrogate. SSR wrote id="7.… ？\uD83D", the HTML
+// parser replaced the half-pair with U+FFFD, and the client re-rendered the raw
+// half — a hydration text mismatch on topic 3146 and a TOC anchor matching
+// nothing. Truncate by code point instead.
+export const truncateRunes = (text: string, max: number) => {
+  const runes = [...text]
+  return runes.length > max ? runes.slice(0, max).join('') : text
+}

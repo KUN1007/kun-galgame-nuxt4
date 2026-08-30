@@ -46,7 +46,7 @@ export const useTopicTOC = (source: TopicTocSource) => {
     }
 
     for (const reply of source.getReplies()) {
-      const slug = markdownToText(reply.content_markdown).slice(0, 20)
+      const slug = truncateRunes(markdownToText(reply.content_markdown), 20)
       items.push({
         id: `${reply.floor}.${slug}`,
         level: 2,

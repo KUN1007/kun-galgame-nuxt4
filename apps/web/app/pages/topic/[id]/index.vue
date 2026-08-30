@@ -74,7 +74,7 @@ if (data.value) {
   const created = new Date(topic.created).toString()
   const updated = topic.edited ? new Date(topic.edited).toString() : ''
   const description = computed(() =>
-    markdownToText(markdown).trim().slice(0, 233).replace(/\\|\n/g, '')
+    truncateRunes(markdownToText(markdown).trim(), 233).replace(/\\|\n/g, '')
   )
 
   const jsonLd = computed<WithContext<DiscussionForumPosting>>(() => {
@@ -115,7 +115,7 @@ if (data.value) {
     const acceptedAnswerSchema: Comment | undefined = ba
       ? {
           '@type': 'Comment',
-          text: markdownToText(ba.content_markdown).trim().slice(0, 5000),
+          text: truncateRunes(markdownToText(ba.content_markdown).trim(), 5000),
           datePublished: new Date(ba.created).toISOString(),
           url: `${topicUrl}#k${ba.floor}`,
           author: {

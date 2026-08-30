@@ -25,7 +25,10 @@ const toolset = data.value
 if (toolset) {
   const title = `${toolset.name} 资源下载`
   const pageUrl = `${kungal.domain.main}${route.path}`
-  const description = markdownToText(toolset.content_markdown).slice(0, 175)
+  const description = truncateRunes(
+    markdownToText(toolset.content_markdown),
+    175
+  )
 
   const osMap: Record<string, string> = {
     windows: 'Windows',
@@ -105,7 +108,10 @@ if (toolset) {
       commentCount: toolset.comment_count,
       comment: (toolset.comment_preview || []).map((c) => ({
         '@type': 'Comment',
-        text: (c.content as string)?.slice(0, 280)?.replace(/\\|\n/g, ''),
+        text: truncateRunes((c.content as string) ?? '', 280).replace(
+          /\\|\n/g,
+          ''
+        ),
         datePublished: new Date(c.created).toISOString(),
         author: { '@type': 'Person', name: c.user.name } as Person
       }))

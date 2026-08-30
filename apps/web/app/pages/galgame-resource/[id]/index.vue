@@ -34,7 +34,7 @@ if (data.value && data.value !== 'not found') {
     useKunSeoMeta({
       title: `${titleBase} ${typeLabel}资源下载`,
       description: data.value.resource.note
-        ? markdownToText(data.value.resource.note).trim().slice(0, 233)
+        ? truncateRunes(markdownToText(data.value.resource.note).trim(), 233)
         : description,
       ogImage: getEffectiveBanner(data.value.galgame)
     })

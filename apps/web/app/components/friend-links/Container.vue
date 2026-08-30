@@ -57,7 +57,7 @@ const groups = computed(() =>
           <div class="text-default-600 mb-3 text-sm">
             {{
               friend.description.length > 107
-                ? `${friend.description.slice(0, 107)}...`
+                ? `${truncateRunes(friend.description, 107)}...`
                 : friend.description
             }}
           </div>

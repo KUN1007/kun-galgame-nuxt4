@@ -74,7 +74,7 @@ const onDelete = async (draft: TopicDraftListItem) => {
 
 const displayTitle = (draft: TopicDraftListItem) =>
   draft.title.trim() ||
-  markdownToText(draft.summary).slice(0, 40) ||
+  truncateRunes(markdownToText(draft.summary), 40) ||
   '(无标题草稿)'
 </script>
 

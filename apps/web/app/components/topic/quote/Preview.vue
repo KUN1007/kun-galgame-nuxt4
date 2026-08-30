@@ -14,7 +14,8 @@ const excerpt = computed(() => {
   const text = markdownToText(
     props.preview.reply?.content_markdown ?? ''
   ).trim()
-  return text.length > 120 ? `${text.slice(0, 120)}…` : text
+  const runes = [...text]
+  return runes.length > 120 ? `${runes.slice(0, 120).join('')}…` : text
 })
 </script>
 

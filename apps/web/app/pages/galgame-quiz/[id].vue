@@ -17,7 +17,7 @@ const galgameNames = (quiz?.galgames ?? [])
 const banner = quiz?.galgames?.[0]?.banner
 
 const seoTitle = quiz
-  ? `${maskSpoilers(quiz.question, '……').slice(0, 42)}${galgameNames ? `｜${galgameNames}` : ''}`
+  ? `${truncateRunes(maskSpoilers(quiz.question, '……'), 42)}${galgameNames ? `｜${galgameNames}` : ''}`
   : 'Galgame 答题'
 
 const seoDescription = (() => {
@@ -28,7 +28,7 @@ const seoDescription = (() => {
   ]
   if (quiz.answer_count > 0) bits.push(`${quiz.answer_count} 人已作答`)
   const prefix = galgameNames ? `关联作品《${galgameNames}》。` : ''
-  return `${prefix}${maskSpoilers(quiz.question, '……').slice(0, 70)} —— ${bits.join('，')}。来鲲 Galgame 论坛 Galgame 题库一起出题答题。`
+  return `${prefix}${truncateRunes(maskSpoilers(quiz.question, '……'), 70)} —— ${bits.join('，')}。来鲲 Galgame 论坛 Galgame 题库一起出题答题。`
 })()
 
 const seoKeywords = [

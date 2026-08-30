@@ -32,7 +32,7 @@ const contentRef = ref<HTMLElement | null>(null)
 const { preview, keepPreview, hidePreview } = useQuoteContent(contentRef)
 
 const replyContent = computed(() =>
-  markdownToText(props.reply.content_markdown).slice(0, 20)
+  truncateRunes(markdownToText(props.reply.content_markdown), 20)
 )
 
 const cardClasses = computed(() => {
