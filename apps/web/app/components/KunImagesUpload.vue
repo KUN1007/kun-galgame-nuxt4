@@ -3,6 +3,7 @@ const props = withDefaults(
   defineProps<{
     modelValue: string[]
     nsfw?: string[]
+    locked?: string[]
     previewUrls?: string[]
     label?: string
     description?: string
@@ -10,6 +11,7 @@ const props = withDefaults(
   }>(),
   {
     nsfw: () => [],
+    locked: () => [],
     previewUrls: () => [],
     label: '图片',
     description: '',
@@ -28,7 +30,14 @@ interface Slot {
   hash: string
   url: string
   nsfw: boolean
+  locked: boolean
 }
+
+// Hashes the image service graded as adult. The author can add marks but not
+// take these off, so they are kept apart from the marks that get submitted.
+const machineLocked = ref<string[]>([])
+const isLocked = (hash: string) =>
+  props.locked.includes(hash) || machineLocked.value.includes(hash)
 
 // The hash is what gets submitted, but only the upload response carries the URL
 // to preview it with, so the pairing is remembered here instead of being
@@ -37,7 +46,13 @@ const urlByHash = new Map<string, string>()
 const slots = ref<Slot[]>([])
 
 watch(
-  [() => props.modelValue, () => props.previewUrls, () => props.nsfw],
+  [
+    () => props.modelValue,
+    () => props.previewUrls,
+    () => props.nsfw,
+    () => props.locked,
+    machineLocked
+  ],
   ([hashes, urls, nsfw]) => {
     hashes.forEach((hash, index) => {
       const url = urls[index]
@@ -48,7 +63,8 @@ watch(
     slots.value = hashes.map((hash) => ({
       hash,
       url: urlByHash.get(hash) ?? '',
-      nsfw: nsfw.includes(hash)
+      nsfw: nsfw.includes(hash),
+      locked: isLocked(hash)
     }))
   },
   { immediate: true, deep: true }
@@ -62,7 +78,10 @@ const remaining = computed(
   () => props.max - slots.value.length - uploadingCount.value
 )
 const isFull = computed(() => remaining.value <= 0)
-const nsfwCount = computed(() => slots.value.filter((s) => s.nsfw).length)
+const markedCount = computed(
+  () => slots.value.filter((s) => s.nsfw || s.locked).length
+)
+const lockedCount = computed(() => slots.value.filter((s) => s.locked).length)
 
 const commit = () => {
   emits(
@@ -78,16 +97,21 @@ const commit = () => {
 const uploadOne = async (file: File) => {
   const body = new FormData()
   body.append('file', file)
-  const res = await kunFetch<{ hash: string; url: string }>('/image/cover', {
-    method: 'POST',
-    body,
-    watch: false
-  })
+  const res = await kunFetch<{ hash: string; url: string; sexual?: number }>(
+    '/image/cover',
+    { method: 'POST', body, watch: false }
+  )
   if (!res?.hash) {
     return null
   }
   urlByHash.set(res.hash, res.url)
-  return { hash: res.hash, url: res.url, nsfw: false }
+  // A brand new image has no grade yet — the grader is nightly — so this only
+  // ever fires when the upload deduplicated onto an image already graded.
+  const locked = (res.sexual ?? 0) >= 2
+  if (locked && !machineLocked.value.includes(res.hash)) {
+    machineLocked.value = [...machineLocked.value, res.hash]
+  }
+  return { hash: res.hash, url: res.url, nsfw: false, locked }
 }
 
 const addFiles = async (files: File[]) => {
@@ -132,7 +156,7 @@ const removeAt = (index: number) => {
 
 const toggleNsfw = (index: number) => {
   const slot = slots.value[index]
-  if (!slot) {
+  if (!slot || slot.locked) {
     return
   }
   slot.nsfw = !slot.nsfw
@@ -198,7 +222,7 @@ const endReorder = () => {
           :class="
             cn(
               'group border-default-200 relative size-24 cursor-grab overflow-hidden rounded-md border',
-              slot.nsfw && 'border-danger',
+              (slot.nsfw || slot.locked) && 'border-danger',
               dragIndex === index && 'opacity-40'
             )
           "
@@ -233,20 +257,33 @@ const endReorder = () => {
                a red R18 pill on a red photo is not a state anyone can read. -->
           <button
             type="button"
-            :aria-pressed="slot.nsfw"
+            :disabled="slot.locked"
+            :aria-pressed="slot.nsfw || slot.locked"
             :aria-label="`将第 ${index + 1} 张图片标记为成人内容`"
-            :title="slot.nsfw ? '已标记为成人内容, 点击取消' : '标记为成人内容'"
+            :title="
+              slot.locked
+                ? '图片服务判定为成人内容, 无法取消'
+                : slot.nsfw
+                  ? '已标记为成人内容, 点击取消'
+                  : '标记为成人内容'
+            "
             :class="
               cn(
-                'absolute right-1 bottom-1 flex items-center justify-center rounded text-white ring-1 transition-colors',
-                slot.nsfw
+                'absolute right-1 bottom-1 flex items-center justify-center gap-0.5 rounded text-white ring-1 transition-colors',
+                slot.nsfw || slot.locked
                   ? 'bg-danger px-1.5 py-0.5 text-[10px] leading-none font-semibold ring-white/70'
-                  : 'size-6 bg-black/55 ring-transparent hover:bg-black/75'
+                  : 'size-6 bg-black/55 ring-transparent hover:bg-black/75',
+                slot.locked && 'cursor-not-allowed'
               )
             "
             @click="toggleNsfw(index)"
           >
-            <template v-if="slot.nsfw">R18</template>
+            <KunIcon
+              v-if="slot.locked"
+              name="lucide:lock"
+              class="size-2.5 text-inherit"
+            />
+            <template v-if="slot.nsfw || slot.locked">R18</template>
             <KunIcon
               v-else
               name="lucide:eye-off"
@@ -311,8 +348,11 @@ const endReorder = () => {
         点图片右下角的图标可以把它标为成人内容 (R18), 未开启 NSFW
         显示的读者看不到它。
       </p>
-      <p v-if="nsfwCount" class="text-danger mt-1 text-xs">
-        已标记 {{ nsfwCount }} 张成人内容图片。
+      <p v-if="markedCount" class="text-danger mt-1 text-xs">
+        已标记 {{ markedCount }} 张成人内容图片。
+        <template v-if="lockedCount">
+          其中 {{ lockedCount }} 张由图片服务判定, 无法取消。
+        </template>
       </p>
     </div>
 

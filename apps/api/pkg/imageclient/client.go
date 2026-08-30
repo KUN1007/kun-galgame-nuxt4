@@ -174,6 +174,20 @@ type ImageMeta struct {
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
 	Thumbhash string `json:"thumbhash,omitempty"`
+	// Absent means ungraded, not safe — the grader runs nightly, so an image
+	// uploaded a minute ago has no grade at all. Reading a missing field as 0
+	// shows an unreviewed image as a reviewed clean one.
+	Sexual *int16 `json:"sexual,omitempty"`
+}
+
+// SexualExplicit is the grade from which an image is treated as adult content.
+// Level 1 is "wearing only underwear or a swimsuit", which a small vision model
+// reads wrong often enough on galgame art that hiding it would cost more
+// ordinary promo shots than it saves.
+const SexualExplicit int16 = 2
+
+func (m ImageMeta) IsSexuallyExplicit() bool {
+	return m.Sexual != nil && *m.Sexual >= SexualExplicit
 }
 
 func (c *Client) MetaBatch(ctx context.Context, hashes []string) (map[string]ImageMeta, error) {

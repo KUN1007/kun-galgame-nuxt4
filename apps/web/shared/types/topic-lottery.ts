@@ -7,6 +7,10 @@ export interface TopicLotteryPrize {
   // the image.
   image_urls: string[]
   nsfw_hashes: string[]
+  // Graded adult by the image service. The author cannot unmark these, and the
+  // server withholds them from a SFW reader whether or not the author marked
+  // them too.
+  machine_nsfw_hashes: string[]
   delivery: 'code' | 'manual' | 'point'
   point_mode: TopicLotteryPointMode
   point_amount: number

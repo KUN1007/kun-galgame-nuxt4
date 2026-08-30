@@ -35,6 +35,10 @@ type UploadCoverResult struct {
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
 	Thumbhash string `json:"thumbhash,omitempty"`
+	// Only ever set when this upload deduplicated onto an image the nightly
+	// grader had already seen. A genuinely new image is ungraded for hours, so
+	// the field being absent says nothing about the content.
+	Sexual *int16 `json:"sexual,omitempty"`
 }
 
 func (s *ImageService) UploadCoverImage(ctx context.Context, userID int, r io.Reader, filename string) (*UploadCoverResult, *errors.AppError) {
@@ -61,13 +65,19 @@ func (s *ImageService) UploadCoverImage(ctx context.Context, userID int, r io.Re
 	}
 
 	s.repo.IncrementDailyCount(userID)
-	return &UploadCoverResult{
+	out := &UploadCoverResult{
 		Hash:      res.Hash,
 		URL:       res.URL,
 		Width:     res.Width,
 		Height:    res.Height,
 		Thumbhash: res.Thumbhash,
-	}, nil
+	}
+	if metas, err := s.imgCli.MetaBatch(ctx, []string{res.Hash}); err == nil {
+		if meta, ok := metas[res.Hash]; ok {
+			out.Sexual = meta.Sexual
+		}
+	}
+	return out, nil
 }
 
 func (s *ImageService) UploadTopicImage(ctx context.Context, userID int, r io.Reader, filename string) (string, *errors.AppError) {

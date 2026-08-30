@@ -202,6 +202,7 @@ func New(cfg *config.Config) *App {
 	moemoepoint.SetDefault(moemoepoint.NewAwarder(uc, db))
 
 	var imgCli *imageclient.Client
+	var imageMeta *imageclient.MetaResolver
 	if cfg.ImageClient.ClientID != "" && cfg.ImageClient.ClientSecret != "" {
 		imgCli = imageclient.New(imageclient.Config{
 			BaseURL:      cfg.ImageClient.BaseURL,
@@ -211,7 +212,7 @@ func New(cfg *config.Config) *App {
 		})
 		slog.Info("image_service client configured", "base_url", cfg.ImageClient.BaseURL)
 
-		imageMeta := imgCli.NewMetaResolver(0)
+		imageMeta = imgCli.NewMetaResolver(0)
 		markdown.SetContentImageMetaResolver(imageMeta.Resolve)
 
 		gc.SetImageMetaResolver(imageMeta.Resolve)
@@ -396,6 +397,9 @@ func New(cfg *config.Config) *App {
 	lotterySvc := topicService.NewLotteryService(
 		lotteryRepository, topicRepository, userStateRepo, uc, notifier,
 		lotteryBox, cfg.NextMoeAPI.ImageCDNBase, trustCheck, trustScan)
+	if imageMeta != nil {
+		lotterySvc.SetImageMetaResolver(imageMeta.Resolve)
+	}
 	lotteryDrawer := topicService.NewLotteryDrawer(lotterySvc)
 	draftSvc := topicService.NewDraftService(draftRepository)
 

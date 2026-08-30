@@ -103,7 +103,9 @@ const visibleImages = (prize: TopicLotteryPrize) =>
     .map((hash, index) => ({
       hash,
       url: prize.image_urls[index] ?? '',
-      isNSFW: prize.nsfw_hashes.includes(hash)
+      isNSFW:
+        prize.nsfw_hashes.includes(hash) ||
+        prize.machine_nsfw_hashes.includes(hash)
     }))
     .filter((image) => !!image.url)
 

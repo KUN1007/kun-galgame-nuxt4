@@ -75,11 +75,15 @@ type LotteryPrizeResponse struct {
 	// Parallel to ImageHashes. An entry is empty when the reader is not allowed
 	// to see that image, which keeps the hash list intact for the author's edit
 	// form instead of silently shortening what a save would write back.
-	ImageURLs   []string `json:"image_urls"`
-	NSFWHashes  []string `json:"nsfw_hashes"`
-	Delivery    string   `json:"delivery"`
-	PointMode   string   `json:"point_mode"`
-	PointAmount int      `json:"point_amount"`
+	ImageURLs  []string `json:"image_urls"`
+	NSFWHashes []string `json:"nsfw_hashes"`
+	// Hashes the image service's grader called explicit. Kept apart from
+	// NSFWHashes so an edit still writes back only what the author marked, and
+	// so the form can show a machine mark as one the author cannot take off.
+	MachineNSFWHashes []string `json:"machine_nsfw_hashes"`
+	Delivery          string   `json:"delivery"`
+	PointMode         string   `json:"point_mode"`
+	PointAmount       int      `json:"point_amount"`
 	// What the prize hands out in total, so a reader does not have to know
 	// whether point_amount means per winner or per pool.
 	PointTotal  int `json:"point_total"`

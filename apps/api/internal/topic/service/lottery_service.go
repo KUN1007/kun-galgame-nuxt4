@@ -17,6 +17,7 @@ import (
 	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/imageclient"
 	"kun-galgame-api/pkg/secretbox"
 	"kun-galgame-api/pkg/userclient"
 
@@ -33,6 +34,16 @@ type LotteryService struct {
 	cdnBase     string
 	check       *gate.CheckService
 	scan        *gate.ScanService
+	imageMeta   func(hashes []string) map[string]imageclient.ImageMeta
+}
+
+// SetImageMetaResolver wires in the image service's machine grade. It stays nil
+// when the image client has no credentials, and then nothing is machine marked
+// and only what the author marked is withheld.
+func (s *LotteryService) SetImageMetaResolver(
+	resolve func(hashes []string) map[string]imageclient.ImageMeta,
+) {
+	s.imageMeta = resolve
 }
 
 func NewLotteryService(

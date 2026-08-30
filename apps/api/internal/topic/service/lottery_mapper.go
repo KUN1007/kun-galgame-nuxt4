@@ -103,13 +103,41 @@ func (s *LotteryService) GetLotteriesByTopic(
 		winnerByLottery[w.LotteryID] = append(winnerByLottery[w.LotteryID], w)
 	}
 
+	machine := s.machineExplicitHashes(prizes)
+
 	out := make([]dto.TopicLotteryResponse, 0, len(lotteries))
 	for i := range lotteries {
 		out = append(out, s.buildLotteryResponse(ctx, &lotteries[i],
 			prizeByLottery[lotteries[i].ID], winnerByLottery[lotteries[i].ID],
-			prizeByID, myEntries, userMap, codeCounts, viewerID, isSFW))
+			prizeByID, myEntries, userMap, codeCounts, viewerID, isSFW, machine))
 	}
 	return out, nil
+}
+
+// machineExplicitHashes asks the image service which of a topic's prize images
+// its grader called explicit. The grader runs nightly, so an image uploaded
+// minutes ago has no grade and is simply absent here — which is why this can
+// only add to what the author marked and can never stand in for it.
+func (s *LotteryService) machineExplicitHashes(
+	prizes []topicModel.TopicLotteryPrize,
+) map[string]bool {
+	if s.imageMeta == nil {
+		return nil
+	}
+	hashes := make([]string, 0, len(prizes))
+	for _, p := range prizes {
+		hashes = append(hashes, p.ImageHashes...)
+	}
+	if len(hashes) == 0 {
+		return nil
+	}
+	out := map[string]bool{}
+	for hash, meta := range s.imageMeta(hashes) {
+		if meta.IsSexuallyExplicit() {
+			out[hash] = true
+		}
+	}
+	return out
 }
 
 func (s *LotteryService) buildLotteryResponse(
@@ -123,6 +151,7 @@ func (s *LotteryService) buildLotteryResponse(
 	codeCounts map[int]int,
 	viewerID int,
 	isSFW bool,
+	machine map[string]bool,
 ) dto.TopicLotteryResponse {
 	author := userMap[lottery.UserID]
 	if author.ID == 0 {
@@ -141,17 +170,19 @@ func (s *LotteryService) buildLotteryResponse(
 		if nsfw == nil {
 			nsfw = []string{}
 		}
+		machineNSFW := filterHashes(hashes, machine)
 		prizeResp = append(prizeResp, dto.LotteryPrizeResponse{
 			ID: p.ID, Name: p.Name, Description: p.Description,
-			ImageHashes: hashes,
-			ImageURLs:   prizeImageURLs(s.cdnBase, hashes, nsfw, isSFW),
-			NSFWHashes:  nsfw,
-			Delivery:    p.Delivery,
-			PointMode:   p.PointMode,
-			PointAmount: p.PointAmount,
-			PointTotal:  prizePointTotal(p.PointMode, p.PointAmount, p.Slots),
-			Slots:       p.Slots,
-			CodesLoaded: codeCounts[p.ID],
+			ImageHashes:       hashes,
+			ImageURLs:         prizeImageURLs(s.cdnBase, hashes, nsfw, machineNSFW, isSFW),
+			NSFWHashes:        nsfw,
+			MachineNSFWHashes: machineNSFW,
+			Delivery:          p.Delivery,
+			PointMode:         p.PointMode,
+			PointAmount:       p.PointAmount,
+			PointTotal:        prizePointTotal(p.PointMode, p.PointAmount, p.Slots),
+			Slots:             p.Slots,
+			CodesLoaded:       codeCounts[p.ID],
 		})
 	}
 
@@ -222,22 +253,32 @@ func (s *LotteryService) buildLotteryResponse(
 	return resp
 }
 
-// prizeImageURLs is parallel to hashes. A hash the author marked adult gets an
-// empty URL for a reader whose content setting is SFW rather than being dropped
-// from the list, so the author's edit form still round-trips every image
-// instead of saving a silently shortened gallery. Withholding the URL is the
-// whole gate — nothing renders an <img> without one, so the adult bytes are
-// never requested.
-func prizeImageURLs(cdnBase string, hashes, nsfw []string, isSFW bool) []string {
+// prizeImageURLs is parallel to hashes. A hash marked adult — by the author, or
+// by the image service's grader — gets an empty URL for a reader whose content
+// setting is SFW rather than being dropped from the list, so the author's edit
+// form still round-trips every image instead of saving a silently shortened
+// gallery. Withholding the URL is the whole gate — nothing renders an <img>
+// without one, so the adult bytes are never requested.
+func prizeImageURLs(cdnBase string, hashes, nsfw, machine []string, isSFW bool) []string {
 	urls := make([]string, 0, len(hashes))
 	for _, hash := range hashes {
-		if isSFW && slices.Contains(nsfw, hash) {
+		if isSFW && (slices.Contains(nsfw, hash) || slices.Contains(machine, hash)) {
 			urls = append(urls, "")
 			continue
 		}
 		urls = append(urls, imageclient.ResolveURL(cdnBase, hash, ""))
 	}
 	return urls
+}
+
+func filterHashes(hashes []string, keep map[string]bool) []string {
+	out := make([]string, 0)
+	for _, hash := range hashes {
+		if keep[hash] {
+			out = append(out, hash)
+		}
+	}
+	return out
 }
 
 func derefTime(t *time.Time) time.Time {
