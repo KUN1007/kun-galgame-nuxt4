@@ -5,7 +5,8 @@ import { lotterySchema } from '~/validations/topic-lottery'
 import {
   KUN_LOTTERY_DELIVERY_OPTIONS,
   KUN_LOTTERY_DRAW_MODE_OPTIONS,
-  KUN_LOTTERY_ENTRY_MODE_OPTIONS
+  KUN_LOTTERY_ENTRY_MODE_OPTIONS,
+  KUN_LOTTERY_POINT_MODE_OPTIONS
 } from '~/constants/topic'
 import { deadlineFromPicker, deadlineToPicker } from '../miniapp/deadline'
 import type { LotteryFormData, LotteryPrizeFormData } from './types'
@@ -33,9 +34,10 @@ const isLoading = ref(false)
 const emptyPrize = (): LotteryPrizeFormData => ({
   name: '',
   description: '',
-  image_hash: '',
-  image_url: '',
+  image_hashes: [],
+  image_urls: [],
   delivery: 'manual',
+  point_mode: 'fixed',
   point_amount: 0,
   slots: 1,
   codes: ''
@@ -63,9 +65,10 @@ const getInitialFormData = (): LotteryFormData => {
       prizes: initial.prizes.map((p) => ({
         name: p.name,
         description: p.description,
-        image_hash: p.image_hash,
-        image_url: p.image_url,
+        image_hashes: [...p.image_hashes],
+        image_urls: [...p.image_urls],
         delivery: p.delivery,
+        point_mode: p.point_mode,
         point_amount: p.point_amount,
         slots: p.slots,
         codes: ''
@@ -134,6 +137,35 @@ const removePrize = (index: number) => {
 const codeCount = (prize: LotteryPrizeFormData) =>
   prize.codes.split('\n').filter((c) => c.trim()).length
 
+const isPointPool = (prize: LotteryPrizeFormData) =>
+  prize.point_mode !== 'fixed'
+
+const prizePointTotal = (prize: LotteryPrizeFormData) => {
+  const amount = Number(prize.point_amount || 0)
+  return isPointPool(prize) ? amount : amount * Number(prize.slots || 0)
+}
+
+const pointTotal = computed(() =>
+  formData.prizes
+    .filter((prize) => prize.delivery === 'point')
+    .reduce((sum, prize) => sum + prizePointTotal(prize), 0)
+)
+
+const pointHint = (prize: LotteryPrizeFormData) => {
+  const amount = Number(prize.point_amount || 0)
+  const slots = Number(prize.slots || 0)
+  if (!amount || !slots) {
+    return ''
+  }
+  if (prize.point_mode === 'split') {
+    return `奖池 ${amount} 点均分, 名额全中时每人约 ${Math.floor(amount / slots)} 点; 中奖人数不足时每人分得更多。`
+  }
+  if (prize.point_mode === 'random') {
+    return `奖池 ${amount} 点按开奖随机数拼手气分配, 每人至少 1 点, 金额同样可以用公示的随机数验算。`
+  }
+  return `${slots} 个名额 × ${amount} 点 = 共 ${amount * slots} 萌萌点。`
+}
+
 const handleSubmit = async () => {
   const payload = {
     ...formData,
@@ -151,6 +183,17 @@ const handleSubmit = async () => {
       if (prize.delivery === 'code' && codeCount(prize) !== prize.slots) {
         useMessage(
           `奖项「${prize.name || '未命名'}」有 ${prize.slots} 个名额, 需要正好 ${prize.slots} 个兑换码`,
+          'warn'
+        )
+        return
+      }
+      if (
+        prize.delivery === 'point' &&
+        isPointPool(prize) &&
+        prize.point_amount < prize.slots
+      ) {
+        useMessage(
+          `奖项「${prize.name || '未命名'}」的奖池至少需要 ${prize.slots} 萌萌点, 每个名额至少分到 1 点`,
           'warn'
         )
         return
@@ -306,25 +349,40 @@ const handleSubmit = async () => {
                 :rows="2"
               />
 
-              <KunCoverUpload
-                v-model="prize.image_hash"
-                :preview-url="prize.image_url"
+              <KunImagesUpload
+                v-model="prize.image_hashes"
+                :preview-urls="prize.image_urls"
                 label="奖品图片 (可选)"
+                :max="9"
               />
 
-              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <KunSelect
-                  v-model="prize.delivery"
-                  label="发放方式"
-                  :options="KUN_LOTTERY_DELIVERY_OPTIONS"
-                />
-                <KunInput
-                  v-if="prize.delivery === 'point'"
-                  v-model.number="prize.point_amount"
-                  label="萌萌点数量"
-                  type="number"
-                  :min="1"
-                />
+              <KunSelect
+                v-model="prize.delivery"
+                label="发放方式"
+                :options="KUN_LOTTERY_DELIVERY_OPTIONS"
+              />
+
+              <div v-if="prize.delivery === 'point'" class="space-y-3">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <KunSelect
+                    v-model="prize.point_mode"
+                    label="萌萌点发放方式"
+                    :options="KUN_LOTTERY_POINT_MODE_OPTIONS"
+                  />
+                  <KunInput
+                    v-model.number="prize.point_amount"
+                    :label="
+                      isPointPool(prize)
+                        ? '奖池总额 (萌萌点)'
+                        : '每人获得 (萌萌点)'
+                    "
+                    type="number"
+                    :min="1"
+                  />
+                </div>
+                <p v-if="pointHint(prize)" class="text-default-500 text-xs">
+                  {{ pointHint(prize) }}
+                </p>
               </div>
 
               <div v-if="prize.delivery === 'code'">
@@ -353,6 +411,13 @@ const handleSubmit = async () => {
               <KunIcon name="lucide:plus" class="mr-1" />
               增加奖项
             </KunButton>
+
+            <KunInfo v-if="pointTotal > 0" title="萌萌点发放总量">
+              <p class="text-sm">
+                本次抽奖最多发放 {{ pointTotal }} 萌萌点,
+                由系统在开奖时直接发到中奖者账户, 不会从您的余额扣除。
+              </p>
+            </KunInfo>
           </div>
         </div>
       </div>

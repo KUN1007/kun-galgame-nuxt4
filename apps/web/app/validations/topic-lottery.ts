@@ -3,9 +3,15 @@ import { z } from 'zod'
 const prizeSchema = z.object({
   name: z.string().min(1, '奖项名称不能为空').max(100, '奖项名称最多100个字符'),
   description: z.string().max(500, '奖项描述最多500个字符').default(''),
-  image_hash: z.string().max(128).default(''),
+  image_hashes: z
+    .array(z.string().max(128))
+    .max(9, '单个奖项最多 9 张图片')
+    .default([]),
   delivery: z.enum(['code', 'manual', 'point'], {
     message: '奖品发放方式不正确'
+  }),
+  point_mode: z.enum(['fixed', 'split', 'random'], {
+    message: '萌萌点发放方式不正确'
   }),
   point_amount: z.coerce.number<number>().int().min(0).max(10000),
   slots: z.coerce
@@ -17,7 +23,10 @@ const prizeSchema = z.object({
 })
 
 export const lotterySchema = z.object({
-  title: z.string().min(1, '抽奖标题不能为空').max(100, '抽奖标题最多100个字符'),
+  title: z
+    .string()
+    .min(1, '抽奖标题不能为空')
+    .max(100, '抽奖标题最多100个字符'),
   description: z.string().max(1000, '抽奖说明最多1000个字符').default(''),
   entry_mode: z.enum(['signup', 'reply', 'floor'], {
     message: '参与方式不正确'

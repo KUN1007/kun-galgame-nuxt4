@@ -87,6 +87,14 @@ const advance = async (entryId: number, fulfillment: string) => {
             {{ winner.reply_floor }} 楼
           </KunChip>
           <KunChip
+            v-if="winner.point_awarded > 0"
+            size="sm"
+            variant="flat"
+            color="primary"
+          >
+            {{ winner.point_awarded }} 萌萌点
+          </KunChip>
+          <KunChip
             size="sm"
             variant="flat"
             :color="FULFILLMENT_COLOR[winner.fulfillment] ?? 'warning'"
@@ -117,7 +125,7 @@ const advance = async (entryId: number, fulfillment: string) => {
           请自行与对方确认发货方式, 不要在公开楼层留下收货地址。
         </p>
         <p v-else-if="lottery.my_delivery === 'point'">
-          萌萌点已自动发放到您的账户。
+          {{ myEntry.point_awarded }} 萌萌点已自动发放到您的账户。
         </p>
         <p v-else-if="myEntry.fulfillment === 'forfeited'">
           该兑换码已作废, 无法再领取。

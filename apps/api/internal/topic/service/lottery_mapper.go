@@ -130,11 +130,22 @@ func (s *LotteryService) buildLotteryResponse(
 	prizeResp := make([]dto.LotteryPrizeResponse, 0, len(prizes))
 	for _, p := range prizes {
 		totalSlots += p.Slots
+		hashes := p.ImageHashes
+		if hashes == nil {
+			hashes = []string{}
+		}
+		urls := make([]string, 0, len(hashes))
+		for _, hash := range hashes {
+			urls = append(urls, imageclient.ResolveURL(s.cdnBase, hash, ""))
+		}
 		prizeResp = append(prizeResp, dto.LotteryPrizeResponse{
 			ID: p.ID, Name: p.Name, Description: p.Description,
-			ImageHash: p.ImageHash,
-			ImageURL:  imageclient.ResolveURL(s.cdnBase, p.ImageHash, ""),
-			Delivery:  p.Delivery, PointAmount: p.PointAmount, Slots: p.Slots,
+			ImageHashes: hashes, ImageURLs: urls,
+			Delivery:    p.Delivery,
+			PointMode:   p.PointMode,
+			PointAmount: p.PointAmount,
+			PointTotal:  prizePointTotal(p.PointMode, p.PointAmount, p.Slots),
+			Slots:       p.Slots,
 			CodesLoaded: codeCounts[p.ID],
 		})
 	}
@@ -150,8 +161,9 @@ func (s *LotteryService) buildLotteryResponse(
 			PrizeName:  prizeByID[w.PrizeID].Name,
 			User:       dto.KunUser{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
 			ReplyFloor: w.ReplyFloor, RankKey: w.RankKey,
-			Fulfillment: w.Fulfillment,
-			WonAt:       derefTime(w.WonAt),
+			Fulfillment:  w.Fulfillment,
+			PointAwarded: w.PointAwarded,
+			WonAt:        derefTime(w.WonAt),
 		})
 	}
 
@@ -194,6 +206,7 @@ func (s *LotteryService) buildLotteryResponse(
 		resp.MyEntryID = mine.ID
 		resp.MyPrizeID = mine.PrizeID
 		resp.MyFulfillment = mine.Fulfillment
+		resp.MyPointAwarded = mine.PointAwarded
 		if mine.PrizeID > 0 {
 			resp.MyPrizeName = prizeByID[mine.PrizeID].Name
 			resp.MyDelivery = prizeByID[mine.PrizeID].Delivery

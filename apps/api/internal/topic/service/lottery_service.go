@@ -193,10 +193,15 @@ func (s *LotteryService) validateShape(
 	}
 
 	total := 0
+	pointTotal := 0
 	for _, p := range prizes {
 		total += p.Slots
 		if p.Slots > constants.MaxSlotsPerPrize {
 			return errors.ErrBadRequest("单个奖项的名额超出上限")
+		}
+		if len(p.ImageHashes) > constants.MaxImagesPerPrize {
+			return errors.ErrBadRequest(fmt.Sprintf(
+				"奖项 %q 最多 %d 张图片", p.Name, constants.MaxImagesPerPrize))
 		}
 		switch p.Delivery {
 		case topicModel.LotteryDeliveryCode:
@@ -212,10 +217,20 @@ func (s *LotteryService) validateShape(
 			if p.PointAmount <= 0 {
 				return errors.ErrBadRequest(fmt.Sprintf("奖项 %q 的萌萌点数量必须大于 0", p.Name))
 			}
+			if isPointPool(p.PointMode) && p.PointAmount < p.Slots {
+				return errors.ErrBadRequest(fmt.Sprintf(
+					"奖项 %q 的奖池至少需要 %d 萌萌点, 每个名额至少分到 1 点", p.Name, p.Slots))
+			}
+			pointTotal += prizePointTotal(p.PointMode, p.PointAmount, p.Slots)
 		}
 	}
 	if total > constants.MaxSlotsPerPrize {
 		return errors.ErrBadRequest("总名额超出上限")
+	}
+	if pointTotal > constants.MaxLotteryPointTotal {
+		return errors.ErrBadRequest(fmt.Sprintf(
+			"本次抽奖共需发放 %d 萌萌点, 超过单次上限 %d",
+			pointTotal, constants.MaxLotteryPointTotal))
 	}
 
 	switch drawMode {
@@ -243,14 +258,36 @@ func (s *LotteryService) validateShape(
 	return nil
 }
 
+// isPointPool reports whether point_amount is the whole prize's budget rather
+// than one winner's share.
+func isPointPool(mode string) bool {
+	return mode == topicModel.LotteryPointSplit || mode == topicModel.LotteryPointRandom
+}
+
+func prizePointTotal(mode string, amount, slots int) int {
+	if isPointPool(mode) {
+		return amount
+	}
+	return amount * slots
+}
+
 func (s *LotteryService) writePrizes(tx *gorm.DB, lotteryID int, prizes []dto.LotteryPrizeInput) error {
 	for i, p := range prizes {
+		pointMode := p.PointMode
+		if pointMode == "" {
+			pointMode = topicModel.LotteryPointFixed
+		}
+		hashes := p.ImageHashes
+		if hashes == nil {
+			hashes = []string{}
+		}
 		prize := &topicModel.TopicLotteryPrize{
 			LotteryID:   lotteryID,
 			Name:        p.Name,
 			Description: p.Description,
-			ImageHash:   p.ImageHash,
+			ImageHashes: hashes,
 			Delivery:    p.Delivery,
+			PointMode:   pointMode,
 			PointAmount: p.PointAmount,
 			Slots:       p.Slots,
 			SortOrder:   i,

@@ -5,8 +5,9 @@ import "time"
 type LotteryPrizeInput struct {
 	Name        string   `json:"name" validate:"required,min=1,max=100"`
 	Description string   `json:"description" validate:"max=500"`
-	ImageHash   string   `json:"image_hash" validate:"max=128"`
+	ImageHashes []string `json:"image_hashes" validate:"max=9,dive,min=1,max=128"`
 	Delivery    string   `json:"delivery" validate:"required,oneof=code manual point"`
+	PointMode   string   `json:"point_mode" validate:"omitempty,oneof=fixed split random"`
 	PointAmount int      `json:"point_amount" validate:"min=0,max=10000"`
 	Slots       int      `json:"slots" validate:"required,min=1,max=500"`
 	Codes       []string `json:"codes" validate:"max=500,dive,min=1,max=200"`
@@ -66,26 +67,31 @@ type GetLotteryByTopicRequest struct {
 }
 
 type LotteryPrizeResponse struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ImageHash   string `json:"image_hash"`
-	ImageURL    string `json:"image_url"`
-	Delivery    string `json:"delivery"`
-	PointAmount int    `json:"point_amount"`
-	Slots       int    `json:"slots"`
-	CodesLoaded int    `json:"codes_loaded"`
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	ImageHashes []string `json:"image_hashes"`
+	ImageURLs   []string `json:"image_urls"`
+	Delivery    string   `json:"delivery"`
+	PointMode   string   `json:"point_mode"`
+	PointAmount int      `json:"point_amount"`
+	// What the prize hands out in total, so a reader does not have to know
+	// whether point_amount means per winner or per pool.
+	PointTotal  int `json:"point_total"`
+	Slots       int `json:"slots"`
+	CodesLoaded int `json:"codes_loaded"`
 }
 
 type LotteryWinnerResponse struct {
-	EntryID     int       `json:"entry_id"`
-	PrizeID     int       `json:"prize_id"`
-	PrizeName   string    `json:"prize_name"`
-	User        KunUser   `json:"user"`
-	ReplyFloor  int       `json:"reply_floor"`
-	RankKey     string    `json:"rank_key"`
-	Fulfillment string    `json:"fulfillment"`
-	WonAt       time.Time `json:"won_at"`
+	EntryID      int       `json:"entry_id"`
+	PrizeID      int       `json:"prize_id"`
+	PrizeName    string    `json:"prize_name"`
+	User         KunUser   `json:"user"`
+	ReplyFloor   int       `json:"reply_floor"`
+	RankKey      string    `json:"rank_key"`
+	Fulfillment  string    `json:"fulfillment"`
+	PointAwarded int       `json:"point_awarded"`
+	WonAt        time.Time `json:"won_at"`
 }
 
 // MyPrizeName / MyCodeReady describe the reader's own win. The code itself is
@@ -123,12 +129,13 @@ type TopicLotteryResponse struct {
 	CanEnter     bool   `json:"can_enter"`
 	EnterBlocked string `json:"enter_blocked"`
 
-	MyEntryID     int    `json:"my_entry_id"`
-	MyPrizeID     int    `json:"my_prize_id"`
-	MyPrizeName   string `json:"my_prize_name"`
-	MyDelivery    string `json:"my_delivery"`
-	MyFulfillment string `json:"my_fulfillment"`
-	MyCodeReady   bool   `json:"my_code_ready"`
+	MyEntryID      int    `json:"my_entry_id"`
+	MyPrizeID      int    `json:"my_prize_id"`
+	MyPrizeName    string `json:"my_prize_name"`
+	MyDelivery     string `json:"my_delivery"`
+	MyFulfillment  string `json:"my_fulfillment"`
+	MyCodeReady    bool   `json:"my_code_ready"`
+	MyPointAwarded int    `json:"my_point_awarded"`
 	// Only set for a code prize: the moment the sweep stops letting the winner
 	// reveal it.
 	MyClaimDeadline *time.Time `json:"my_claim_deadline"`

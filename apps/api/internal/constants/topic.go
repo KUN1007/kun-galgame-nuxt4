@@ -33,6 +33,13 @@ const (
 	MaxLotteriesPerTopic = 10
 	MaxPrizesPerLottery  = 10
 	MaxSlotsPerPrize     = 500
+	MaxImagesPerPrize    = 9
+
+	// A point prize mints moemoepoint rather than moving it off the author's
+	// balance, so the whole lottery is capped instead of only the per-prize
+	// amount: ten prizes of 10000 across 500 slots each would otherwise be a
+	// legal way to create fifty million points.
+	MaxLotteryPointTotal = 100000
 
 	MaxPollsPerTopic = 30
 	MaxTagsPerTopic  = 7

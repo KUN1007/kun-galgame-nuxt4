@@ -23,6 +23,12 @@ const (
 	LotteryDeliveryManual = "manual"
 	LotteryDeliveryPoint  = "point"
 
+	// How a point prize reads its amount: per winner, or as a pool that this
+	// prize's winners share out.
+	LotteryPointFixed  = "fixed"
+	LotteryPointSplit  = "split"
+	LotteryPointRandom = "random"
+
 	LotteryFulfillPending   = "pending"
 	LotteryFulfillShipped   = "shipped"
 	LotteryFulfillReceived  = "received"
@@ -59,15 +65,16 @@ type TopicLottery struct {
 func (TopicLottery) TableName() string { return "topic_lottery" }
 
 type TopicLotteryPrize struct {
-	ID          int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	LotteryID   int    `gorm:"column:lottery_id;not null" json:"lottery_id"`
-	Name        string `gorm:"type:varchar(100);not null" json:"name"`
-	Description string `gorm:"type:varchar(500);default:''" json:"description"`
-	ImageHash   string `gorm:"column:image_hash;default:''" json:"image_hash"`
-	Delivery    string `gorm:"column:delivery;default:'manual'" json:"delivery"`
-	PointAmount int    `gorm:"column:point_amount;default:0" json:"point_amount"`
-	Slots       int    `gorm:"column:slots;default:1" json:"slots"`
-	SortOrder   int    `gorm:"column:sort_order;default:0" json:"sort_order"`
+	ID          int      `gorm:"primaryKey;autoIncrement" json:"id"`
+	LotteryID   int      `gorm:"column:lottery_id;not null" json:"lottery_id"`
+	Name        string   `gorm:"type:varchar(100);not null" json:"name"`
+	Description string   `gorm:"type:varchar(500);default:''" json:"description"`
+	ImageHashes []string `gorm:"column:image_hashes;serializer:json;type:jsonb;default:'[]'" json:"image_hashes"`
+	Delivery    string   `gorm:"column:delivery;default:'manual'" json:"delivery"`
+	PointMode   string   `gorm:"column:point_mode;default:'fixed'" json:"point_mode"`
+	PointAmount int      `gorm:"column:point_amount;default:0" json:"point_amount"`
+	Slots       int      `gorm:"column:slots;default:1" json:"slots"`
+	SortOrder   int      `gorm:"column:sort_order;default:0" json:"sort_order"`
 
 	CreatedAt time.Time `gorm:"column:created" json:"created"`
 	UpdatedAt time.Time `gorm:"column:updated" json:"updated"`
@@ -96,8 +103,10 @@ type TopicLotteryEntry struct {
 	UserID     int `gorm:"column:user_id;not null" json:"user_id"`
 	ReplyFloor int `gorm:"column:reply_floor;default:0" json:"reply_floor"`
 
-	PrizeID     int        `gorm:"column:prize_id;default:0" json:"prize_id"`
-	CodeID      int        `gorm:"column:code_id;default:0" json:"-"`
+	PrizeID      int `gorm:"column:prize_id;default:0" json:"prize_id"`
+	CodeID       int `gorm:"column:code_id;default:0" json:"-"`
+	PointAwarded int `gorm:"column:point_awarded;default:0" json:"point_awarded"`
+
 	RankKey     string     `gorm:"column:rank_key;default:''" json:"rank_key"`
 	Fulfillment string     `gorm:"column:fulfillment;default:''" json:"fulfillment"`
 	WonAt       *time.Time `gorm:"column:won_at" json:"won_at"`

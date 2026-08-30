@@ -14,8 +14,9 @@ const toPayload = (data: LotteryFormData) => ({
   prizes: data.prizes.map((p) => ({
     name: p.name,
     description: p.description,
-    image_hash: p.image_hash,
+    image_hashes: p.image_hashes,
     delivery: p.delivery,
+    point_mode: p.point_mode,
     point_amount: p.delivery === 'point' ? p.point_amount : 0,
     slots: p.slots,
     codes:

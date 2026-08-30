@@ -210,6 +210,18 @@ export const KUN_LOTTERY_DELIVERY_OPTIONS = [
   { value: 'point', label: '自动发放萌萌点' }
 ] as const
 
+export const KUN_LOTTERY_POINT_MODE: Record<string, string> = {
+  fixed: '每人固定',
+  split: '奖池均分',
+  random: '奖池拼手气'
+}
+
+export const KUN_LOTTERY_POINT_MODE_OPTIONS = [
+  { value: 'fixed', label: '每人固定 — 每位中奖者都拿同样多' },
+  { value: 'split', label: '奖池均分 — 总额平均分给中奖者' },
+  { value: 'random', label: '奖池拼手气 — 总额随机分, 每人至少 1 点' }
+] as const
+
 export const KUN_LOTTERY_STATUS: Record<string, string> = {
   open: '进行中',
   drawing: '开奖中',

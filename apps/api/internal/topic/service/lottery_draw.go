@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"log/slog"
@@ -47,6 +48,99 @@ func rankKey(seed string, lotteryID, userID int) string {
 	// fmt.Fprintf to a hash, so writing this the Fprintf way fails CI.
 	mac.Write(fmt.Appendf(nil, "%d:%d", lotteryID, userID))
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// pointWeight is the random share a winner draws from a 拼手气 pool. It comes
+// out of the revealed seed rather than crypto/rand so the commit-reveal proof
+// covers the amounts too, not only who won. Four bytes keep the later
+// pool*weight multiplication far away from overflowing int64; the +1 keeps the
+// weight sum non-zero so it can be divided by.
+func pointWeight(seed string, prizeID, userID int) uint64 {
+	mac := hmac.New(sha256.New, []byte(seed))
+	mac.Write(fmt.Appendf(nil, "point:%d:%d", prizeID, userID))
+	return uint64(binary.BigEndian.Uint32(mac.Sum(nil)[:4])) + 1
+}
+
+// pointPayouts turns one point prize into one amount per winner, in the same
+// order the winners were ranked.
+//
+// fixed hands every winner the configured amount. split and random read it as a
+// pool and hand out all of it, so a prize with fewer winners than slots pays
+// each of them more rather than leaving the remainder unspent — that is the
+// point of offering a pool at all.
+func pointPayouts(seed string, prize topicModel.TopicLotteryPrize, winners []topicModel.TopicLotteryEntry) []int {
+	n := len(winners)
+	if n == 0 || prize.PointAmount <= 0 {
+		return make([]int, n)
+	}
+
+	out := make([]int, n)
+	switch prize.PointMode {
+	case topicModel.LotteryPointSplit:
+		each, remainder := prize.PointAmount/n, prize.PointAmount%n
+		for i := range out {
+			out[i] = each
+			if i < remainder {
+				out[i]++
+			}
+		}
+
+	case topicModel.LotteryPointRandom:
+		floor := 1
+		if prize.PointAmount < n {
+			floor = 0
+		}
+		rest := prize.PointAmount - floor*n
+
+		weights := make([]uint64, n)
+		var totalWeight uint64
+		for i, w := range winners {
+			weights[i] = pointWeight(seed, prize.ID, w.UserID)
+			totalWeight += weights[i]
+		}
+		handed := 0
+		for i := range out {
+			share := int(uint64(rest) * weights[i] / totalWeight)
+			out[i] = floor + share
+			handed += share
+		}
+		// Integer division always leaves a few points behind; they go to the
+		// best-ranked winners so the pool is spent exactly.
+		for i := 0; handed < rest; i, handed = i+1, handed+1 {
+			out[i%n]++
+		}
+
+	default:
+		for i := range out {
+			out[i] = prize.PointAmount
+		}
+	}
+	return out
+}
+
+// stampPointPayouts fills in PointAwarded on every winner of a point prize. It
+// groups by prize first because a pooled prize is split across exactly the
+// people who won that prize, which the flattened slot list does not say.
+func stampPointPayouts(
+	seed string,
+	slots []topicModel.TopicLotteryPrize,
+	winners []topicModel.TopicLotteryEntry,
+) {
+	byPrize := map[int][]int{}
+	for i := range winners {
+		if slots[i].Delivery == topicModel.LotteryDeliveryPoint {
+			byPrize[slots[i].ID] = append(byPrize[slots[i].ID], i)
+		}
+	}
+	for _, indices := range byPrize {
+		group := make([]topicModel.TopicLotteryEntry, len(indices))
+		for k, i := range indices {
+			group[k] = winners[i]
+		}
+		for k, amount := range pointPayouts(seed, slots[indices[0]], group) {
+			winners[indices[k]].PointAwarded = amount
+		}
+	}
 }
 
 // parseFloorRule turns the author's rule into the ordered floors that win.
@@ -210,16 +304,19 @@ func (s *LotteryService) draw(ctx context.Context, lottery *topicModel.TopicLott
 		return appErr
 	}
 
+	stampPointPayouts(lottery.Seed, slots, winners)
+
 	now := time.Now()
 	txErr := s.lotteryRepo.DB().Transaction(func(tx *gorm.DB) error {
 		for i := range winners {
 			prize := slots[i]
 			fields := map[string]any{
-				"prize_id":    prize.ID,
-				"rank_key":    winners[i].RankKey,
-				"won_at":      now,
-				"fulfillment": topicModel.LotteryFulfillPending,
-				"updated":     now,
+				"prize_id":      prize.ID,
+				"rank_key":      winners[i].RankKey,
+				"point_awarded": winners[i].PointAwarded,
+				"won_at":        now,
+				"fulfillment":   topicModel.LotteryFulfillPending,
+				"updated":       now,
 			}
 			if prize.Delivery == topicModel.LotteryDeliveryCode {
 				code, err := s.lotteryRepo.TakeCode(tx, prize.ID, winners[i].UserID)
@@ -236,13 +333,14 @@ func (s *LotteryService) draw(ctx context.Context, lottery *topicModel.TopicLott
 			}
 			if winners[i].ID == 0 {
 				entry := &topicModel.TopicLotteryEntry{
-					LotteryID:   lottery.ID,
-					UserID:      winners[i].UserID,
-					ReplyFloor:  winners[i].ReplyFloor,
-					PrizeID:     prize.ID,
-					RankKey:     winners[i].RankKey,
-					WonAt:       &now,
-					Fulfillment: topicModel.LotteryFulfillPending,
+					LotteryID:    lottery.ID,
+					UserID:       winners[i].UserID,
+					ReplyFloor:   winners[i].ReplyFloor,
+					PrizeID:      prize.ID,
+					RankKey:      winners[i].RankKey,
+					PointAwarded: winners[i].PointAwarded,
+					WonAt:        &now,
+					Fulfillment:  topicModel.LotteryFulfillPending,
 				}
 				if codeID, ok := fields["code_id"].(int); ok {
 					entry.CodeID = codeID
@@ -365,6 +463,9 @@ func (s *LotteryService) afterDraw(
 		prize := slots[i]
 		won[winners[i].UserID] = true
 		content := fmt.Sprintf("恭喜您在抽奖「%s」中获得 %s", lottery.Title, prize.Name)
+		if prize.Delivery == topicModel.LotteryDeliveryPoint && winners[i].PointAwarded > 0 {
+			content += fmt.Sprintf(", 已发放 %d 萌萌点", winners[i].PointAwarded)
+		}
 		if prize.Delivery == topicModel.LotteryDeliveryCode && winners[i].ClaimDeadline != nil {
 			content += fmt.Sprintf(", 请在 %s 前领取兑换码",
 				winners[i].ClaimDeadline.Format("2006-01-02 15:04"))
@@ -376,12 +477,12 @@ func (s *LotteryService) afterDraw(
 			Content:    content,
 			TopicID:    lottery.TopicID,
 		})
-		if prize.Delivery == topicModel.LotteryDeliveryPoint && prize.PointAmount > 0 {
+		if prize.Delivery == topicModel.LotteryDeliveryPoint && winners[i].PointAwarded > 0 {
 			// content_approved is the only credit reason infra exposes to a
 			// downstream, so a lottery payout shows up in the user's moemoepoint
 			// log labelled as approved content. Relabelling needs a new reason on
 			// the OAuth side, not a local workaround.
-			moemoepoint.Award(winners[i].UserID, prize.PointAmount,
+			moemoepoint.Award(winners[i].UserID, winners[i].PointAwarded,
 				moemoepoint.ReasonContentApproved,
 				fmt.Sprintf("lottery_%d", lottery.ID),
 				fmt.Sprintf("kungal:lottery_won:%d_%d", lottery.ID, winners[i].UserID))

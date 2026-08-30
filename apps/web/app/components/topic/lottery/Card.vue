@@ -93,7 +93,26 @@ const thresholdProgress = computed(() => {
 })
 
 const anyPrizeImage = computed(() =>
-  props.lottery.prizes.some((prize) => prize.image_url)
+  props.lottery.prizes.some((prize) => prize.image_urls.length > 0)
+)
+
+const pointLine = (prize: TopicLotteryPrize) => {
+  if (prize.delivery !== 'point') {
+    return ''
+  }
+  if (prize.point_mode === 'split') {
+    return `奖池 ${prize.point_amount} 萌萌点 · 中奖者均分`
+  }
+  if (prize.point_mode === 'random') {
+    return `奖池 ${prize.point_amount} 萌萌点 · 拼手气`
+  }
+  return `每人 ${prize.point_amount} 萌萌点`
+}
+
+const hasRandomPointPrize = computed(() =>
+  props.lottery.prizes.some(
+    (prize) => prize.delivery === 'point' && prize.point_mode === 'random'
+  )
 )
 
 const isThresholdOpen = computed(
@@ -209,12 +228,39 @@ const handleClaim = async () => {
         :key="prize.id"
         class="border-default-200 flex items-start gap-3 rounded-lg border p-3"
       >
-        <KunImage
-          v-if="prize.image_url"
-          :src="prize.image_url"
-          :alt="prize.name"
-          class="size-14 shrink-0 rounded-md object-cover"
-        />
+        <KunLightboxGallery v-if="prize.image_urls.length">
+          <div class="flex shrink-0 gap-1">
+            <KunLightboxGalleryItem
+              v-for="(url, imageIndex) in prize.image_urls"
+              :key="url"
+              :src="url"
+              :alt="prize.name"
+              :wrap="false"
+            >
+              <template #default="{ open }">
+                <button
+                  v-if="imageIndex < 2"
+                  type="button"
+                  class="relative size-14 shrink-0 cursor-zoom-in overflow-hidden rounded-md"
+                  :aria-label="`查看 ${prize.name} 的图片`"
+                  @click="open"
+                >
+                  <KunImage
+                    :src="url"
+                    :alt="prize.name"
+                    class="size-full object-cover"
+                  />
+                  <span
+                    v-if="imageIndex === 1 && prize.image_urls.length > 2"
+                    class="absolute inset-0 flex items-center justify-center bg-black/55 text-xs font-medium text-white"
+                  >
+                    +{{ prize.image_urls.length - 2 }}
+                  </span>
+                </button>
+              </template>
+            </KunLightboxGalleryItem>
+          </div>
+        </KunLightboxGallery>
         <span
           v-else-if="anyPrizeImage"
           class="bg-default-100 text-default-400 flex size-14 shrink-0 items-center justify-center rounded-md"
@@ -232,7 +278,7 @@ const handleClaim = async () => {
           <p class="text-default-500 text-xs">
             {{ KUN_LOTTERY_DELIVERY[prize.delivery] }}
             <template v-if="prize.delivery === 'point'">
-              · {{ prize.point_amount }} 萌萌点
+              · {{ pointLine(prize) }}
             </template>
           </p>
           <p v-if="prize.description" class="text-default-500 mt-1 text-xs">
@@ -306,6 +352,10 @@ const handleClaim = async () => {
         <p v-if="lottery.seed">
           验算方式: sha256(随机数) 应等于上面的承诺; 每位参与者的排序值 =
           HMAC-SHA256(随机数, "{{ lottery.id }}:用户 ID"), 取最小的若干名。
+        </p>
+        <p v-if="lottery.seed && hasRandomPointPrize">
+          拼手气奖池的分配权重 = HMAC-SHA256(随机数, "point:奖项 ID:用户 ID")
+          的前 4 字节, 每人先保底 1 点, 余下的按权重比例分配。
         </p>
       </div>
     </div>

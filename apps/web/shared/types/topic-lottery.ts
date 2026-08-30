@@ -2,13 +2,17 @@ export interface TopicLotteryPrize {
   id: number
   name: string
   description: string
-  image_hash: string
-  image_url: string
+  image_hashes: string[]
+  image_urls: string[]
   delivery: 'code' | 'manual' | 'point'
+  point_mode: TopicLotteryPointMode
   point_amount: number
+  point_total: number
   slots: number
   codes_loaded: number
 }
+
+export type TopicLotteryPointMode = 'fixed' | 'split' | 'random'
 
 export interface TopicLotteryWinner {
   entry_id: number
@@ -18,6 +22,7 @@ export interface TopicLotteryWinner {
   reply_floor: number
   rank_key: string
   fulfillment: string
+  point_awarded: number
   won_at: string | Date
 }
 
@@ -58,6 +63,7 @@ export interface TopicLottery {
   my_delivery: string
   my_fulfillment: string
   my_code_ready: boolean
+  my_point_awarded: number
   my_claim_deadline: string | Date | null
 
   created: string | Date
