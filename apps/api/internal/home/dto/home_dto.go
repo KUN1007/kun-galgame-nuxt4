@@ -30,7 +30,7 @@ type HomeTopic struct {
 	ReplyCount       int        `json:"reply_count"`
 	CommentCount     int        `json:"comment_count"`
 	HasBestAnswer    bool       `json:"has_best_answer"`
-	IsPollTopic      bool       `json:"is_poll_topic"`
+	MiniApps         []string   `json:"mini_apps"`
 	IsNSFWTopic      bool       `json:"is_nsfw_topic"`
 	Section          []string   `json:"section"`
 	User             UserBrief  `json:"user"`

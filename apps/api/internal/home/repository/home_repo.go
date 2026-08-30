@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"kun-galgame-api/pkg/miniapp"
 )
 
 type HomeRepository struct {
@@ -112,20 +114,6 @@ func (r *HomeRepository) FindTopicSections(topicIDs []int) []SectionRelationRow 
 	return sections
 }
 
-func (r *HomeRepository) FindTopicIDsWithPoll(topicIDs []int) map[int]bool {
-	out := map[int]bool{}
-	if len(topicIDs) == 0 {
-		return out
-	}
-	var rows []struct {
-		TopicID int `gorm:"column:topic_id"`
-	}
-	r.db.Table("topic_poll").
-		Where("topic_id IN ?", topicIDs).
-		Select("topic_id").
-		Scan(&rows)
-	for _, row := range rows {
-		out[row.TopicID] = true
-	}
-	return out
+func (r *HomeRepository) FindTopicMiniApps(topicIDs []int) map[int][]string {
+	return miniapp.ByTopic(r.db, topicIDs)
 }

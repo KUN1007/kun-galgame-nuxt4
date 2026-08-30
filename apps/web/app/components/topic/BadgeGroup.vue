@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { KUN_TOPIC_SECTION } from '~/constants/topic'
+import { topicMiniAppsOf } from './miniapp/registry'
 import type { KunUIColor, KunUISize } from '@kungal/ui-core'
 
 const props = withDefaults(
@@ -7,7 +8,7 @@ const props = withDefaults(
     section: string[]
     upvoteTime?: Date | string | null
     hasBestAnswer?: boolean
-    isPollTopic?: boolean
+    miniApps?: string[]
     isNSFWTopic?: boolean
     isNavToSection?: boolean
   }>(),
@@ -16,6 +17,8 @@ const props = withDefaults(
     isNavToSection: false
   }
 )
+
+const miniApps = computed(() => topicMiniAppsOf(props.miniApps))
 
 const iconMap: Record<string, string> = {
   g: 'lucide:gamepad-2',
@@ -61,10 +64,10 @@ const handleClickSection = async (section: string) => {
       </KunChip>
     </span>
 
-    <span v-if="isPollTopic" class="flex gap-1">
-      <KunChip variant="solid" color="primary">
-        <KunIcon name="lucide:bar-chart-3" class="size-4 text-inherit" />
-        投票话题
+    <span v-for="app in miniApps" :key="app.key" class="flex gap-1">
+      <KunChip variant="solid" :color="app.badgeColor">
+        <KunIcon :name="app.icon" class="size-4 text-inherit" />
+        {{ app.badge }}
       </KunChip>
     </span>
 

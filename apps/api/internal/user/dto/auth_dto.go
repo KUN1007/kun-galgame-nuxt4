@@ -34,6 +34,7 @@ type UserProfileDetail struct {
 
 	Topic                  int64 `json:"topic"`
 	TopicPoll              int64 `json:"topic_poll"`
+	TopicLottery           int64 `json:"topic_lottery"`
 	ReplyCreated           int64 `json:"reply_created"`
 	CommentCreated         int64 `json:"comment_created"`
 	Galgame                int64 `json:"galgame"`

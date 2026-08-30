@@ -92,6 +92,7 @@ func (s *UserService) GetUserProfile(ctx context.Context, userID int) (*dto.User
 
 	profile.Topic = stats.Topic
 	profile.TopicPoll = stats.TopicPoll
+	profile.TopicLottery = stats.TopicLottery
 	profile.ReplyCreated = stats.ReplyCreated
 	profile.CommentCreated = stats.CommentCreated
 	profile.GalgameComment = s.communityVisiblePosts(ctx, userID)

@@ -9,6 +9,7 @@ type UserBrief struct {
 type UserStats struct {
 	Topic                  int64 `gorm:"column:topic"`
 	TopicPoll              int64 `gorm:"column:topic_poll"`
+	TopicLottery           int64 `gorm:"column:topic_lottery"`
 	ReplyCreated           int64 `gorm:"column:reply_created"`
 	CommentCreated         int64 `gorm:"column:comment_created"`
 	GalgameComment         int64 `gorm:"column:galgame_comment"`

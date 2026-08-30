@@ -700,7 +700,7 @@ func (s *ActivityService) enrichTopicItems(ctx context.Context, items []dto.Acti
 		return
 	}
 	sections, _ := s.repo.FetchTopicSections(ids)
-	polls, _ := s.repo.FetchTopicPolls(ids)
+	miniApps := s.repo.FetchTopicMiniApps(ids)
 	topReplies, _ := s.repo.FetchTopicTopReply(ids)
 	bestAnswers, _ := s.repo.FetchTopicBestAnswers(ids)
 	upvotes, _ := s.repo.FetchTopicUpvotesBatch(ids)
@@ -836,7 +836,7 @@ func (s *ActivityService) enrichTopicItems(ctx context.Context, items []dto.Acti
 			UpvoteTime:     c.UpvoteTime,
 			Edited:         c.Edited,
 			HasBestAnswer:  c.BestAnswerID != nil,
-			IsPoll:         polls[id],
+			MiniApps:       miniApps[id],
 			IsNSFW:         c.IsNSFW,
 			TopReply:       topReply,
 			BestAnswer:     bestAnswer,

@@ -41,7 +41,7 @@ provide(
           :section="topic.section"
           :upvote-time="topic.upvote_time"
           :has-best-answer="false"
-          :is-poll-topic="topic.is_poll_topic"
+          :mini-apps="topic.mini_apps"
           :is-n-s-f-w-topic="topic.is_nsfw"
           :is-nav-to-section="true"
         />

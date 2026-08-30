@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"kun-galgame-api/pkg/miniapp"
 )
 
 type SectionRepository struct {
@@ -91,4 +93,8 @@ func (r *SectionRepository) FindLatestTopicsInSection(sectionID int, category st
 		ORDER BY t.created DESC LIMIT ?
 	`, sectionID, category, limit).Scan(&rows)
 	return rows
+}
+
+func (r *SectionRepository) FindTopicMiniApps(topicIDs []int) map[int][]string {
+	return miniapp.ByTopic(r.db, topicIDs)
 }

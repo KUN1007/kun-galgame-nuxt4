@@ -6,6 +6,7 @@ import (
 	"time"
 
 	topicModel "kun-galgame-api/internal/topic/model"
+	"kun-galgame-api/pkg/miniapp"
 
 	"gorm.io/gorm"
 )
@@ -270,24 +271,8 @@ func (r *ActivityRepository) FetchTopicSections(ids []int) (map[int][]string, er
 	return collectIDNames(rows), nil
 }
 
-func (r *ActivityRepository) FetchTopicPolls(ids []int) (map[int]bool, error) {
-	out := map[int]bool{}
-	if len(ids) == 0 {
-		return out, nil
-	}
-	var rows []struct {
-		TopicID int `gorm:"column:topic_id"`
-	}
-	if err := r.db.Table("topic_poll").
-		Select("DISTINCT topic_id").
-		Where("topic_id IN ?", ids).
-		Scan(&rows).Error; err != nil {
-		return out, err
-	}
-	for _, row := range rows {
-		out[row.TopicID] = true
-	}
-	return out, nil
+func (r *ActivityRepository) FetchTopicMiniApps(ids []int) map[int][]string {
+	return miniapp.ByTopic(r.db, ids)
 }
 
 func (r *ActivityRepository) FetchReplyTopicTitles(replyIDs []int) (map[int]string, error) {

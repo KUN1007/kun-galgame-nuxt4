@@ -28,6 +28,7 @@ type SectionTopicItem struct {
 	ReplyCount    int       `json:"reply_count"`
 	HasBestAnswer bool      `json:"has_best_answer"`
 	IsNSFW        bool      `json:"is_nsfw_topic"`
+	MiniApps      []string  `json:"mini_apps"`
 	User          UserBrief `json:"user"`
 	Created       time.Time `json:"created"`
 }

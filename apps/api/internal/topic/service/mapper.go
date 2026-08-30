@@ -261,7 +261,7 @@ func (s *ReplyService) buildReplyResponses(
 	return responses
 }
 
-func toTopicCard(r repository.TopicCardRow, sections []string, isPollTopic bool) dto.TopicCard {
+func toTopicCard(r repository.TopicCardRow, sections []string, miniApps []string) dto.TopicCard {
 	if sections == nil {
 		sections = []string{}
 	}
@@ -283,7 +283,7 @@ func toTopicCard(r repository.TopicCardRow, sections []string, isPollTopic bool)
 		},
 		Status:           r.Status,
 		HasBestAnswer:    r.BestAnswerID != nil,
-		IsPollTopic:      isPollTopic,
+		MiniApps:         miniApps,
 		IsNSFW:           r.IsNSFW,
 		LikeCount:        r.LikeCount,
 		ReplyCount:       r.ReplyCount,

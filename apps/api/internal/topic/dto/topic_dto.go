@@ -50,7 +50,7 @@ type TopicCard struct {
 	User             KunUser                          `json:"user"`
 	Status           int                              `json:"status"`
 	HasBestAnswer    bool                             `json:"has_best_answer"`
-	IsPollTopic      bool                             `json:"is_poll_topic"`
+	MiniApps         []string                         `json:"mini_apps"`
 	IsNSFW           bool                             `json:"is_nsfw_topic"`
 	LikeCount        int                              `json:"like_count"`
 	ReplyCount       int                              `json:"reply_count"`
@@ -100,7 +100,7 @@ type TopicDetail struct {
 	IsUpvoted        bool                             `json:"is_upvoted"`
 	Reactions        []ReactionSummary                `json:"reactions"`
 	ReplyCount       int                              `json:"reply_count"`
-	IsPollTopic      bool                             `json:"is_poll_topic"`
+	MiniApps         []string                         `json:"mini_apps"`
 	StatusUpdateTime time.Time                        `json:"status_update_time"`
 	UpvoteTime       *time.Time                       `json:"upvote_time"`
 	Edited           *time.Time                       `json:"edited"`

@@ -8,7 +8,7 @@ export interface TopicCard {
   user: KunUser
   status: number
   has_best_answer: boolean
-  is_poll_topic: boolean
+  mini_apps: string[]
   is_nsfw_topic: boolean
   like_count: number
   reply_count: number
@@ -52,7 +52,7 @@ export interface TopicDetail {
   reactions: KunReaction[]
 
   reply_count: number
-  is_poll_topic: boolean
+  mini_apps: string[]
 
   status_update_time: Date | string
   upvote_time: Date | string | null

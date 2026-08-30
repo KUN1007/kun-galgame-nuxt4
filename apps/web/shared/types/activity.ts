@@ -45,7 +45,7 @@ export interface TopicActivityData {
   upvote_time: Date | string | null
   edited?: Date | string | null
   has_best_answer: boolean
-  is_poll: boolean
+  mini_apps: string[]
   is_nsfw: boolean
   top_reply?: ActivityTopReply
   best_answer?: ActivityTopReply

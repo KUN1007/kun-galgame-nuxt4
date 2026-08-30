@@ -18,6 +18,7 @@ export interface UserInfo {
   comment_created: number
   topic: number
   topic_poll: number
+  topic_lottery: number
 
   galgame: number
   contribute_galgame: number

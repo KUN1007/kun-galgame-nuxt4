@@ -22,7 +22,7 @@ const actionsCount = computed(
     <TopicBadgeGroup
       :section="props.topic.section"
       :has-best-answer="topic.has_best_answer"
-      :is-poll-topic="topic.is_poll_topic"
+      :mini-apps="topic.mini_apps"
       :is-n-s-f-w-topic="topic.is_nsfw_topic"
     />
 

@@ -86,7 +86,7 @@ watch(
         <TopicBadgeGroup
           :section="[]"
           :has-best-answer="topic.has_best_answer"
-          :is-poll-topic="false"
+          :mini-apps="topic.mini_apps"
           :is-n-s-f-w-topic="topic.is_nsfw_topic"
         />
 

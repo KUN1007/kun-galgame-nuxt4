@@ -167,7 +167,7 @@ func (s *HomeService) getHomeTopics(ctx context.Context, isSFW bool) ([]dto.Home
 		sectionMap[sct.TopicID] = append(sectionMap[sct.TopicID], sct.SectionName)
 	}
 
-	pollSet := s.repo.FindTopicIDsWithPoll(topicIDs)
+	miniApps := s.repo.FindTopicMiniApps(topicIDs)
 
 	uids := userclient.CollectIDs(rows, func(r repository.TopicRow) int { return r.UserID })
 	userMap := s.userClient.Hydrate(ctx, uids)
@@ -191,7 +191,7 @@ func (s *HomeService) getHomeTopics(ctx context.Context, isSFW bool) ([]dto.Home
 			ReplyCount:       r.ReplyCount,
 			CommentCount:     r.CommentCount,
 			HasBestAnswer:    r.BestAnswerID != nil,
-			IsPollTopic:      pollSet[r.ID],
+			MiniApps:         miniApps[r.ID],
 			IsNSFWTopic:      r.IsNSFW,
 			Section:          topicSections,
 			User:             dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},

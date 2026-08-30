@@ -22,6 +22,7 @@ func (r *UserStatsRepository) GetUserStats(userID int) (*model.UserStats, error)
 		SELECT
 			(SELECT COUNT(*) FROM topic WHERE user_id = @userID) AS topic,
 			(SELECT COUNT(*) FROM topic_poll WHERE user_id = @userID) AS topic_poll,
+			(SELECT COUNT(*) FROM topic_lottery WHERE user_id = @userID) AS topic_lottery,
 			(SELECT COUNT(*) FROM topic_reply WHERE user_id = @userID AND status = 0) AS reply_created,
 			(SELECT COUNT(*) FROM topic_comment WHERE user_id = @userID AND status = 0) AS comment_created,
 			-- galgame_comment (now "all community comment areas") is overlaid by the

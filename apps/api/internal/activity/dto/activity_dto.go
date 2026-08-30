@@ -61,7 +61,7 @@ type TopicActivityData struct {
 	UpvoteTime     *time.Time                       `json:"upvote_time"`
 	Edited         *time.Time                       `json:"edited"`
 	HasBestAnswer  bool                             `json:"has_best_answer"`
-	IsPoll         bool                             `json:"is_poll"`
+	MiniApps       []string                         `json:"mini_apps"`
 	IsNSFW         bool                             `json:"is_nsfw"`
 	TopReply       *TopReply                        `json:"top_reply,omitempty"`
 	BestAnswer     *TopReply                        `json:"best_answer,omitempty"`

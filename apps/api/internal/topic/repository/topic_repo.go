@@ -5,6 +5,7 @@ import (
 
 	"kun-galgame-api/internal/infrastructure/viewstats"
 	"kun-galgame-api/internal/topic/model"
+	"kun-galgame-api/pkg/miniapp"
 
 	"gorm.io/gorm"
 )
@@ -79,28 +80,8 @@ func (r *TopicRepository) CountTodayTopicsByUser(tx *gorm.DB, userID int) (int64
 	return count, err
 }
 
-func (r *TopicRepository) HasPoll(topicID int) (bool, error) {
-	var count int64
-	err := r.db.Model(&model.TopicPoll{}).Where("topic_id = ?", topicID).Count(&count).Error
-	return count > 0, err
-}
-
-func (r *TopicRepository) FindTopicIDsWithPoll(topicIDs []int) map[int]bool {
-	out := map[int]bool{}
-	if len(topicIDs) == 0 {
-		return out
-	}
-	var rows []struct {
-		TopicID int `gorm:"column:topic_id"`
-	}
-	r.db.Model(&model.TopicPoll{}).
-		Where("topic_id IN ?", topicIDs).
-		Select("topic_id").
-		Scan(&rows)
-	for _, row := range rows {
-		out[row.TopicID] = true
-	}
-	return out
+func (r *TopicRepository) FindTopicMiniApps(topicIDs []int) map[int][]string {
+	return miniapp.ByTopic(r.db, topicIDs)
 }
 
 func (r *TopicRepository) FindByIDTx(tx *gorm.DB, topicID int) (*model.Topic, error) {

@@ -30,6 +30,12 @@ func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionT
 	uids := userclient.CollectIDs(rows, func(r repository.SectionTopicRow) int { return r.UserID })
 	userMap := s.userClient.Hydrate(ctx, uids)
 
+	topicIDs := make([]int, len(rows))
+	for i, r := range rows {
+		topicIDs[i] = r.ID
+	}
+	miniApps := s.repo.FindTopicMiniApps(topicIDs)
+
 	items := make([]dto.SectionTopicItem, 0, len(rows))
 	for _, r := range rows {
 		u := userMap[r.UserID]
@@ -40,8 +46,9 @@ func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionT
 			ID: r.ID, Title: r.Title, Content: r.Content,
 			View: r.View, LikeCount: r.LikeCount, ReplyCount: r.ReplyCount,
 			HasBestAnswer: r.BestAnswerID != nil, IsNSFW: r.IsNSFW,
-			User:    dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
-			Created: r.Created,
+			MiniApps: miniApps[r.ID],
+			User:     dto.UserBrief{ID: u.ID, Name: u.Name, Avatar: u.Avatar},
+			Created:  r.Created,
 		})
 	}
 

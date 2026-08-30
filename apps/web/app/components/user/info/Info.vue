@@ -7,6 +7,7 @@ const user = computed(() => props.user)
 const statsBlocks = [
   { key: 'topic', label: '话题' },
   { key: 'topic_poll', label: '话题投票' },
+  { key: 'topic_lottery', label: '话题抽奖' },
   { key: 'reply_created', label: '回复' },
   { key: 'comment_created', label: '话题评论' },
   { key: 'galgame', label: 'Galgame' },

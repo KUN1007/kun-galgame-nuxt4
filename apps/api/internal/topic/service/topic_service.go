@@ -143,7 +143,7 @@ func (s *TopicService) mapListRows(ctx context.Context, rows []repository.TopicC
 	}
 
 	sectionMap, _ := s.taxonomyRepo.FindSectionNamesByTopicIDs(topicIDs)
-	pollSet := s.topicRepo.FindTopicIDsWithPoll(topicIDs)
+	miniApps := s.topicRepo.FindTopicMiniApps(topicIDs)
 
 	uids := userclient.CollectIDs(rows, func(r repository.TopicCardRow) int { return r.UserID })
 	userMap := s.userClient.Hydrate(ctx, uids)
@@ -158,7 +158,7 @@ func (s *TopicService) mapListRows(ctx context.Context, rows []repository.TopicC
 		if u, ok := userMap[r.UserID]; ok && !userclient.IsRenderable(u) {
 			continue
 		}
-		cards = append(cards, toTopicCard(r, sectionMap[r.ID], pollSet[r.ID]))
+		cards = append(cards, toTopicCard(r, sectionMap[r.ID], miniApps[r.ID]))
 		_ = i
 	}
 	return cards, total, nil
@@ -179,7 +179,7 @@ func (s *TopicService) GetDetail(
 	var author *repository.TopicAuthorUser
 	var authorBanned bool
 	var sections []string
-	var hasPoll bool
+	var miniApps []string
 	var isLiked, isDisliked, isFavorited, isUpvoted bool
 
 	g.Go(func() error {
@@ -206,9 +206,8 @@ func (s *TopicService) GetDetail(
 		return e
 	})
 	g.Go(func() error {
-		var e error
-		hasPoll, e = s.topicRepo.HasPoll(topicID)
-		return e
+		miniApps = s.topicRepo.FindTopicMiniApps([]int{topicID})[topicID]
+		return nil
 	})
 
 	if userInfo != nil {
@@ -282,7 +281,7 @@ func (s *TopicService) GetDetail(
 		UpvoteCount:      topic.UpvoteCount,
 		IsUpvoted:        isUpvoted,
 		ReplyCount:       topic.ReplyCount,
-		IsPollTopic:      hasPoll,
+		MiniApps:         miniApps,
 		StatusUpdateTime: topic.StatusUpdateTime,
 		UpvoteTime:       topic.UpvoteTime,
 		Edited:           topic.Edited,

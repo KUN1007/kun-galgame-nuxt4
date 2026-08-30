@@ -11,7 +11,7 @@ export interface HomeTopic {
   user: KunUser
   status: number
   has_best_answer: boolean
-  is_poll_topic: boolean
+  mini_apps: string[]
   is_nsfw_topic: boolean
 
   like_count: number

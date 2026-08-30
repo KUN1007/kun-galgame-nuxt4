@@ -7,6 +7,7 @@ export interface SectionTopic {
   reply_count: number
   has_best_answer: boolean
   is_nsfw_topic: boolean
+  mini_apps: string[]
   user: KunUser
   created: Date | string
 }
