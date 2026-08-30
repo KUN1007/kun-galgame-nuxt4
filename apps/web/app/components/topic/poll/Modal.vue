@@ -2,6 +2,7 @@
 import { usePoll } from '~/composables/topic/usePoll'
 import { createPollSchema, updatePollSchema } from '~/validations/topic-poll'
 import { TOPIC_POLL_VISIBILITY_OPTIONS } from '~/constants/topic'
+import { deadlineFromPicker, deadlineToPicker } from '../miniapp/deadline'
 import type { PollFormData } from './types'
 
 const props = defineProps<{
@@ -39,9 +40,7 @@ const getInitialFormData = (): PollFormData => {
       type: props.initialData.type as 'single',
       min_choice: props.initialData.min_choice,
       max_choice: props.initialData.max_choice,
-      deadline: props.initialData.deadline
-        ? props.initialData.deadline.toString()
-        : undefined,
+      deadline: deadlineToPicker(props.initialData.deadline),
       result_visibility: props.initialData.result_visibility as 'always',
       is_anonymous: props.initialData.is_anonymous,
       can_change_vote: props.initialData.can_change_vote,
@@ -112,8 +111,12 @@ const removeOption = (index: number) => {
 
 const handleSubmit = async () => {
   const schema = isEditing.value ? updatePollSchema : createPollSchema
+  const payload: PollFormData = {
+    ...formData,
+    deadline: deadlineFromPicker(formData.deadline)
+  }
   const result = schema.safeParse(
-    isEditing.value ? { ...formData, options: {} } : formData
+    isEditing.value ? { ...payload, options: {} } : payload
   )
 
   if (!result.success) {
@@ -124,9 +127,9 @@ const handleSubmit = async () => {
 
   isLoading.value = true
   if (isEditing.value && props.initialData) {
-    await updatePoll(props.initialData.id, props.initialData.option, formData)
+    await updatePoll(props.initialData.id, props.initialData.option, payload)
   } else {
-    await createPoll(formData)
+    await createPoll(payload)
   }
 
   emits('refresh')

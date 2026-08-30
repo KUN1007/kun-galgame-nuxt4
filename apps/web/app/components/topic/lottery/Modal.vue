@@ -7,6 +7,7 @@ import {
   KUN_LOTTERY_DRAW_MODE_OPTIONS,
   KUN_LOTTERY_ENTRY_MODE_OPTIONS
 } from '~/constants/topic'
+import { deadlineFromPicker, deadlineToPicker } from '../miniapp/deadline'
 import type { LotteryFormData, LotteryPrizeFormData } from './types'
 
 const props = defineProps<{
@@ -52,7 +53,7 @@ const getInitialFormData = (): LotteryFormData => {
       floor_rule: initial.floor_rule,
       draw_mode: initial.draw_mode,
       draw_threshold: initial.draw_threshold,
-      deadline: initial.deadline ? initial.deadline.toString() : undefined,
+      deadline: deadlineToPicker(initial.deadline),
       min_account_age_days: initial.min_account_age_days,
       min_moemoepoint: initial.min_moemoepoint,
       show_entrants: initial.show_entrants,
@@ -136,6 +137,7 @@ const codeCount = (prize: LotteryPrizeFormData) =>
 const handleSubmit = async () => {
   const payload = {
     ...formData,
+    deadline: deadlineFromPicker(formData.deadline),
     prizes: rewritePrizes.value ? formData.prizes : []
   }
   if (rewritePrizes.value) {
