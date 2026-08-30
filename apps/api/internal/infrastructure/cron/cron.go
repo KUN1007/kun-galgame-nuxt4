@@ -25,6 +25,7 @@ type Jobs struct {
 	GalgameContentLimitFill   func()
 	GalgameMergeSync          func()
 	DlsiteCampaignRefresh     func()
+	TopicMiniAppDeadlines     func()
 }
 
 func Start(
@@ -91,6 +92,12 @@ func Start(
 
 	if jobs.GalgameMergeSync != nil {
 		schedule(c, "*/30 * * * *", "galgame 合并同步", jobs.GalgameMergeSync)
+	}
+
+	// Every minute, not every ten: a lottery deadline is a promise to the people
+	// waiting for it, and the sweep is one indexed query against two tables.
+	if jobs.TopicMiniAppDeadlines != nil {
+		schedule(c, "* * * * *", "话题小程序到点处理", jobs.TopicMiniAppDeadlines)
 	}
 
 	if jobs.DlsiteCampaignRefresh != nil {

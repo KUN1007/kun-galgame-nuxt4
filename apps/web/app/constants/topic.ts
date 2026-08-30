@@ -173,3 +173,53 @@ export const TOPIC_POLL_VISIBILITY_MAP: Record<string, string> = {
   after_vote: '投票后可见结果',
   after_deadline: '结束后可见结果'
 }
+
+export const KUN_LOTTERY_ENTRY_MODE: Record<string, string> = {
+  signup: '报名参与',
+  reply: '回帖后参与',
+  floor: '楼层抽奖'
+}
+
+export const KUN_LOTTERY_ENTRY_MODE_OPTIONS = [
+  { value: 'signup', label: '报名参与 — 点一下就参加' },
+  { value: 'reply', label: '回帖后参与 — 需要先在本话题回复' },
+  { value: 'floor', label: '楼层抽奖 — 由楼层号直接决定, 无需报名' }
+] as const
+
+export const KUN_LOTTERY_DRAW_MODE: Record<string, string> = {
+  deadline: '到点自动开奖',
+  manual: '楼主手动开奖',
+  threshold: '满员自动开奖'
+}
+
+export const KUN_LOTTERY_DRAW_MODE_OPTIONS = [
+  { value: 'deadline', label: '到点自动开奖' },
+  { value: 'manual', label: '楼主手动开奖' },
+  { value: 'threshold', label: '满员自动开奖' }
+] as const
+
+export const KUN_LOTTERY_DELIVERY: Record<string, string> = {
+  code: '系统托管兑换码',
+  manual: '楼主私聊发放',
+  point: '自动发放萌萌点'
+}
+
+export const KUN_LOTTERY_DELIVERY_OPTIONS = [
+  { value: 'manual', label: '楼主私聊发放 (实物周边等)' },
+  { value: 'code', label: '系统托管兑换码 (激活码等)' },
+  { value: 'point', label: '自动发放萌萌点' }
+] as const
+
+export const KUN_LOTTERY_STATUS: Record<string, string> = {
+  open: '进行中',
+  drawing: '开奖中',
+  drawn: '已开奖',
+  cancelled: '已取消'
+}
+
+export const KUN_LOTTERY_FULFILLMENT: Record<string, string> = {
+  pending: '待发放',
+  shipped: '已发出',
+  received: '已确认收到',
+  forfeited: '已放弃'
+}

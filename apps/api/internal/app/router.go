@@ -191,6 +191,8 @@ func (a *App) setupRoutes() {
 	optAuth.Get("/topic/:tid/reply/reaction/history", a.ReplyHandler.GetReplyReactionHistory)
 	optAuth.Get("/topic/:tid/poll/topic", a.PollHandler.GetPollsByTopic)
 	optAuth.Get("/topic/:tid/poll/log", a.PollHandler.GetVoteLog)
+	optAuth.Get("/topic/:tid/lottery/topic", a.LotteryHandler.GetLotteriesByTopic)
+	optAuth.Get("/topic/:tid/lottery/entrants", a.LotteryHandler.GetEntrants)
 
 	optAuth.Get("/galgame/:gid/resource/all", a.GalgameResourceHandler.GetGalgameResources)
 	// Both comment READ halves must mount before the auth boundary below, or
@@ -247,6 +249,17 @@ func (a *App) setupRoutes() {
 	authed.Put("/topic/:tid/poll", a.PollHandler.UpdatePoll)
 	authed.Delete("/topic/:tid/poll", a.PollHandler.DeletePoll)
 	authed.Post("/topic/:tid/poll/vote", a.PollHandler.Vote)
+
+	authed.Post("/topic/:tid/lottery", a.LotteryHandler.CreateLottery)
+	authed.Put("/topic/:tid/lottery", a.LotteryHandler.UpdateLottery)
+	authed.Delete("/topic/:tid/lottery", a.LotteryHandler.DeleteLottery)
+	authed.Post("/topic/:tid/lottery/enter", a.LotteryHandler.Enter)
+	authed.Post("/topic/:tid/lottery/withdraw", a.LotteryHandler.Withdraw)
+	authed.Post("/topic/:tid/lottery/draw", a.LotteryHandler.Draw)
+	authed.Post("/topic/:tid/lottery/cancel", a.LotteryHandler.Cancel)
+	// POST, never GET — see LotteryHandler.Claim.
+	authed.Post("/topic/:tid/lottery/claim", a.LotteryHandler.Claim)
+	authed.Put("/topic/:tid/lottery/fulfillment", a.LotteryHandler.SetFulfillment)
 
 	authed.Get("/message", a.MessageHandler.GetMessages)
 	authed.Get("/message/muted", a.MessageHandler.GetMutedMessages)

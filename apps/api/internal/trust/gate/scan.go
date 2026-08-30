@@ -14,6 +14,7 @@ const (
 
 	SubjectKindTopicComment      = "forum_comment"
 	SubjectKindTopicPoll         = "forum_topic_poll"
+	SubjectKindTopicLottery      = "forum_topic_lottery"
 	SubjectKindGalgameRating     = "galgame_rating"
 	SubjectKindGalgameResource   = "galgame_resource"
 	SubjectKindGalgameCollection = "galgame_collection"

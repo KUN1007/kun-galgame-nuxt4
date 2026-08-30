@@ -19,6 +19,7 @@ DELETE /api/toolset/:id                               cors.New → middleware.Na
 DELETE /api/toolset/:id/comments/:postId              cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceCommentHandler.ToolsetDelete
 DELETE /api/toolset/:id/resource                      cors.New → middleware.NamePreference → OptionalAuth → Auth → ResourceHandler.DeleteResource
 DELETE /api/topic/:tid/comment                        cors.New → middleware.NamePreference → OptionalAuth → Auth → CommentHandler.DeleteComment
+DELETE /api/topic/:tid/lottery                        cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.DeleteLottery
 DELETE /api/topic/:tid/poll                           cors.New → middleware.NamePreference → OptionalAuth → Auth → PollHandler.DeletePoll
 DELETE /api/topic/:tid/reply                          cors.New → middleware.NamePreference → OptionalAuth → Auth → ReplyHandler.DeleteReply
 DELETE /api/topic/draft/:id                           cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicDraftHandler.Delete
@@ -136,6 +137,8 @@ GET    /api/toolset/:id/practicality                  cors.New → middleware.Na
 GET    /api/toolset/:id/resource/detail               cors.New → middleware.NamePreference → ResourceHandler.GetResourceDetail
 GET    /api/topic                                     cors.New → middleware.NamePreference → OptionalAuth → TopicHandler.GetList
 GET    /api/topic/:tid                                cors.New → middleware.NamePreference → OptionalAuth → TopicHandler.GetDetail
+GET    /api/topic/:tid/lottery/entrants               cors.New → middleware.NamePreference → OptionalAuth → LotteryHandler.GetEntrants
+GET    /api/topic/:tid/lottery/topic                  cors.New → middleware.NamePreference → OptionalAuth → LotteryHandler.GetLotteriesByTopic
 GET    /api/topic/:tid/poll/log                       cors.New → middleware.NamePreference → OptionalAuth → PollHandler.GetVoteLog
 GET    /api/topic/:tid/poll/topic                     cors.New → middleware.NamePreference → OptionalAuth → PollHandler.GetPollsByTopic
 GET    /api/topic/:tid/reaction/history               cors.New → middleware.NamePreference → OptionalAuth → TopicHandler.GetTopicReactionHistory
@@ -218,6 +221,12 @@ POST   /api/toolset/:id/upload/init                   cors.New → middleware.Na
 POST   /api/toolset/:id/upload/resume                 cors.New → middleware.NamePreference → OptionalAuth → Auth → UploadHandler.UploadResume
 POST   /api/topic                                     cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.Create
 POST   /api/topic/:tid/comment                        cors.New → middleware.NamePreference → OptionalAuth → Auth → CommentHandler.CreateComment
+POST   /api/topic/:tid/lottery                        cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.CreateLottery
+POST   /api/topic/:tid/lottery/cancel                 cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.Cancel
+POST   /api/topic/:tid/lottery/claim                  cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.Claim
+POST   /api/topic/:tid/lottery/draw                   cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.Draw
+POST   /api/topic/:tid/lottery/enter                  cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.Enter
+POST   /api/topic/:tid/lottery/withdraw               cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.Withdraw
 POST   /api/topic/:tid/poll                           cors.New → middleware.NamePreference → OptionalAuth → Auth → PollHandler.CreatePoll
 POST   /api/topic/:tid/poll/vote                      cors.New → middleware.NamePreference → OptionalAuth → Auth → PollHandler.Vote
 POST   /api/topic/:tid/reply                          cors.New → middleware.NamePreference → OptionalAuth → Auth → ReplyHandler.CreateReply
@@ -274,6 +283,8 @@ PUT    /api/topic/:tid/dislike                        cors.New → middleware.Na
 PUT    /api/topic/:tid/favorite                       cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.ToggleFavorite
 PUT    /api/topic/:tid/hide                           cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.ToggleHide
 PUT    /api/topic/:tid/like                           cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.ToggleLike
+PUT    /api/topic/:tid/lottery                        cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.UpdateLottery
+PUT    /api/topic/:tid/lottery/fulfillment            cors.New → middleware.NamePreference → OptionalAuth → Auth → LotteryHandler.SetFulfillment
 PUT    /api/topic/:tid/poll                           cors.New → middleware.NamePreference → OptionalAuth → Auth → PollHandler.UpdatePoll
 PUT    /api/topic/:tid/reaction                       cors.New → middleware.NamePreference → OptionalAuth → Auth → TopicHandler.ToggleReaction
 PUT    /api/topic/:tid/reply                          cors.New → middleware.NamePreference → OptionalAuth → Auth → ReplyHandler.UpdateReply

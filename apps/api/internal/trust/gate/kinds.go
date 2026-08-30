@@ -14,6 +14,7 @@ var CanonicalSubjectKinds = []string{
 	SubjectKindReply,
 	SubjectKindTopicComment,
 	SubjectKindTopicPoll,
+	SubjectKindTopicLottery,
 	SubjectKindGalgameRating,
 	SubjectKindGalgameResource,
 	SubjectKindGalgameCollection,

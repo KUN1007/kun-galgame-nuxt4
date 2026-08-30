@@ -13,6 +13,9 @@ export type MessageType =
   | 'mentioned'
   | 'admin'
   | 'quiz-answered'
+  | 'lottery-won'
+  | 'lottery-closed'
+  | 'poll-closed'
 
 type MessageStatus = 'read' | 'unread'
 

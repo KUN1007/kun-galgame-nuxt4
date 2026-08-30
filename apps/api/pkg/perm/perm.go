@@ -31,6 +31,10 @@ const (
 	PollDeleteAny      Permission = "poll.delete_any"
 	PollViewRestricted Permission = "poll.view_restricted"
 
+	LotteryCreateAny      Permission = "lottery.create_any"
+	LotteryManageAny      Permission = "lottery.manage_any"
+	LotteryViewRestricted Permission = "lottery.view_restricted"
+
 	GalgameBanResourcePublish Permission = "galgame.ban_resource_publish"
 	GalgameClaimReview        Permission = "galgame.claim.review"
 
@@ -98,6 +102,9 @@ var moderatorPerms = []Permission{
 	PollEditAny,
 	PollDeleteAny,
 	PollViewRestricted,
+	LotteryCreateAny,
+	LotteryManageAny,
+	LotteryViewRestricted,
 	GalgameBanResourcePublish,
 	GalgameClaimReview,
 	CollectionEditAny,

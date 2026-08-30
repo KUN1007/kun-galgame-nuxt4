@@ -138,7 +138,10 @@ watch(
     <div class="min-w-0 flex-1 space-y-4">
       <TopicDetailMaster :topic="topic" />
 
-      <TopicPollContainer :topic-id="topic.id" :is-topic-admin="isTopicAdmin" />
+      <TopicMiniappContainer
+        :topic-id="topic.id"
+        :is-topic-admin="isTopicAdmin"
+      />
 
       <div id="comments-anchor" class="scroll-mt-20">
         <TopicDetailTool

@@ -78,6 +78,7 @@ import (
 	"kun-galgame-api/pkg/linkcheck"
 	"kun-galgame-api/pkg/newsclient"
 	"kun-galgame-api/pkg/response"
+	"kun-galgame-api/pkg/secretbox"
 	"kun-galgame-api/pkg/storeclient"
 	"kun-galgame-api/pkg/trustclient"
 	"kun-galgame-api/pkg/userclient"
@@ -106,6 +107,7 @@ type App struct {
 	ReplyHandler                   *topicHandler.ReplyHandler
 	TopicCommentHandler            *topicHandler.CommentHandler
 	PollHandler                    *topicHandler.PollHandler
+	LotteryHandler                 *topicHandler.LotteryHandler
 	MessageHandler                 *msgHandler.MessageHandler
 	MessageChatHandler             *msgHandler.ChatHandler
 	AdminOverviewHandler           *adminHandler.OverviewHandler
@@ -377,12 +379,24 @@ func New(cfg *config.Config) *App {
 	replyRepository := topicRepo.NewReplyRepository(db)
 	topicCommentRepo := topicRepo.NewCommentRepository(db)
 	pollRepository := topicRepo.NewPollRepository(db)
+	lotteryRepository := topicRepo.NewLotteryRepository(db)
 	draftRepository := topicRepo.NewTopicDraftRepository(db)
 	topicSvc := topicService.NewTopicService(topicRepository, topicListRepo, topicTaxonomyRepo, rdb, uc, userStateRepo)
 	topicWriteSvc := topicService.NewTopicWriteService(topicRepository, topicTaxonomyRepo, replyRepository, userStateRepo, rdb, notifier, trustCheck, trustScan)
 	replySvc := topicService.NewReplyService(replyRepository, topicCommentRepo, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
 	commentSvc := topicService.NewCommentService(replyRepository, topicCommentRepo, userStateRepo, uc, rdb, trustCheck, trustScan)
 	pollSvc := topicService.NewPollService(pollRepository, topicRepository, userStateRepo, uc, rdb, trustCheck, trustScan)
+	lotteryBox, err := secretbox.New(cfg.Lottery.CodeKey)
+	if err != nil {
+		slog.Error("KUN_LOTTERY_CODE_KEY 无效, 兑换码托管已禁用 (抽奖其余功能不受影响)", "error", err)
+	}
+	if lotteryBox == nil {
+		slog.Warn("KUN_LOTTERY_CODE_KEY 未设置; 抽奖将拒绝「系统托管兑换码」奖项, 而不是明文存码")
+	}
+	lotterySvc := topicService.NewLotteryService(
+		lotteryRepository, topicRepository, userStateRepo, uc, notifier,
+		lotteryBox, cfg.NextMoeAPI.ImageCDNBase, trustCheck, trustScan)
+	lotteryDrawer := topicService.NewLotteryDrawer(lotterySvc)
 	draftSvc := topicService.NewDraftService(draftRepository)
 
 	galgameCommunityPostRepo := galgameRepo.NewCommunityPostRepository(db)
@@ -528,6 +542,7 @@ func New(cfg *config.Config) *App {
 		ReplyHandler:                   topicHandler.NewReplyHandler(replySvc),
 		TopicCommentHandler:            topicHandler.NewCommentHandler(commentSvc),
 		PollHandler:                    topicHandler.NewPollHandler(pollSvc),
+		LotteryHandler:                 topicHandler.NewLotteryHandler(lotterySvc),
 		MessageHandler:                 msgHandler.NewMessageHandler(messageSvc),
 		MessageChatHandler:             msgHandler.NewChatHandler(chatSvc),
 		AdminOverviewHandler:           adminHandler.NewOverviewHandler(adminOverviewSvc),
@@ -584,6 +599,7 @@ func New(cfg *config.Config) *App {
 			GalgameContentLimitFill:   galgameContentLimitSync.RunPending,
 			GalgameMergeSync:          galgameMergeSync.Run,
 			DlsiteCampaignRefresh:     storeLinks.RefreshCampaign,
+			TopicMiniAppDeadlines:     lotteryDrawer.Run,
 		}),
 		StoreLinkStop: storeLinks.Start(),
 	}

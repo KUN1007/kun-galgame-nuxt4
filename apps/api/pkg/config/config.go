@@ -23,6 +23,15 @@ type Config struct {
 	Catalog        CatalogClientConfig
 	Community      CommunityConfig
 	Dlsite         DlsiteConfig
+	Lottery        LotteryConfig
+}
+
+// CodeKey seals the escrowed lottery activation codes (AES-256-GCM, 64 hex
+// chars). Leaving it empty is a supported state: the lottery mini-app still
+// works, it just refuses prizes delivered as a code rather than storing them in
+// the clear. Rotating it strands every code already sealed with the old key.
+type LotteryConfig struct {
+	CodeKey string
 }
 
 type CommunityConfig struct {
@@ -253,6 +262,9 @@ func Load() (*Config, error) {
 		},
 		Catalog: CatalogClientConfig{
 			BaseURL: envOrDefault("KUN_CATALOG_API_BASE", "http://127.0.0.1:19281"),
+		},
+		Lottery: LotteryConfig{
+			CodeKey: envOrDefault("KUN_LOTTERY_CODE_KEY", ""),
 		},
 		Community: CommunityConfig{
 			BaseURL:      envOrDefault("KUN_COMMUNITY_API_BASE", ""),

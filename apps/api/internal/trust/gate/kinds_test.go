@@ -16,6 +16,7 @@ func TestCanonicalSubjectKindsCoversGateConstants(t *testing.T) {
 		SubjectKindReply,
 		SubjectKindTopicComment,
 		SubjectKindTopicPoll,
+		SubjectKindTopicLottery,
 		SubjectKindGalgameRating,
 		SubjectKindGalgameResource,
 		SubjectKindGalgameCollection,

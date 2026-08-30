@@ -11,7 +11,10 @@ const messageTemplates: Partial<Record<MessageType, string>> = {
   declined: ' 拒绝了您的更新请求！',
   admin: '系统消息',
   mentioned: ' 提到了您！',
-  'quiz-answered': ' 回答了您的题目!'
+  'quiz-answered': ' 回答了您的题目!',
+  'lottery-won': ' 的抽奖开奖了, 您中奖了!',
+  'lottery-closed': ' 的抽奖开奖了',
+  'poll-closed': ' 的投票已经截止'
 }
 
 export const getMessageI18n = (message: Message) => {

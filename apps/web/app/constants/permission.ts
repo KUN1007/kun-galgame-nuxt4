@@ -48,6 +48,9 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'poll.edit_any': { label: '编辑任意投票', group: '投票' },
   'poll.delete_any': { label: '删除任意投票', group: '投票' },
   'poll.view_restricted': { label: '查看受限/匿名投票结果', group: '投票' },
+  'lottery.create_any': { label: '为任意话题创建抽奖', group: '抽奖' },
+  'lottery.manage_any': { label: '管理任意抽奖', group: '抽奖' },
+  'lottery.view_restricted': { label: '查看隐藏的抽奖参与名单', group: '抽奖' },
   'galgame.ban_resource_publish': {
     label: '禁止游戏资源发布',
     group: 'Galgame'

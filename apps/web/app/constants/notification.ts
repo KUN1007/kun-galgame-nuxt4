@@ -50,6 +50,17 @@ export const notificationCategoryGroups: NotificationCategoryGroup[] = [
     ]
   },
   {
+    value: 'miniapp',
+    textValue: '话题小程序',
+    icon: 'lucide:gift',
+    stream: 'local',
+    items: [
+      { key: 'lottery-won', label: '抽奖中奖' },
+      { key: 'lottery-closed', label: '参与的抽奖开奖' },
+      { key: 'poll-closed', label: '参与的投票截止' }
+    ]
+  },
+  {
     value: 'chat',
     textValue: '私信',
     icon: 'lucide:mail',
