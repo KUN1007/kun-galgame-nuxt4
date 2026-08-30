@@ -36,6 +36,12 @@ func (r *PurgeRepository) counts(q *gorm.DB, userID int) dto.UserContentStats {
 	s.Websites = countBy("galgame_website", "user_id")
 	s.Toolsets = countBy("galgame_toolset", "user_id")
 	s.ToolsetResources = countBy("galgame_toolset_resource", "user_id")
+	s.Polls = countBy("topic_poll", "user_id")
+	s.Lotteries = countBy("topic_lottery", "user_id")
+	s.Drafts = countBy("topic_draft", "user_id")
+	s.Quizzes = countBy("galgame_quiz", "user_id")
+	s.Collections = countBy("galgame_collection", "user_id")
+	s.Todos = countBy("todo", "user_id")
 	s.ChatMessages = countBy("chat_message", "sender_id")
 	s.Messages = countBy("message", "sender_id") + countBy("message", "receiver_id")
 
@@ -46,16 +52,21 @@ func (r *PurgeRepository) counts(q *gorm.DB, userID int) dto.UserContentStats {
 	s.Total = s.Topics + s.Replies + s.TopicComments +
 		s.Ratings + s.Resources + s.Websites +
 		s.Toolsets + s.ToolsetResources +
+		s.Polls + s.Lotteries + s.Drafts +
+		s.Quizzes + s.Collections + s.Todos +
 		s.ChatMessages + s.Messages + s.Interactions
 	return s
 }
 
 var interactionTables = []string{
 	"topic_like", "topic_dislike", "topic_favorite", "topic_upvote",
+	"topic_reaction", "topic_reply_reaction",
 	"topic_reply_like", "topic_reply_dislike", "topic_comment_like",
-	"topic_poll_vote",
+	"topic_poll_vote", "topic_lottery_entry",
 	"galgame_like", "galgame_favorite",
+	"galgame_collection_item", "galgame_collection_viewer",
 	"galgame_post_like",
+	"galgame_quiz_answer", "galgame_quiz_favorite",
 	"galgame_rating_like", "galgame_resource_like",
 	"galgame_website_like", "galgame_website_favorite",
 	"galgame_toolset_practicality", "galgame_toolset_contributor",
@@ -88,11 +99,43 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			}
 		}
 
+		// Interactions go before authored content: a collection item and a quiz
+		// answer are the only handle on the parent whose cached counter has to
+		// be recomputed, and deleting the parent first takes that handle away.
+		for _, it := range interactionDeletes {
+			captured := map[string][]int{}
+			for _, rc := range it.recounts {
+				if _, done := captured[rc.parentCol]; done {
+					continue
+				}
+				var ids []int
+				if err := tx.Raw(
+					"SELECT DISTINCT "+rc.parentCol+" FROM "+it.table+" WHERE user_id = ?", userID,
+				).Scan(&ids).Error; err != nil {
+					return err
+				}
+				captured[rc.parentCol] = ids
+			}
+			if err := del(tx, "DELETE FROM "+it.table+" WHERE user_id = ?", userID); err != nil {
+				return err
+			}
+			for _, rc := range it.recounts {
+				if err := recount(tx, rc, it.table, captured[rc.parentCol]); err != nil {
+					return err
+				}
+			}
+		}
+
 		for _, q := range []string{
 			"DELETE FROM topic WHERE user_id = ?",
 			"DELETE FROM galgame_website WHERE user_id = ?",
 			"DELETE FROM galgame_toolset WHERE user_id = ?",
 			"DELETE FROM topic_poll WHERE user_id = ?",
+			"DELETE FROM topic_lottery WHERE user_id = ?",
+			"DELETE FROM topic_draft WHERE user_id = ?",
+			"DELETE FROM galgame_collection WHERE user_id = ?",
+			"DELETE FROM galgame_quiz WHERE user_id = ?",
+			"DELETE FROM todo WHERE user_id = ?",
 		} {
 			if err := del(tx, q, userID); err != nil {
 				return err
@@ -105,29 +148,18 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			"DELETE FROM galgame_rating WHERE user_id = ?",
 			"DELETE FROM galgame_resource WHERE user_id = ?",
 			"DELETE FROM galgame_toolset_resource WHERE user_id = ?",
+			"DELETE FROM galgame_activity WHERE user_id = ?",
+			"DELETE FROM galgame_contributor WHERE user_id = ?",
+			"DELETE FROM user_permission_override WHERE user_id = ?",
 		} {
 			if err := del(tx, q, userID); err != nil {
 				return err
 			}
 		}
 
-		for _, it := range interactionDeletes {
-			var ids []int
-			if it.parentTable != "" {
-				if err := tx.Raw(
-					"SELECT DISTINCT "+it.parentCol+" FROM "+it.table+" WHERE user_id = ?", userID,
-				).Scan(&ids).Error; err != nil {
-					return err
-				}
-			}
-			if err := del(tx, "DELETE FROM "+it.table+" WHERE user_id = ?", userID); err != nil {
-				return err
-			}
-			if it.parentTable != "" {
-				if err := recount(tx, it.parentTable, it.countCol, it.table, it.parentCol, ids); err != nil {
-					return err
-				}
-			}
+		if err := del(tx, `UPDATE todo SET status = 0, claimed_user_id = NULL
+			WHERE claimed_user_id = ? AND status = 1`, userID); err != nil {
+			return err
 		}
 
 		for _, q := range []string{
@@ -142,6 +174,15 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			}
 		}
 		if len(affChatRooms) > 0 {
+			// A private room is a two-party object, so purging one party ends it.
+			// Deleting only the participant row left the counterparty looking at a
+			// thread whose peer resolved to nothing (rooms 1356 and 1737 survived
+			// user 7152 that way), and re-opening the DM would have collided with
+			// the unique index on chat_room.name.
+			if err := del(tx, "DELETE FROM chat_room WHERE id IN ? AND type = 'private'",
+				affChatRooms); err != nil {
+				return err
+			}
 			if err := del(tx, `UPDATE chat_room cr SET
 					last_message_content = lm.content,
 					last_message_time = lm.created,
@@ -183,22 +224,28 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 			}
 		}
 
-		if err := del(tx, "DELETE FROM kungal_user_state WHERE user_id = ?", userID); err != nil {
-			return err
+		for _, q := range []string{
+			"DELETE FROM feed_activity WHERE user_id = ?",
+			"DELETE FROM kungal_user_state WHERE user_id = ?",
+		} {
+			if err := del(tx, q, userID); err != nil {
+				return err
+			}
 		}
 
 		recounts := []struct {
-			parentTable, countCol, childTable, parentCol string
-			ids                                          []int
+			spec       recountSpec
+			childTable string
+			ids        []int
 		}{
-			{"topic", "reply_count", "topic_reply", "topic_id", affTopics},
-			{"topic", "comment_count", "topic_comment", "topic_id", affTopics},
-			{"topic_reply", "comment_count", "topic_comment", "topic_reply_id", affReplies},
-			{"galgame", "rating_count", "galgame_rating", "galgame_id", affGalgames},
-			{"galgame", "resource_count", "galgame_resource", "galgame_id", affGalgames},
+			{recountSpec{"topic", "reply_count", "topic_id", ""}, "topic_reply", affTopics},
+			{recountSpec{"topic", "comment_count", "topic_id", ""}, "topic_comment", affTopics},
+			{recountSpec{"topic_reply", "comment_count", "topic_reply_id", ""}, "topic_comment", affReplies},
+			{recountSpec{"galgame", "rating_count", "galgame_id", ""}, "galgame_rating", affGalgames},
+			{recountSpec{"galgame", "resource_count", "galgame_id", ""}, "galgame_resource", affGalgames},
 		}
 		for _, rc := range recounts {
-			if err := recount(tx, rc.parentTable, rc.countCol, rc.childTable, rc.parentCol, rc.ids); err != nil {
+			if err := recount(tx, rc.spec, rc.childTable, rc.ids); err != nil {
 				return err
 			}
 		}
@@ -209,44 +256,71 @@ func (r *PurgeRepository) PurgeUserContent(userID int) (dto.UserContentStats, er
 	return stats, err
 }
 
-type interactionDelete struct {
-	table       string
-	parentCol   string
+// recountSpec rebuilds one cached counter on parentTable from the rows the
+// child table still holds. agg defaults to COUNT(*).
+type recountSpec struct {
 	parentTable string
 	countCol    string
+	parentCol   string
+	agg         string
+}
+
+type interactionDelete struct {
+	table    string
+	recounts []recountSpec
 }
 
 var interactionDeletes = []interactionDelete{
-	{"topic_like", "topic_id", "topic", "like_count"},
-	{"topic_dislike", "topic_id", "topic", "dislike_count"},
-	{"topic_favorite", "topic_id", "topic", "favorite_count"},
-	{"topic_upvote", "topic_id", "topic", "upvote_count"},
-	{"topic_reply_like", "topic_reply_id", "topic_reply", "like_count"},
-	{"topic_reply_dislike", "topic_reply_id", "topic_reply", "dislike_count"},
-	{"topic_comment_like", "topic_comment_id", "", ""},
-	{"topic_poll_vote", "option_id", "topic_poll_option", "vote_count"},
-	{"galgame_like", "galgame_id", "galgame", "like_count"},
-	{"galgame_favorite", "galgame_id", "galgame", "favorite_count"},
-	{"galgame_post_like", "post_id", "", ""},
-	{"galgame_rating_like", "galgame_rating_id", "galgame_rating", "like_count"},
-	{"galgame_resource_like", "galgame_resource_id", "galgame_resource", "like_count"},
-	{"galgame_website_like", "website_id", "galgame_website", "like_count"},
-	{"galgame_website_favorite", "website_id", "galgame_website", "favorite_count"},
-	{"galgame_toolset_practicality", "toolset_id", "", ""},
-	{"galgame_toolset_contributor", "toolset_id", "", ""},
+	{table: "topic_like", recounts: []recountSpec{{"topic", "like_count", "topic_id", ""}}},
+	{table: "topic_dislike", recounts: []recountSpec{{"topic", "dislike_count", "topic_id", ""}}},
+	{table: "topic_favorite", recounts: []recountSpec{{"topic", "favorite_count", "topic_id", ""}}},
+	{table: "topic_upvote", recounts: []recountSpec{{"topic", "upvote_count", "topic_id", ""}}},
+	{table: "topic_reaction"},
+	{table: "topic_reply_reaction"},
+	{table: "topic_reply_like", recounts: []recountSpec{{"topic_reply", "like_count", "topic_reply_id", ""}}},
+	{table: "topic_reply_dislike", recounts: []recountSpec{{"topic_reply", "dislike_count", "topic_reply_id", ""}}},
+	{table: "topic_comment_like"},
+	{table: "topic_poll_vote", recounts: []recountSpec{{"topic_poll_option", "vote_count", "option_id", ""}}},
+	{table: "topic_lottery_entry", recounts: []recountSpec{{"topic_lottery", "entry_count", "lottery_id", ""}}},
+	{table: "galgame_like", recounts: []recountSpec{{"galgame", "like_count", "galgame_id", ""}}},
+	{table: "galgame_favorite"},
+	{table: "galgame_collection_item", recounts: []recountSpec{
+		{"galgame_collection", "item_count", "collection_id", ""},
+		{"galgame", "favorite_count", "galgame_id", "COUNT(DISTINCT user_id)"},
+	}},
+	{table: "galgame_collection_viewer"},
+	{table: "galgame_post_like"},
+	{table: "galgame_quiz_answer", recounts: []recountSpec{
+		{"galgame_quiz", "answer_count", "quiz_id", "COUNT(*) FILTER (WHERE role = 'answerer')"},
+		{"galgame_quiz", "correct_count", "quiz_id", "COUNT(*) FILTER (WHERE is_correct)"},
+		{"galgame_quiz", "quality_sum", "quiz_id", "COALESCE(SUM(quality_rating), 0)"},
+		{"galgame_quiz", "quality_count", "quiz_id", "COUNT(*) FILTER (WHERE quality_rating > 0)"},
+	}},
+	{table: "galgame_quiz_favorite", recounts: []recountSpec{{"galgame_quiz", "favorite_count", "quiz_id", ""}}},
+	{table: "galgame_rating_like", recounts: []recountSpec{{"galgame_rating", "like_count", "galgame_rating_id", ""}}},
+	{table: "galgame_resource_like", recounts: []recountSpec{{"galgame_resource", "like_count", "galgame_resource_id", ""}}},
+	{table: "galgame_website_like", recounts: []recountSpec{{"galgame_website", "like_count", "website_id", ""}}},
+	{table: "galgame_website_favorite", recounts: []recountSpec{{"galgame_website", "favorite_count", "website_id", ""}}},
+	{table: "galgame_toolset_practicality"},
+	{table: "galgame_toolset_contributor"},
 }
 
 func del(tx *gorm.DB, query string, args ...any) error {
 	return tx.Exec(query, args...).Error
 }
 
-func recount(tx *gorm.DB, parentTable, countCol, childTable, parentCol string, ids []int) error {
+func recount(tx *gorm.DB, spec recountSpec, childTable string, ids []int) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	agg := spec.agg
+	if agg == "" {
+		agg = "COUNT(*)"
+	}
 	sql := fmt.Sprintf(
-		"UPDATE %s SET %s = (SELECT COUNT(*) FROM %s WHERE %s.%s = %s.id) WHERE %s.id IN ?",
-		parentTable, countCol, childTable, childTable, parentCol, parentTable, parentTable,
+		"UPDATE %s SET %s = (SELECT %s FROM %s WHERE %s.%s = %s.id) WHERE %s.id IN ?",
+		spec.parentTable, spec.countCol, agg, childTable, childTable, spec.parentCol,
+		spec.parentTable, spec.parentTable,
 	)
 	return tx.Exec(sql, ids).Error
 }

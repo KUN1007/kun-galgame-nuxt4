@@ -13,6 +13,12 @@ const STAT_LABELS: { key: keyof AdminUserContentStats; label: string }[] = [
   { key: 'toolsets', label: '工具' },
   { key: 'toolset_resources', label: '工具资源' },
   { key: 'community_posts', label: '社区评论' },
+  { key: 'polls', label: '投票' },
+  { key: 'lotteries', label: '抽奖' },
+  { key: 'quizzes', label: '题目' },
+  { key: 'collections', label: '收藏夹' },
+  { key: 'drafts', label: '草稿' },
+  { key: 'todos', label: '待办' },
   { key: 'chat_messages', label: '私聊消息' },
   { key: 'messages', label: '通知消息' },
   { key: 'interactions', label: '互动' }
@@ -38,9 +44,12 @@ const handlePurge = async () => {
     return
   }
   const s = stats.value
+  const breakdown = STAT_LABELS.filter((item) => s[item.key])
+    .map((item) => `${item.label} ${s[item.key]}`)
+    .join(' / ')
   const confirmed = await useComponentMessageStore().alert(
     `确认清除用户 ${props.user.name} 的全部内容吗`,
-    `🚨 将永久删除该用户在本站的 ${s.total} 项内容: 话题 ${s.topics} / 回复 ${s.replies} / 话题评论 ${s.topic_comments} / 社区评论 ${s.community_posts} / 评分 ${s.ratings} / 资源 ${s.resources} / 网站 ${s.websites} / 工具 ${s.toolsets} / 私聊 ${s.chat_messages} / 通知 ${s.messages} / 互动 ${s.interactions} 等 (含其下全部嵌套回复与关联数据)。此操作不可撤销, 仅用于清理广告与 spam 账号, 请谨慎使用!`
+    `🚨 将永久删除该用户在本站的 ${s.total} 项内容: ${breakdown} (含其下全部嵌套回复、私聊会话与关联数据)。此操作不可撤销, 仅用于清理广告与 spam 账号, 请谨慎使用!`
   )
   if (!confirmed) {
     return

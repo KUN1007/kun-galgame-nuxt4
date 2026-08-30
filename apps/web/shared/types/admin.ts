@@ -12,6 +12,12 @@ export interface AdminUserContentStats {
   websites: number
   toolsets: number
   toolset_resources: number
+  polls: number
+  lotteries: number
+  drafts: number
+  quizzes: number
+  collections: number
+  todos: number
   chat_messages: number
   messages: number
   interactions: number
