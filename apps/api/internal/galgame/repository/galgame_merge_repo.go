@@ -75,16 +75,24 @@ func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 	}
 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).
-			Create(&model.GalgameLocal{ID: newGID}).Error; err != nil {
-			return err
-		}
-
 		var dead model.GalgameLocal
 		if err := tx.Where("id = ?", oldGID).First(&dead).Error; err != nil {
 			return err
 		}
 		counts.Comments = dead.CommentCount
+
+		// Seeded from the dead row, not from GORM's defaults. ResourceUpdateTime
+		// is autoCreateTime, so a survivor created here would be stamped now();
+		// the GREATEST below then keeps now() and a 2021 resource sorts to the
+		// top of 最新资源更新 as if it had just been posted. 11 of the first 30
+		// merges land on a gid with no local row, so this is the common path.
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.GalgameLocal{
+			ID:                 newGID,
+			CreatedAt:          dead.CreatedAt,
+			ResourceUpdateTime: dead.ResourceUpdateTime,
+		}).Error; err != nil {
+			return err
+		}
 
 		for _, table := range mergeMovableTables {
 			res := tx.Exec(fmt.Sprintf("UPDATE %s SET galgame_id = ? WHERE galgame_id = ?", table), newGID, oldGID)
@@ -108,6 +116,10 @@ func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 			return err
 		}
 
+		if err := preferEngagedRating(tx, oldGID, newGID); err != nil {
+			return err
+		}
+
 		for _, t := range mergeUniqueTables {
 			moved := tx.Exec(fmt.Sprintf(`
 				UPDATE %[1]s SET galgame_id = ? WHERE galgame_id = ?
@@ -119,6 +131,9 @@ func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 			}
 			counts.Moved += moved.RowsAffected
 
+			if err := archiveByGalgame(tx, t.table, oldGID, newGID); err != nil {
+				return err
+			}
 			dropped := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE galgame_id = ?", t.table), oldGID)
 			if dropped.Error != nil {
 				return dropped.Error
@@ -177,6 +192,57 @@ func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 		return MergeCounts{}, err
 	}
 	return counts, nil
+}
+
+// archiveByGalgame copies every row a drop is about to delete into
+// galgame_merge_discarded, so the fold never destroys something a user wrote.
+// galgame_rating carries its likes inline because galgame_rating_like cascades
+// off the rating and would vanish with it.
+// The rows to archive are always the dead game's, so oldGID is both the label
+// and the filter — an earlier revision took them as separate parameters and a
+// swapped call wrote every archive row with old and new the wrong way round,
+// which reads fine and finds nothing when someone tries to recover from it.
+func archiveByGalgame(tx *gorm.DB, table string, oldGID, newGID int) error {
+	if table == "galgame_rating" {
+		return archiveRatings(tx, "galgame_id = ?", oldGID, oldGID, newGID)
+	}
+	return tx.Exec(fmt.Sprintf(`
+		INSERT INTO galgame_merge_discarded (old_gid, new_gid, table_name, row)
+		SELECT ?, ?, ?, to_jsonb(t) FROM %s t WHERE t.galgame_id = ?`, table),
+		oldGID, newGID, table, oldGID).Error
+}
+
+func archiveRatings(tx *gorm.DB, where string, arg any, oldGID, newGID int) error {
+	return tx.Exec(fmt.Sprintf(`
+		INSERT INTO galgame_merge_discarded (old_gid, new_gid, table_name, row)
+		SELECT ?, ?, 'galgame_rating',
+		       to_jsonb(r) || jsonb_build_object('likes', COALESCE((
+		         SELECT jsonb_agg(to_jsonb(l)) FROM galgame_rating_like l
+		         WHERE l.galgame_rating_id = r.id), '[]'::jsonb))
+		FROM galgame_rating r WHERE %s`, where), oldGID, newGID, arg).Error
+}
+
+// A user who reviewed both copies keeps one review of the one game that is
+// left. Which one survives is not arbitrary: the drop below always favours the
+// survivor's row, so hand the slot to the dead game's review first when more
+// people liked and replied to it — otherwise merging silently demotes the
+// review readers actually engaged with.
+func preferEngagedRating(tx *gorm.DB, oldGID, newGID int) error {
+	var loser []int
+	if err := tx.Raw(`
+		SELECT s.id FROM galgame_rating s JOIN galgame_rating d ON d.user_id = s.user_id
+		WHERE s.galgame_id = ? AND d.galgame_id = ?
+		  AND (d.like_count + d.comment_count) > (s.like_count + s.comment_count)`,
+		newGID, oldGID).Scan(&loser).Error; err != nil {
+		return err
+	}
+	if len(loser) == 0 {
+		return nil
+	}
+	if err := archiveRatings(tx, "r.id IN ?", loser, oldGID, newGID); err != nil {
+		return err
+	}
+	return tx.Exec("DELETE FROM galgame_rating WHERE id IN ?", loser).Error
 }
 
 // comment_count is absent on purpose: it mirrors the community thread anchored

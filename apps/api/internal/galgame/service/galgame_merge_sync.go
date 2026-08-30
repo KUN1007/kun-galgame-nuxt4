@@ -272,9 +272,12 @@ func (s *GalgameMergeSync) fold(ctx context.Context, survivorWork map[int]int64)
 		s.galgameClient.ForgetGIDs([]int{oldGID})
 		s.unpark(ctx, oldGID)
 		folded++
-		slog.Info("galgame 已并入幸存条目",
-			"old_gid", oldGID, "new_gid", newGID, "work", work,
-			"moved", counts.Moved, "dropped", counts.Dropped)
+		fields := []any{"old_gid", oldGID, "new_gid", newGID, "work", work,
+			"moved", counts.Moved, "dropped", counts.Dropped}
+		if counts.Dropped > 0 {
+			fields = append(fields, "dropped_rows_archived_in", "galgame_merge_discarded")
+		}
+		slog.Info("galgame 已并入幸存条目", fields...)
 		// The comment thread is anchored site_game:<gid> inside infra's community
 		// service and does not move with the forum's rows. Nothing here can
 		// re-anchor it, so name it instead of losing it quietly.
