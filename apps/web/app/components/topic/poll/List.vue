@@ -47,6 +47,19 @@ const canViewResults = computed(() => {
   return false
 })
 
+const percentOf = (voteCount: number | null) =>
+  ((voteCount || 0) / (props.poll.vote_count || 1)) * 100
+
+const metaLine = computed(() => [
+  props.poll.min_choice === props.poll.max_choice
+    ? `必选 ${props.poll.max_choice} 项`
+    : `可选 ${props.poll.min_choice}-${props.poll.max_choice} 项`,
+  TOPIC_POLL_VISIBILITY_MAP[props.poll.result_visibility],
+  props.poll.can_change_vote ? '可修改投票' : '投出后不可修改',
+  props.poll.is_anonymous ? '匿名投票' : '实名投票',
+  props.poll.vote_count ? `共 ${props.poll.vote_count} 票` : ''
+])
+
 const handleOptionClick = (optionId: number) => {
   if (props.poll.type === 'single') {
     selectedOptions.value = [optionId]
@@ -87,62 +100,41 @@ const handleDelete = async () => {
     :is-transparent="false"
     content-class="space-y-3"
   >
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <KunIcon name="lucide:bar-chart-3" class="text-primary text-xl" />
-        <h3 class="text-lg font-bold">{{ poll.title }}</h3>
-      </div>
-
-      <div class="flex items-center gap-1">
-        <KunChip color="primary">
-          {{
-            poll.min_choice === poll.max_choice
-              ? `必选 ${poll.max_choice} 项`
-              : `可选 ${poll.min_choice}-${poll.max_choice} 项`
-          }}
-        </KunChip>
-
-        <KunChip color="secondary">
-          {{ TOPIC_POLL_VISIBILITY_MAP[poll.result_visibility] }}
-        </KunChip>
-
-        <KunChip :color="poll.can_change_vote ? 'success' : 'danger'">
-          {{ poll.can_change_vote ? '可修改投票' : '不可修改投票' }}
-        </KunChip>
-
-        <KunChip :color="isPollEnded ? 'default' : 'success'">
-          {{ isPollEnded ? '已结束' : '进行中' }}
-        </KunChip>
-      </div>
-    </div>
+    <TopicMiniappHeader
+      app-key="poll"
+      :title="poll.title"
+      :meta="metaLine"
+      :status="isPollEnded ? '已结束' : '进行中'"
+      :status-color="isPollEnded ? 'default' : 'success'"
+    />
 
     <p v-if="poll.description" class="text-default-500 text-sm">
       {{ poll.description }}
     </p>
 
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-2">
       <div
         v-for="option in poll.option"
         :key="option.id"
         :class="
           cn(
-            'relative overflow-hidden rounded-md border p-3 transition-colors',
-            !isPollEnded && 'hover:border-primary/50 cursor-pointer',
-            selectedOptions.includes(option.id) && 'border-primary'
+            'border-default-200 relative overflow-hidden rounded-lg border transition-colors',
+            !isPollEnded && 'hover:border-primary/60 cursor-pointer',
+            selectedOptions.includes(option.id) && 'border-primary bg-primary/5'
           )
         "
         @click="handleOptionClick(option.id)"
       >
         <div
           v-if="canViewResults"
-          class="bg-primary/20 absolute top-0 left-0 h-full rounded-md transition-all duration-500"
-          :style="{
-            width: `${((option.vote_count || 0) / (poll.vote_count || 1)) * 100}%`
-          }"
+          class="bg-primary/15 absolute inset-y-0 left-0 transition-all duration-500"
+          :style="{ width: `${percentOf(option.vote_count)}%` }"
         />
 
-        <div class="relative z-10 flex items-center justify-between gap-3">
-          <div class="flex flex-grow items-center gap-3">
+        <div
+          class="relative flex items-center justify-between gap-3 px-3 py-2.5"
+        >
+          <div class="flex min-w-0 items-center gap-3">
             <KunCheckBox
               v-if="poll.type === 'multiple'"
               color="primary"
@@ -162,7 +154,7 @@ const handleDelete = async () => {
               @change="handleOptionClick(option.id)"
             />
 
-            <span class="text-sm">{{ option.text }}</span>
+            <span class="truncate text-sm">{{ option.text }}</span>
             <KunIcon
               v-if="option.is_voted"
               name="lucide:check-circle-2"
@@ -172,95 +164,82 @@ const handleDelete = async () => {
 
           <div
             v-if="canViewResults"
-            class="flex shrink-0 items-center gap-2 text-sm"
+            class="flex shrink-0 items-baseline gap-2 tabular-nums"
           >
-            <span class="shrink-0 font-semibold">
+            <span class="text-default-500 text-xs">
               {{ option.vote_count || 0 }} 票
             </span>
-            <span class="text-default-500">
-              ({{
-                (
-                  ((option.vote_count || 0) / (poll.vote_count || 1)) *
-                  100
-                ).toFixed(1)
-              }}%)
+            <span class="w-14 text-right text-sm font-semibold">
+              {{ percentOf(option.vote_count).toFixed(1) }}%
             </span>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <span class="text-default-500 text-sm">
-        {{ poll.is_anonymous ? '本投票匿名' : '本投票非匿名' }}
+    <div
+      class="border-default-200 flex flex-wrap items-center justify-between gap-3 border-t pt-3"
+    >
+      <span v-if="!canViewResults" class="text-default-500 text-sm">
+        {{
+          poll.result_visibility === 'after_vote'
+            ? '投票后可以看到结果'
+            : '结束后才会公开结果'
+        }}
       </span>
+      <KunAvatarGroup
+        v-else-if="!poll.is_anonymous && poll.vote_count"
+        :users="poll.voters"
+        :total="poll.vote_count"
+      />
 
-      <div class="flex gap-2">
+      <div class="ml-auto flex items-center gap-2">
         <KunButton
           v-if="!isPollEnded && (!poll.has_voted || poll.can_change_vote)"
           color="primary"
+          size="sm"
           :loading="isLoading"
           :disabled="selectedOptions.length === 0"
           @click="handleVote"
         >
           {{ poll.has_voted ? '修改投票' : '投票' }}
         </KunButton>
-        <KunButton
-          v-if="!canViewResults && !isPollEnded"
-          variant="light"
-          @click="emits('refresh')"
-        >
-          投票后查看结果
-        </KunButton>
-      </div>
-    </div>
 
-    <div class="flex flex-wrap justify-between gap-3">
-      <KunAvatarGroup
-        v-if="!poll.is_anonymous && poll.vote_count"
-        :users="poll.voters"
-        :total="poll.vote_count"
-      >
-        <div class="text-default-500 text-sm" v-if="poll.is_anonymous">
-          {{ `${poll.vote_count} 人投票` }}
-        </div>
-      </KunAvatarGroup>
-
-      <div
-        v-if="canViewResults && isTopicAdmin"
-        class="border-t-default-200 flex items-center justify-end gap-1"
-      >
-        <KunTooltip text="查看投票日志">
-          <KunButton
-            variant="light"
-            size="lg"
-            :is-icon-only="true"
-            @click="isLogModalOpen = true"
-          >
-            <KunIcon name="lucide:history" />
-          </KunButton>
-        </KunTooltip>
-        <KunTooltip text="编辑投票">
-          <KunButton
-            variant="light"
-            size="lg"
-            :is-icon-only="true"
-            @click="emits('edit', poll)"
-          >
-            <KunIcon name="lucide:pencil" />
-          </KunButton>
-        </KunTooltip>
-        <KunTooltip text="删除投票">
-          <KunButton
-            variant="light"
-            color="danger"
-            size="lg"
-            :is-icon-only="true"
-            @click="handleDelete"
-          >
-            <KunIcon name="lucide:trash-2" />
-          </KunButton>
-        </KunTooltip>
+        <template v-if="canViewResults && isTopicAdmin">
+          <KunTooltip text="查看投票日志">
+            <KunButton
+              variant="light"
+              color="default"
+              size="sm"
+              :is-icon-only="true"
+              @click="isLogModalOpen = true"
+            >
+              <KunIcon name="lucide:history" />
+            </KunButton>
+          </KunTooltip>
+          <KunTooltip text="编辑投票">
+            <KunButton
+              variant="light"
+              color="default"
+              size="sm"
+              :is-icon-only="true"
+              @click="emits('edit', poll)"
+            >
+              <KunIcon name="lucide:pencil" />
+            </KunButton>
+          </KunTooltip>
+          <KunTooltip text="删除投票">
+            <KunButton
+              variant="light"
+              color="danger"
+              size="sm"
+              :is-icon-only="true"
+              @click="handleDelete"
+            >
+              <KunIcon name="lucide:trash-2" />
+            </KunButton>
+          </KunTooltip>
+        </template>
       </div>
     </div>
 

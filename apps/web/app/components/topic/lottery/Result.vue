@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useLottery } from '~/composables/topic/useLottery'
 import { KUN_LOTTERY_FULFILLMENT } from '~/constants/topic'
+import type { KunUIColor } from '@kungal/ui-core'
 
 const props = defineProps<{
   lottery: TopicLottery
@@ -29,6 +30,13 @@ const grouped = computed(() => {
 
 const isEmpty = computed(() => props.lottery.winners.length === 0)
 
+const FULFILLMENT_COLOR: Record<string, KunUIColor> = {
+  pending: 'warning',
+  shipped: 'primary',
+  received: 'success',
+  forfeited: 'default'
+}
+
 const myEntry = computed(() =>
   props.lottery.winners.find((w) => w.user.id === currentUserId)
 )
@@ -45,10 +53,10 @@ const advance = async (entryId: number, fulfillment: string) => {
 </script>
 
 <template>
-  <div class="border-default-200 space-y-3 rounded-md border p-3">
+  <div class="border-default-200 space-y-3 rounded-lg border p-3">
     <div class="flex items-center gap-2">
-      <KunIcon name="lucide:party-popper" class="text-primary" />
-      <span class="font-semibold">中奖名单</span>
+      <KunIcon name="lucide:party-popper" class="text-secondary-500" />
+      <span class="text-sm font-semibold">中奖名单</span>
     </div>
 
     <p v-if="isEmpty" class="text-default-500 text-sm">
@@ -56,24 +64,33 @@ const advance = async (entryId: number, fulfillment: string) => {
     </p>
 
     <div v-for="group in grouped" :key="group.prize.id" class="space-y-2">
-      <div class="text-default-500 text-sm">
+      <div class="text-default-500 text-xs">
         {{ group.prize.name }} · {{ group.winners.length }}/{{
           group.prize.slots
         }}
         名
       </div>
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap gap-2">
         <div
           v-for="winner in group.winners"
           :key="winner.entry_id"
-          class="flex items-center gap-2"
+          class="border-default-200 flex items-center gap-2 rounded-lg border py-1 pr-2 pl-1"
         >
           <KunAvatar :user="winner.user" size="sm" />
           <span class="text-sm">{{ winner.user.name }}</span>
-          <KunChip v-if="winner.reply_floor > 0" size="sm" color="secondary">
+          <KunChip
+            v-if="winner.reply_floor > 0"
+            size="sm"
+            variant="flat"
+            color="secondary"
+          >
             {{ winner.reply_floor }} 楼
           </KunChip>
-          <KunChip size="sm" color="default">
+          <KunChip
+            size="sm"
+            variant="flat"
+            :color="FULFILLMENT_COLOR[winner.fulfillment] ?? 'warning'"
+          >
             {{ KUN_LOTTERY_FULFILLMENT[winner.fulfillment] ?? '待发放' }}
           </KunChip>
           <KunButton
@@ -107,7 +124,11 @@ const advance = async (entryId: number, fulfillment: string) => {
         </p>
         <p v-else-if="lottery.my_claim_deadline">
           请在
-          <KunTime :time="lottery.my_claim_deadline" type="datetime" show-year />
+          <KunTime
+            :time="lottery.my_claim_deadline"
+            type="datetime"
+            show-year
+          />
           前领取兑换码, 逾期作废。
         </p>
         <div

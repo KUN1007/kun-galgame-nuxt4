@@ -80,7 +80,10 @@ const countdown = computed(() => {
 })
 
 const thresholdProgress = computed(() => {
-  if (props.lottery.draw_mode !== 'threshold' || !props.lottery.draw_threshold) {
+  if (
+    props.lottery.draw_mode !== 'threshold' ||
+    !props.lottery.draw_threshold
+  ) {
     return 0
   }
   return Math.min(
@@ -89,9 +92,31 @@ const thresholdProgress = computed(() => {
   )
 })
 
+const anyPrizeImage = computed(() =>
+  props.lottery.prizes.some((prize) => prize.image_url)
+)
+
+const isThresholdOpen = computed(
+  () => props.lottery.draw_mode === 'threshold' && isOpen.value
+)
+
 const myWin = computed(() =>
   props.lottery.my_prize_id > 0 ? props.lottery.my_prize_name : ''
 )
+
+const metaLine = computed(() => [
+  KUN_LOTTERY_ENTRY_MODE[props.lottery.entry_mode],
+  KUN_LOTTERY_DRAW_MODE[props.lottery.draw_mode],
+  isFloor.value
+    ? `中奖楼层 ${props.lottery.floor_rule}`
+    : `${props.lottery.entry_count} 人参与 / ${props.lottery.total_slots} 个名额`,
+  props.lottery.min_moemoepoint > 0
+    ? `门槛 ${props.lottery.min_moemoepoint} 萌萌点`
+    : '',
+  props.lottery.min_account_age_days > 0
+    ? `需注册满 ${props.lottery.min_account_age_days} 天`
+    : ''
+])
 
 const run = async (task: () => Promise<unknown>) => {
   isLoading.value = true
@@ -166,45 +191,43 @@ const handleClaim = async () => {
     :is-transparent="false"
     content-class="space-y-3"
   >
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <KunIcon name="lucide:gift" class="text-primary text-xl" />
-        <h3 class="text-lg font-bold">{{ lottery.title }}</h3>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-1">
-        <KunChip color="secondary">
-          {{ KUN_LOTTERY_ENTRY_MODE[lottery.entry_mode] }}
-        </KunChip>
-        <KunChip color="default">
-          {{ KUN_LOTTERY_DRAW_MODE[lottery.draw_mode] }}
-        </KunChip>
-        <KunChip :color="statusColor">
-          {{ KUN_LOTTERY_STATUS[lottery.status] }}
-        </KunChip>
-      </div>
-    </div>
+    <TopicMiniappHeader
+      app-key="lottery"
+      :title="lottery.title"
+      :meta="metaLine"
+      :status="KUN_LOTTERY_STATUS[lottery.status] ?? '进行中'"
+      :status-color="statusColor"
+    />
 
     <p v-if="lottery.description" class="text-default-500 text-sm">
       {{ lottery.description }}
     </p>
 
-    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div class="grid gap-2 sm:grid-cols-2">
       <div
         v-for="prize in lottery.prizes"
         :key="prize.id"
-        class="border-default-200 flex items-start gap-3 rounded-md border p-3"
+        class="border-default-200 flex items-start gap-3 rounded-lg border p-3"
       >
         <KunImage
           v-if="prize.image_url"
           :src="prize.image_url"
           :alt="prize.name"
-          class="size-16 shrink-0 rounded-md object-cover"
+          class="size-14 shrink-0 rounded-md object-cover"
         />
-        <div class="min-w-0 space-y-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="font-semibold">{{ prize.name }}</span>
-            <KunChip size="sm" color="primary">{{ prize.slots }} 名</KunChip>
+        <span
+          v-else-if="anyPrizeImage"
+          class="bg-default-100 text-default-400 flex size-14 shrink-0 items-center justify-center rounded-md"
+        >
+          <KunIcon name="lucide:package" class="text-xl text-inherit" />
+        </span>
+
+        <div class="min-w-0 flex-1">
+          <div class="flex items-start justify-between gap-2">
+            <span class="min-w-0 font-medium">{{ prize.name }}</span>
+            <KunChip size="sm" variant="flat" color="secondary">
+              {{ prize.slots }} 名
+            </KunChip>
           </div>
           <p class="text-default-500 text-xs">
             {{ KUN_LOTTERY_DELIVERY[prize.delivery] }}
@@ -212,53 +235,65 @@ const handleClaim = async () => {
               · {{ prize.point_amount }} 萌萌点
             </template>
           </p>
-          <p v-if="prize.description" class="text-default-500 text-sm">
+          <p v-if="prize.description" class="text-default-500 mt-1 text-xs">
             {{ prize.description }}
           </p>
         </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-      <span v-if="!isFloor" class="text-default-500">
-        {{ lottery.entry_count }} 人参与 · 共 {{ lottery.total_slots }} 个名额
-      </span>
-      <span v-else class="text-default-500">
-        中奖楼层: {{ lottery.floor_rule }}
-      </span>
-      <span v-if="countdown" class="text-primary font-medium">
-        {{ countdown }}
-      </span>
-      <span v-if="lottery.min_moemoepoint > 0" class="text-default-500">
-        门槛 {{ lottery.min_moemoepoint }} 萌萌点
-      </span>
-      <span v-if="lottery.min_account_age_days > 0" class="text-default-500">
-        需注册满 {{ lottery.min_account_age_days }} 天
-      </span>
+    <div
+      v-if="countdown || isThresholdOpen"
+      :class="
+        cn(
+          'bg-default-100 space-y-2 rounded-lg px-3 py-2',
+          !isThresholdOpen && 'w-fit'
+        )
+      "
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span
+          v-if="countdown"
+          class="text-warning-600 dark:text-warning-400 flex items-center gap-1 font-medium"
+        >
+          <KunIcon name="lucide:timer" class="text-inherit" />
+          {{ countdown }}
+        </span>
+        <span v-if="isThresholdOpen" class="text-default-500 ml-auto text-xs">
+          满 {{ lottery.draw_threshold }} 人开奖, 已有
+          {{ lottery.entry_count }} 人
+        </span>
+      </div>
+
+      <KunProgress
+        v-if="isThresholdOpen"
+        :value="thresholdProgress"
+        color="secondary"
+        size="sm"
+        :aria-label="`满 ${lottery.draw_threshold} 人开奖`"
+      />
     </div>
 
-    <KunProgress
-      v-if="lottery.draw_mode === 'threshold' && isOpen"
-      :value="thresholdProgress"
-      color="primary"
-      size="sm"
-      :aria-label="`满 ${lottery.draw_threshold} 人开奖`"
-    />
-
-    <div v-if="lottery.seed_hash" class="text-default-500 space-y-1 text-xs">
-      <button
-        type="button"
-        class="hover:text-primary flex items-center gap-1"
+    <div v-if="lottery.seed_hash" class="text-default-500 space-y-2 text-xs">
+      <KunButton
+        size="sm"
+        variant="light"
+        color="default"
+        :aria-expanded="isFairnessOpen"
         @click="isFairnessOpen = !isFairnessOpen"
       >
-        <KunIcon name="lucide:shield-check" />
-        <span>公平性凭据</span>
+        <KunIcon name="lucide:shield-check" class="text-inherit" />
+        公平性凭据
         <KunIcon
           :name="isFairnessOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'"
+          class="text-inherit"
         />
-      </button>
+      </KunButton>
 
-      <div v-if="isFairnessOpen" class="space-y-1">
+      <div
+        v-if="isFairnessOpen"
+        class="border-default-200 space-y-1 rounded-lg border p-3"
+      >
         <p>
           随机数承诺 (创建时公示):
           <code class="break-all">{{ lottery.seed_hash }}</code>
@@ -282,7 +317,9 @@ const handleClaim = async () => {
       @refresh="emits('refresh')"
     />
 
-    <div class="flex flex-wrap items-center justify-between gap-2">
+    <div
+      class="border-default-200 flex flex-wrap items-center justify-between gap-2 border-t pt-3"
+    >
       <div class="flex flex-wrap items-center gap-2">
         <KunButton
           v-if="lottery.can_enter"
@@ -339,7 +376,8 @@ const handleClaim = async () => {
         <KunTooltip v-if="isOpen" text="立即开奖">
           <KunButton
             variant="light"
-            size="lg"
+            color="default"
+            size="sm"
             :is-icon-only="true"
             :loading="isLoading"
             @click="handleDraw"
@@ -350,7 +388,8 @@ const handleClaim = async () => {
         <KunTooltip v-if="isOpen" text="编辑抽奖">
           <KunButton
             variant="light"
-            size="lg"
+            color="default"
+            size="sm"
             :is-icon-only="true"
             @click="emits('edit', lottery)"
           >
@@ -361,7 +400,7 @@ const handleClaim = async () => {
           <KunButton
             variant="light"
             color="warning"
-            size="lg"
+            size="sm"
             :is-icon-only="true"
             @click="handleCancel"
           >
@@ -372,7 +411,7 @@ const handleClaim = async () => {
           <KunButton
             variant="light"
             color="danger"
-            size="lg"
+            size="sm"
             :is-icon-only="true"
             @click="handleDelete"
           >

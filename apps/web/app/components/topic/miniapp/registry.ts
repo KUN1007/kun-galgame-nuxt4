@@ -5,6 +5,7 @@ export type TopicMiniAppKey = 'poll' | 'lottery'
 export interface TopicMiniApp {
   key: TopicMiniAppKey
   label: string
+  tagline: string
   icon: string
   badge: string
   badgeColor: KunUIColor
@@ -18,6 +19,7 @@ export const TOPIC_MINI_APPS: TopicMiniApp[] = [
   {
     key: 'poll',
     label: '投票',
+    tagline: '让读者在几个选项里表态, 结果实时统计',
     icon: 'lucide:bar-chart-3',
     badge: '投票话题',
     badgeColor: 'primary',
@@ -30,6 +32,7 @@ export const TOPIC_MINI_APPS: TopicMiniApp[] = [
   {
     key: 'lottery',
     label: '抽奖',
+    tagline: '送码、送周边或送萌萌点, 由系统产生中奖名单',
     icon: 'lucide:gift',
     badge: '抽奖话题',
     badgeColor: 'secondary',
