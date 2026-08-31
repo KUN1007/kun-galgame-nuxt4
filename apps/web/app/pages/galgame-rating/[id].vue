@@ -92,10 +92,7 @@ const jsonLd = computed<WithContext<Review> | null>(() => {
     publisher: publisherSchema,
     itemReviewed: itemReviewedSchema,
     reviewRating: reviewRatingSchema,
-    reviewBody: truncateRunes(
-      markdownToText(rating.short_summary || ''),
-      250
-    ).replace(/\\|\n/g, ''),
+    reviewBody: truncateRunes(markdownToText(rating.short_summary || ''), 250),
     interactionStatistic: [
       {
         '@type': 'InteractionCounter',
@@ -137,7 +134,7 @@ if (data.value) {
         ? markdownToText(data.value.short_summary)
         : `${data.value.user.name} 对 ${titleBase} 的评分 ${data.value.overall}/10`,
       175
-    ).replace(/\\|\n/g, '')
+    )
 
     useKunSeoMeta({
       title,
