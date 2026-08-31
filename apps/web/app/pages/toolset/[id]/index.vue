@@ -108,10 +108,7 @@ if (toolset) {
       commentCount: toolset.comment_count,
       comment: (toolset.comment_preview || []).map((c) => ({
         '@type': 'Comment',
-        text: truncateRunes((c.content as string) ?? '', 280).replace(
-          /\\|\n/g,
-          ''
-        ),
+        text: truncateRunes(markdownToText((c.content as string) ?? ''), 280),
         datePublished: new Date(c.created).toISOString(),
         author: { '@type': 'Person', name: c.user.name } as Person
       }))
