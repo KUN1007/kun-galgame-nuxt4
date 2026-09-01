@@ -2,9 +2,9 @@
 --
 -- Pre-001 schema baseline — the schema as it stood when the Go backend
 -- took over from the legacy Nuxt + Nitro + Prisma stack. Captured by
--- `pg_restore -s` from kun-galgame-infra/scripts/kungalgame_backup.dump
+-- `pg_restore -s` from nextmoe-infra/scripts/kungalgame_backup.dump
 -- (the production snapshot used by the cross-project migration
--- runbook, see kun-galgame-infra/scripts/reset_all.sh).
+-- runbook, see nextmoe-infra/scripts/reset_all.sh).
 --
 -- After this baseline applies, migrations 001-011 layer on the changes
 -- Go has made since the cut-over (new tables, jsonb conversions, count
@@ -35,7 +35,7 @@
 -- Regeneration:
 --   Re-extract from the same dump:
 --     pg_restore -s --no-owner --no-acl --no-comments \
---       -f /tmp/raw.sql kun-galgame-infra/scripts/kungalgame_backup.dump
+--       -f /tmp/raw.sql nextmoe-infra/scripts/kungalgame_backup.dump
 --   Then run the sanitizer (Python script committed alongside this
 --   migration in the original PR description).
 --
