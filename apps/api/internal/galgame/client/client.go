@@ -12,6 +12,8 @@ import (
 	"kun-galgame-api/internal/galgame/dto"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/namepref"
+
+	"github.com/redis/go-redis/v9"
 )
 
 const briefCacheTTL = 2 * time.Minute
@@ -85,6 +87,7 @@ type GalgameClient struct {
 	httpClient   *http.Client
 	imageCDNBase string
 	imageMeta    ImageMetaResolver
+	rdb          *redis.Client
 
 	briefMu     sync.RWMutex
 	briefCache  map[batchCacheKey]batchCacheEntry[GalgameBrief]
@@ -134,6 +137,11 @@ func New(baseURL, apiKey, imageCDNBase string) *GalgameClient {
 		labelLinkCache: map[batchCacheKey]batchCacheEntry[string]{},
 		tagSexualCache: map[batchCacheKey]batchCacheEntry[bool]{},
 	}
+}
+
+func (c *GalgameClient) WithRedis(rdb *redis.Client) *GalgameClient {
+	c.rdb = rdb
+	return c
 }
 
 // CatalogGet reads a catalog face and returns the record with v2's shapes
