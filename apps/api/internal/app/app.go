@@ -178,7 +178,7 @@ func New(cfg *config.Config) *App {
 		cfg.NextMoeAPI.BaseURL,
 		cfg.NextMoeAPI.APIKey,
 		cfg.NextMoeAPI.ImageCDNBase,
-	)
+	).WithRedis(rdb)
 
 	newsCli := newsclient.New(newsclient.Config{
 		BaseURL: cfg.NewsAPI.BaseURL,

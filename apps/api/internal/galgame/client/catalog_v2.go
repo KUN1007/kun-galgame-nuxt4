@@ -217,6 +217,27 @@ func decodeOffsetCursor(cursor string) (int, bool) {
 func (c *GalgameClient) doV2(ctx context.Context, method, path string, query url.Values, body any) (int, []byte, *errors.AppError) {
 	v2Path := v2CatalogPath(path)
 	q := v2CatalogQuery(path, query)
+	var (
+		status   int
+		respBody []byte
+		appErr   *errors.AppError
+	)
+	if method == http.MethodGet {
+		status, respBody, appErr = c.getV2(ctx, v2Path, q)
+	} else {
+		status, respBody, appErr = c.doV2HTTP(ctx, method, v2Path, q, body)
+	}
+	if appErr != nil {
+		return status, respBody, appErr
+	}
+	out := rewriteV2JSON(respBody, c.imageCDNBase)
+	if method == http.MethodGet && status >= 200 && status < 300 {
+		out = c.spliceV2Subface(ctx, path, v2Path, query, out)
+	}
+	return status, out, nil
+}
+
+func (c *GalgameClient) doV2HTTP(ctx context.Context, method, v2Path string, q url.Values, body any) (int, []byte, *errors.AppError) {
 	reqURL := c.origin + v2Path
 	if len(q) > 0 {
 		reqURL += "?" + q.Encode()
@@ -250,11 +271,7 @@ func (c *GalgameClient) doV2(ctx context.Context, method, path string, query url
 	if err != nil {
 		return resp.StatusCode, nil, errors.ErrInternal("读取 Galgame 响应失败")
 	}
-	out := rewriteV2JSON(respBody, c.imageCDNBase)
-	if method == http.MethodGet && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		out = c.spliceV2Subface(ctx, path, v2Path, query, out)
-	}
-	return resp.StatusCode, out, nil
+	return resp.StatusCode, respBody, nil
 }
 
 // v2 moved the character's works and the credit name's credits off their detail
@@ -321,30 +338,12 @@ func (c *GalgameClient) spliceV2Subface(
 }
 
 func (c *GalgameClient) getV2Raw(ctx context.Context, v2Path string, q url.Values) ([]byte, *errors.AppError) {
-	reqURL := c.origin + v2Path
-	if len(q) > 0 {
-		reqURL += "?" + q.Encode()
+	status, body, appErr := c.getV2(ctx, v2Path, q)
+	if appErr != nil {
+		return nil, appErr
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, errors.ErrInternal("创建请求失败")
-	}
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		slog.Error("Galgame 服务请求失败 (传输层)",
-			"method", req.Method, "url", req.URL.String(), "error", err)
-		return nil, errors.ErrInternal(fmt.Sprintf("Galgame 服务不可达: %v", err))
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.ErrInternal("读取 Galgame 响应失败")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, errors.New(errors.CodeBiz, "Galgame 资源不存在", resp.StatusCode)
+	if status < 200 || status >= 300 {
+		return nil, errors.New(errors.CodeBiz, "Galgame 资源不存在", status)
 	}
 	return rewriteV2JSON(body, c.imageCDNBase), nil
 }
