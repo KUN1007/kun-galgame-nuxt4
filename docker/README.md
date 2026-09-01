@@ -4,9 +4,9 @@ Container build + compose for **kungal** (`kun-galgame-forum`): the Go Fiber API
 (`apps/api`) and the Nuxt 4 SSR site (`apps/web`).
 
 kungal is **not** the infra. Postgres / Redis (and the OAuth, image, and
-wiki services) are owned by **kun-galgame-infra** and shared. kungal ships only its
+wiki services) are owned by **nextmoe-infra** and shared. kungal ships only its
 own `api` + `web`; its `docker-compose.yml` joins infra's external network
-(`kun-galgame-infra_default`), so **kun-galgame-infra must be running first** — both
+(`kun-galgame-infra_default`), so **nextmoe-infra must be running first** — both
 locally and in production. (Same shape as moyu — no self-contained override.)
 
 ## Images
@@ -54,13 +54,13 @@ Dev sets a single `API_BASE_URL` for both; in a container that breaks SSR. The
 
 ## Run — local (against infra)
 
-kungal has no DB of its own; bring up **kun-galgame-infra** first (it owns
+kungal has no DB of its own; bring up **nextmoe-infra** first (it owns
 Postgres / Redis and creates the `kun-galgame-infra_default` network), then start
 kungal on that shared network — same flow as moyu.
 
 ```bash
 # 1) infra up first (creates the network + Postgres/Redis) — in the infra repo:
-( cd ../kun-galgame-infra && docker compose up -d postgres redis )
+( cd ../nextmoe-infra && docker compose up -d postgres redis )
 
 # 2) kungal on the shared network:
 C="docker compose"

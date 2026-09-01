@@ -38,7 +38,7 @@
 
 ## 架構
 
-本倉庫是包含 Go API 與 Nuxt 前端的 **pnpm workspace monorepo**，也是 [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra) 的下游應用程式。Infra 是鯤生態的身分與共用服務中樞。
+本倉庫是包含 Go API 與 Nuxt 前端的 **pnpm workspace monorepo**，也是 [`nextmoe-infra`](https://github.com/next-moe/nextmoe-infra) 的下游應用程式。Infra 是鯤生態的身分與共用服務中樞。
 
 | 套件       | 職責                                                                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -101,12 +101,12 @@
 
 ## 快速開始
 
-**前置需求：** 帶有 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL、Redis 與 Meilisearch。完整本地功能還需要 `kun-galgame-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 與 Trust 服務。
+**前置需求：** 帶有 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL、Redis 與 Meilisearch。完整本地功能還需要 `nextmoe-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 與 Trust 服務。
 
 先啟動本地共用平台：
 
 ```bash
-cd /path/to/kun-galgame-infra
+cd /path/to/nextmoe-infra
 docker compose -f docker-compose.dev.yml --profile full up -d
 # 選用：以形狀接近真實資料、經過去識別化的內容重新整理本地資料庫。
 ./scripts/refresh-dev-db.sh
@@ -128,7 +128,7 @@ pnpm migrate
 pnpm dev
 ```
 
-倉庫內的環境變數範例已指向本地 infra stack。服務 profile、資料庫重新整理與本地憑據請參閱 [infra 開發環境指南](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md)。跨倉庫身分遷移另有順序要求，詳見 [docs/migration/user/README.md](../migration/user/README.md)。
+倉庫內的環境變數範例已指向本地 infra stack。服務 profile、資料庫重新整理與本地憑據請參閱 [infra 開發環境指南](https://github.com/next-moe/nextmoe-infra/blob/main/docs/dev-environment.md)。跨倉庫身分遷移另有順序要求，詳見 [docs/migration/user/README.md](../migration/user/README.md)。
 
 Infra 網路可用後，也可以透過容器執行論壇：
 
@@ -158,7 +158,7 @@ docker compose up -d kungal-api web
 
 ## 開發邊界
 
-- `docs/oauth/`、`docs/image_service/` 與 `docs/artifact/` 是生成的唯讀契約鏡像。應在 `kun-galgame-infra` 修改來源文件，再透過 `kungal-docs` 同步。
+- `docs/oauth/`、`docs/image_service/` 與 `docs/artifact/` 是生成的唯讀契約鏡像。應在 `nextmoe-infra` 修改來源文件，再透過 `kungal-docs` 同步。
 - 資料庫 schema 變更必須在 `apps/api/migrations/` 中新增編號 migration；API 啟動時不會執行 GORM AutoMigrate。
 - 前端開發應優先使用 KunUI 元件，而不是建立本地替代品。KunUI 是上游套件，不在本倉庫內修改。
 - 前後端回應結構必須保持一致。Go API 使用穩定的 `{ code, message, data }` 信封。

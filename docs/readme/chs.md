@@ -38,7 +38,7 @@
 
 ## 架构
 
-本仓库是包含 Go API 与 Nuxt 前端的 **pnpm workspace monorepo**，也是 [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra) 的下游应用。Infra 是鲲生态的身份与共享服务中枢。
+本仓库是包含 Go API 与 Nuxt 前端的 **pnpm workspace monorepo**，也是 [`nextmoe-infra`](https://github.com/next-moe/nextmoe-infra) 的下游应用。Infra 是鲲生态的身份与共享服务中枢。
 
 | 包         | 职责                                                                                                                               |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,12 +101,12 @@
 
 ## 快速开始
 
-**前置依赖：** 带 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL、Redis 与 Meilisearch。完整本地功能还需要 `kun-galgame-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 与 Trust 服务。
+**前置依赖：** 带 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL、Redis 与 Meilisearch。完整本地功能还需要 `nextmoe-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 与 Trust 服务。
 
 先启动本地共享平台：
 
 ```bash
-cd /path/to/kun-galgame-infra
+cd /path/to/nextmoe-infra
 docker compose -f docker-compose.dev.yml --profile full up -d
 # 可选：使用形状接近真实数据、经过脱敏的内容刷新本地数据库。
 ./scripts/refresh-dev-db.sh
@@ -128,7 +128,7 @@ pnpm migrate
 pnpm dev
 ```
 
-仓库内的环境变量示例已经指向本地 infra 栈。服务 profile、数据库刷新与本地凭据参见 [infra 开发环境指南](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md)。跨仓库身份迁移还有额外的顺序要求，详见 [docs/migration/user/README.md](../migration/user/README.md)。
+仓库内的环境变量示例已经指向本地 infra 栈。服务 profile、数据库刷新与本地凭据参见 [infra 开发环境指南](https://github.com/next-moe/nextmoe-infra/blob/main/docs/dev-environment.md)。跨仓库身份迁移还有额外的顺序要求，详见 [docs/migration/user/README.md](../migration/user/README.md)。
 
 Infra 网络可用后，也可以用容器运行论坛：
 
@@ -158,7 +158,7 @@ docker compose up -d kungal-api web
 
 ## 开发边界
 
-- `docs/oauth/`、`docs/image_service/` 与 `docs/artifact/` 是生成的只读契约镜像。应在 `kun-galgame-infra` 修改源文档，再通过 `kungal-docs` 同步。
+- `docs/oauth/`、`docs/image_service/` 与 `docs/artifact/` 是生成的只读契约镜像。应在 `nextmoe-infra` 修改源文档，再通过 `kungal-docs` 同步。
 - 数据库 schema 变更必须在 `apps/api/migrations/` 中增加编号 migration；API 启动时不会运行 GORM AutoMigrate。
 - 前端开发应优先使用 KunUI 组件，而不是创建本地替代品。KunUI 是上游包，不在本仓库内修改。
 - 前后端响应结构必须保持一致。Go API 使用稳定的 `{ code, message, data }` 信封。

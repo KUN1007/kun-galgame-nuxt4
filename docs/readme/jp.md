@@ -38,7 +38,7 @@
 
 ## アーキテクチャ
 
-本リポジトリは Go API と Nuxt フロントエンドを収めた **pnpm workspace モノレポ**です。KUN エコシステムの ID・共通サービス基盤である [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra) の下流アプリケーションでもあります。
+本リポジトリは Go API と Nuxt フロントエンドを収めた **pnpm workspace モノレポ**です。KUN エコシステムの ID・共通サービス基盤である [`nextmoe-infra`](https://github.com/next-moe/nextmoe-infra) の下流アプリケーションでもあります。
 
 | パッケージ | 役割                                                                                                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,12 +101,12 @@
 
 ## はじめに
 
-**前提条件：** Corepack 付き Node.js 24+、Go 1.26+、PostgreSQL、Redis、Meilisearch。ローカルですべての機能を使うには、`kun-galgame-infra` の OAuth、Catalog、Image、Artifact、Community、Trust サービスも必要です。
+**前提条件：** Corepack 付き Node.js 24+、Go 1.26+、PostgreSQL、Redis、Meilisearch。ローカルですべての機能を使うには、`nextmoe-infra` の OAuth、Catalog、Image、Artifact、Community、Trust サービスも必要です。
 
 最初にローカル共通基盤を起動します。
 
 ```bash
-cd /path/to/kun-galgame-infra
+cd /path/to/nextmoe-infra
 docker compose -f docker-compose.dev.yml --profile full up -d
 # 任意：本番に近い形で匿名化されたデータを使い、ローカル DB を更新します。
 ./scripts/refresh-dev-db.sh
@@ -128,7 +128,7 @@ pnpm migrate
 pnpm dev
 ```
 
-コミット済みの環境変数サンプルはローカル infra stack を参照します。サービス profile、データベース更新、ローカル認証情報については [infra 開発環境ガイド](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md) を参照してください。リポジトリ横断の ID migration には追加の順序要件があります。詳しくは [docs/migration/user/README.md](../migration/user/README.md) を参照してください。
+コミット済みの環境変数サンプルはローカル infra stack を参照します。サービス profile、データベース更新、ローカル認証情報については [infra 開発環境ガイド](https://github.com/next-moe/nextmoe-infra/blob/main/docs/dev-environment.md) を参照してください。リポジトリ横断の ID migration には追加の順序要件があります。詳しくは [docs/migration/user/README.md](../migration/user/README.md) を参照してください。
 
 Infra のネットワークが利用可能になった後、フォーラムをコンテナで実行することもできます。
 
@@ -158,7 +158,7 @@ docker compose up -d kungal-api web
 
 ## 開発上の境界
 
-- `docs/oauth/`、`docs/image_service/`、`docs/artifact/` は生成された読み取り専用の契約ミラーです。原本は `kun-galgame-infra` で変更し、`kungal-docs` を通じて同期します。
+- `docs/oauth/`、`docs/image_service/`、`docs/artifact/` は生成された読み取り専用の契約ミラーです。原本は `nextmoe-infra` で変更し、`kungal-docs` を通じて同期します。
 - データベース schema の変更には `apps/api/migrations/` の番号付き migration が必要です。API 起動時に GORM AutoMigrate は実行されません。
 - フロントエンドではローカル代替コンポーネントを作る前に KunUI を使用してください。KunUI は上流パッケージであり、本リポジトリでは変更しません。
 - フロントエンドとバックエンドのレスポンス構造を一致させてください。Go API は安定した `{ code, message, data }` envelope を返します。

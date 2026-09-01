@@ -1,7 +1,7 @@
 # kungal (kun-galgame-forum) — forum site (Go Fiber API + Nuxt 4 SSR).
 #
 # Stateless api + web only. The backing services (Postgres / Redis) and the
-# upstreams (oauth / galgame-wiki / image) are OWNED BY the kun-galgame-infra
+# upstreams (oauth / galgame-wiki / image) are OWNED BY the nextmoe-infra
 # stack; kungal connects to them by service name on its network. So this file
 # does NOT define postgres/redis — bring infra up first (it creates the network),
 # then run here. Same shape as moyu's compose. See docker/README.md.
@@ -34,7 +34,7 @@ services:
     image: kungal/api
     env_file: [./docker/api.env]
     ports: ["15012:2334"]
-    # No depends_on on postgres/redis: they live in the kun-galgame-infra compose
+    # No depends_on on postgres/redis: they live in the nextmoe-infra compose
     # (a separate project), not here — cross-project depends_on isn't possible.
     # `restart: unless-stopped` reconnects once the infra stack is up.
     healthcheck:

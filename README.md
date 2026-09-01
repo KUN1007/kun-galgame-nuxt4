@@ -38,7 +38,7 @@ For more information, visit [About KUN Visual Novel](https://www.kungal.com/kung
 
 ## Architecture
 
-This repository is a **pnpm workspace monorepo** containing a Go API and a Nuxt frontend. It is a downstream application of [`kun-galgame-infra`](https://github.com/KunMoe/kun-galgame-infra), the identity and shared-service hub for the KUN ecosystem.
+This repository is a **pnpm workspace monorepo** containing a Go API and a Nuxt frontend. It is a downstream application of [`nextmoe-infra`](https://github.com/next-moe/nextmoe-infra), the identity and shared-service hub for the KUN ecosystem.
 
 | Package    | Responsibility                                                                                                                                                                         |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,12 +101,12 @@ The retired Galgame Wiki family is not a contract for new work. Some compatibili
 
 ## Getting Started
 
-**Prerequisites:** Node.js 24+ with Corepack, Go 1.26+, PostgreSQL, Redis, and Meilisearch. Full local functionality also requires the OAuth, Catalog, Image, Artifact, Community, and Trust services from `kun-galgame-infra`.
+**Prerequisites:** Node.js 24+ with Corepack, Go 1.26+, PostgreSQL, Redis, and Meilisearch. Full local functionality also requires the OAuth, Catalog, Image, Artifact, Community, and Trust services from `nextmoe-infra`.
 
 Start the local shared platform first:
 
 ```bash
-cd /path/to/kun-galgame-infra
+cd /path/to/nextmoe-infra
 docker compose -f docker-compose.dev.yml --profile full up -d
 # Optional: refresh the local databases with real-shaped, desensitized data.
 ./scripts/refresh-dev-db.sh
@@ -128,7 +128,7 @@ pnpm migrate
 pnpm dev
 ```
 
-The checked-in environment examples target the local infra stack. See the [infra development-environment guide](https://github.com/KunMoe/kun-galgame-infra/blob/main/docs/dev-environment.md) for service profiles, database refreshes, and local credentials. Cross-repository identity migrations have additional ordering requirements documented in [docs/migration/user/README.md](docs/migration/user/README.md).
+The checked-in environment examples target the local infra stack. See the [infra development-environment guide](https://github.com/next-moe/nextmoe-infra/blob/main/docs/dev-environment.md) for service profiles, database refreshes, and local credentials. Cross-repository identity migrations have additional ordering requirements documented in [docs/migration/user/README.md](docs/migration/user/README.md).
 
 To run the forum in containers after the infra network is available:
 
@@ -158,7 +158,7 @@ See [docker/README.md](docker/README.md) for the complete container and deployme
 
 ## Development Boundaries
 
-- Contract mirrors under `docs/oauth/`, `docs/image_service/`, and `docs/artifact/` are generated and read-only. Change their sources in `kun-galgame-infra`, then synchronize them through `kungal-docs`.
+- Contract mirrors under `docs/oauth/`, `docs/image_service/`, and `docs/artifact/` are generated and read-only. Change their sources in `nextmoe-infra`, then synchronize them through `kungal-docs`.
 - Database schema changes require a numbered migration in `apps/api/migrations/`; the API never runs GORM AutoMigrate at startup.
 - Frontend work should use KunUI components before introducing local replacements. KunUI itself is an upstream package and is not modified in this repository.
 - Keep frontend and backend response shapes aligned. The Go API returns a stable `{ code, message, data }` envelope.
