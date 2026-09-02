@@ -49,6 +49,7 @@
 | 11 | [roles.md](./11-roles.md) | ⚖️ **角色与能力语义（权威定义，Tier A）**：全站五角色 `user`/`creator`/`moderator`/`admin`/`ren` 的唯一权威来源。`roles` claim = 角色名集合（普通用户为空数组，`user` 隐式）；管理轴逐级包含 `moderator ⊂ admin ⊂ ren`，`creator` 为正交的「直接发布」能力；**下游必须遵守的 MUST 规则** + 授予矩阵 + 当前 kungal/moyu 对 `ren` 的合规差距（必须整改）|
 | 12 | [site-roles.md](./12-site-roles.md) | 🧩 **站点域角色（site-scoped roles，权威定义，Tier A）**：让账号**只在某一个站点**持职（如「letmoe 的 moderator」），是 11 五角色契约的**加法扩展**（不改其语义）。`site_roles` claim = 按签发 client 站点定界的扁平角色名数组（access token / userinfo / `/users/batch` 三处出现）；下游**并入**既有角色集喂能力函数；名策略禁 `user`/`admin`/`ren`（安全不变量）+ 允许自定义捆名；授予/撤销仅 OAuth 后台（`admin`/`ren`）|
 | 13 | [standard-wire-migration.md](./13-standard-wire-migration.md) | 🚨 **协议端点线格式标准化迁移指南（第三方必读）**：`/oauth/{token,userinfo,revoke}` 的响应从自家 `{code,message,data}` 信封改为 RFC 6749 / RFC 6750 标准裸 JSON。含前后对照、**零停机双格式兼容读取器**（TS / Go / Kotlin 示例）、可离线自测的 fixture，以及三个必须做对的错误判定（`invalid_token` 视为凭据已死、只有 5xx 与未知错误算瞬态、封禁是 HTTP 403）|
+| 14 | [settings.md](./14-settings.md) | **平台配置下发(settings 读面,Tier A)**:`GET /settings`(OAuth Client Basic Auth)返回调用方站点必须遵守的公开策略键(`platform.read_only` 维护只读、`platform.notice` 全站公告、两个上传开关),强 `ETag` + `If-None-Match` → 304;站点每 30–60 秒轮询、fail-open 沿用上一份快照;含 Go 参考客户端。下游**只走此端点**,永远不读共享表 |
 
 ### 完整接入指南
 
@@ -92,7 +93,7 @@ OAuth 一共有三种鉴权方式，按场景区分：
 | 方式 | 用在哪 | 谁有 |
 |------|------|------|
 | **Bearer Token**（用户 JWT） | `/auth/*` 用户自助 + `/oauth/userinfo` | 已登录的终端用户 |
-| **OAuth Client Basic Auth** | `/users/batch`、`/users/search`（跨服务） | 已注册的 OAuth Client（kungal / moyu / wiki 等下游后端） |
+| **OAuth Client Basic Auth** | `/users/batch`、`/users/search`、`/settings`（跨服务） | 已注册的 OAuth Client（kungal / moyu / wiki 等下游后端） |
 | **Admin JWT**（Bearer + role=admin） | `/admin/*`（不在本文档范围） | OAuth 后台管理员 |
 
 终端用户 JWT 通过完整的 OAuth Authorization Code + PKCE 流程拿到（详见 [oauth-integration-guide.md](./oauth-integration-guide.md)）。Client Basic Auth 的 client_id / client_secret 在 OAuth 后台创建 Client 时生成。
@@ -100,6 +101,8 @@ OAuth 一共有三种鉴权方式，按场景区分：
 ---
 
 ## 变更摘要
+
+> **2026-09-02 平台配置下发读面**:新增 [14-settings.md](./14-settings.md)。配置中心(OAuth 控制台 `/settings`)里声明为公开的键通过 `GET /settings`(Client Basic Auth,ETag/304)下发到各站。首批四个键:`platform.read_only`(为 infra 整机搬迁的只读窗口准备,站点收到 `true` 必须拒绝写操作)、`platform.notice`(顶部公告)、`image.upload_enabled` / `artifact.upload_enabled`(隐藏上传入口)。前两个可按站点单独覆盖。**下游 kungal / moyu / letmoe 需接入**:启动拉一次 + 30–60 秒轮询,内存快照,读共享表属违规。
 
 > **2026-06-27 角色语义定权威（重要）**：新增 [11-roles.md](./11-roles.md)——把全站五角色 `user`/`creator`/`moderator`/`admin`/`ren` 及其能力语义定为 **Tier A 权威**，下游必须遵守。要点：① `roles` claim 是**角色名集合**，普通用户为**空数组**（`user` 隐式，下游不得用「数组含 `user`」判断登录）；② 管理轴**逐级包含** `moderator ⊂ admin ⊂ ren`，任何把 claim 映射成内部权限的逻辑必须让 `ren ⊇ admin ⊇ moderator`；③ `creator` 是**正交**的「直接发布 galgame」能力，不含审核/管理权。**下游 kungal / moyu 必须整改对 `ren` 的处理**：kungal 数值等级把 `ren` 塌成普通用户、moyu 完全不识别 `ren`——目前仅因「ren 账号必同时持 admin」未出事，违反健壮性要求，须修复（见 11 §6）。
 
