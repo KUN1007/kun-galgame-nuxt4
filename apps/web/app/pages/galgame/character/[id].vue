@@ -114,7 +114,8 @@ if (!moved) {
     title: `${data.value.name} 登场的 Galgame`,
     description:
       data.value.intro ||
-      `角色 ${data.value.name} 在本站收录的 Galgame 中的登场作品与配音演员一览。`
+      `角色 ${data.value.name} 在本站收录的 Galgame 中的登场作品与配音演员一览。`,
+    ogCard: { kind: 'character', id: data.value.id }
   })
 }
 </script>

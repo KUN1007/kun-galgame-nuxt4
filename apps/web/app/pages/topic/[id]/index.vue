@@ -168,7 +168,7 @@ if (data.value) {
     useKunSeoMeta({
       title: data.value.title,
       description: description.value,
-      ogImage: banner,
+      ogCard: { kind: 'topic', id: topic.id },
       ogType: 'article',
       articleAuthor: [`${kungal.domain.main}/user/${data.value.user.id}`],
       articlePublishedTime: created,

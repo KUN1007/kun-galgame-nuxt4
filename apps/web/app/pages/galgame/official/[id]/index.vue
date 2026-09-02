@@ -51,7 +51,8 @@ const official = data.value
 if (official && !official.moved_to) {
   useKunSeoMeta({
     title: `${official.name} 会社`,
-    description: `${official.name}${official.alias?.length ? `, 即 ${official.alias.join('| ')}` : ''}, 查看会社 ${official.name} 制作的所有 Galgame`
+    description: `${official.name}${official.alias?.length ? `, 即 ${official.alias.join('| ')}` : ''}, 查看会社 ${official.name} 制作的所有 Galgame`,
+    ogCard: { kind: 'official', id: official.id }
   })
 }
 </script>

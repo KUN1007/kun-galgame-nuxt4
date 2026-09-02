@@ -41,11 +41,14 @@ interface KunApiResponse<T> {
   data: T
 }
 
-export const fetchKunApi = async <T>(path: string): Promise<T> => {
+export const fetchKunApi = async <T>(
+  path: string,
+  query?: Record<string, string | number>
+): Promise<T> => {
   const config = useRuntimeConfig()
   const resp = await $fetch<KunApiResponse<T>>(
     `${config.apiBaseUrl}/api${path}`,
-    { method: 'GET', timeout: 10000 }
+    { method: 'GET', query, timeout: 10000 }
   )
   return resp.data
 }

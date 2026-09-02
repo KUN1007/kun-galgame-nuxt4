@@ -169,7 +169,7 @@ if (galgame) {
     useKunSeoMeta({
       title,
       description,
-      ogImage: getEffectiveBanner(galgame),
+      ogCard: { kind: 'galgame', id: galgame.id },
       articleAuthor: [`${kungal.domain.main}/user/${galgame.user.id}`],
       articlePublishedTime: galgame.created.toString(),
       articleModifiedTime: galgame.updated.toString()

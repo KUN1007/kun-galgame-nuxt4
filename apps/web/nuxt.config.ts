@@ -56,7 +56,16 @@ export default defineNuxtConfig({
     imageCdnBase:
       process.env.IMAGE_CDN_BASE || 'https://image.kungal.iloveren.link',
 
+    // The og renderer's per-site HMAC key. Set at runtime as NUXT_OG_SITE_KEY — the image
+    // is built by CI without build args, so a process.env default here is empty in prod.
+    ogSiteKey: '',
+    ogBaseUrl: 'https://og.nextmoe.dev',
+
     public: {
+      // NUXT_PUBLIC_OG_CARD_ENABLED. Off until og.nextmoe.dev is deployed with a forum key:
+      // pages must not advertise a 1200x630 og:image the /og routes cannot actually produce.
+      ogCardEnabled: false,
+
       KUN_GALGAME_URL: process.env.KUN_GALGAME_URL,
       KUN_VISUAL_NOVEL_FORUM_YANDEX_VERIFICATION:
         process.env.KUN_VISUAL_NOVEL_FORUM_YANDEX_VERIFICATION,

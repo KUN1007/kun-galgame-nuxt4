@@ -12,6 +12,11 @@ const { isOpen: isAuthModalOpen } = useAuthModal()
 const route = useRoute()
 const config = useRuntimeConfig()
 
+const siteImage = kunOgSiteImage(
+  config.public.ogCardEnabled,
+  kungal.domain.main
+)
+
 useHead({
   htmlAttrs: { lang: 'zh-Hans' },
   meta: [
@@ -19,6 +24,7 @@ useHead({
       name: 'image',
       content: kungal.images[0] ? kungal.images[0].fullUrl : '/kungalgame.webp'
     },
+    { property: 'og:image:type', content: 'image/webp' },
     {
       name: 'yandex-verification',
       content: config.public.KUN_VISUAL_NOVEL_FORUM_YANDEX_VERIFICATION
@@ -81,20 +87,17 @@ useSeoMeta({
   ogSiteName: kungal.title,
   ogType: 'website',
 
-  ogImage: kungal.images[0]
-    ? kungal.images[0].fullUrl
-    : `${kungal.domain.main}/kungalgame.webp`,
+  ogImage: siteImage.url,
   ogImageAlt: kungal.title,
 
-  // kungalgame.webp is 1672x941 WebP. These three used to claim 1920x1080 image/png, which
-  // no crawler could reconcile with the bytes it fetched.
-  ogImageWidth: 1672,
-  ogImageHeight: 941,
-  ogImageType: 'image/webp',
-  ogImageUrl: `${kungal.domain.main}/kungalgame.webp`,
+  // These used to claim 1920x1080 image/png for a 1672x941 WebP, which no crawler could
+  // reconcile with the bytes it fetched. og:image:type goes through useHead because
+  // unhead's ogImageType only types jpeg/gif/png, and every image we serve here is WebP.
+  ogImageWidth: siteImage.width,
+  ogImageHeight: siteImage.height,
 
   twitterCard: 'summary_large_image',
-  twitterImage: `${kungal.domain.main}/kungalgame.webp`
+  twitterImage: siteImage.url
 })
 
 useSchemaOrg([

@@ -203,6 +203,12 @@ services:
       NUXT_PUBLIC_OAUTH_CLIENT_ID: 4ed9bc99ec0a789a4796b83e22bd84c5
       NUXT_PUBLIC_OAUTH_REDIRECT_URI: https://www.kungal.com/auth/callback
       NUXT_PUBLIC_KUN_GALGAME_URL: https://www.kungal.com
+      # Social cards from nextmoe-og. NUXT_OG_SITE_KEY is the forum's own HMAC key; without it
+      # the /og/* routes serve the static kungalgame.webp and the flag below must stay false,
+      # or every page advertises a 1200x630 og:image that cannot be produced.
+      NUXT_OG_BASE_URL: https://og.nextmoe.dev
+      NUXT_OG_SITE_KEY: ${NUXT_OG_SITE_KEY:-}
+      NUXT_PUBLIC_OG_CARD_ENABLED: ${NUXT_PUBLIC_OG_CARD_ENABLED:-false}
     expose: ["7777"]
     depends_on:
       kungal-api: { condition: service_healthy }

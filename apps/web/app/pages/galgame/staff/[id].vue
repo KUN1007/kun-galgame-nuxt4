@@ -76,7 +76,8 @@ if (!moved) {
     title: `${data.value.name} 参与制作的 Galgame`,
     description:
       data.value.intro ||
-      `${data.value.name} 在本站收录的 Galgame 中担任 ${data.value.roles.join(' / ')} 等职位的作品一览。`
+      `${data.value.name} 在本站收录的 Galgame 中担任 ${data.value.roles.join(' / ')} 等职位的作品一览。`,
+    ogCard: { kind: 'staff', id: data.value.id }
   })
 }
 </script>
