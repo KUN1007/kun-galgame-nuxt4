@@ -86,9 +86,11 @@ useSeoMeta({
     : `${kungal.domain.main}/kungalgame.webp`,
   ogImageAlt: kungal.title,
 
-  ogImageWidth: 1920,
-  ogImageHeight: 1080,
-  ogImageType: 'image/png',
+  // kungalgame.webp is 1672x941 WebP. These three used to claim 1920x1080 image/png, which
+  // no crawler could reconcile with the bytes it fetched.
+  ogImageWidth: 1672,
+  ogImageHeight: 941,
+  ogImageType: 'image/webp',
   ogImageUrl: `${kungal.domain.main}/kungalgame.webp`,
 
   twitterCard: 'summary_large_image',

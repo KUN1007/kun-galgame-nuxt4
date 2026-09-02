@@ -111,8 +111,8 @@ export const kungal: KunSiteConfig = {
     {
       url: '/kungalgame.webp',
       fullUrl: `${KUN_SITE_URL}/kungalgame.webp`,
-      width: 1000,
-      height: 800,
+      width: 1672,
+      height: 941,
       alt: KUN_SITE_TITLE
     }
   ]

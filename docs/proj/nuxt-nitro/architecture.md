@@ -2,7 +2,7 @@
 
 ## 项目概览
 
-KUN Visual Novel (鲲 Galgame) 是一个基于 Nuxt 4 的全栈 Web 应用，定位为视觉小说（Galgame）社区论坛。项目使用 Vue 3 Composition API 构建前端、Nitro 作为后端服务器、PostgreSQL + Prisma 作为数据层、Redis 作为缓存和 Token 存储。
+鲲 Galgame 论坛是一个基于 Nuxt 4 的全栈 Web 应用，定位为视觉小说（Galgame）社区论坛。项目使用 Vue 3 Composition API 构建前端、Nitro 作为后端服务器、PostgreSQL + Prisma 作为数据层、Redis 作为缓存和 Token 存储。
 
 - **版本**: 5.0.70
 - **包管理器**: pnpm 10.17.1

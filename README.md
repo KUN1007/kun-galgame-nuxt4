@@ -8,20 +8,20 @@ The image is sourced from the game [Ark Order](https://apps.qoo-app.com/en/app/9
 
 > **AI-assisted development:** Since version **5.1.0**, this project has used LLM-assisted development tools, including Codex and Claude Code. All code through version **5.0.70** was written entirely by hand. The last fully hand-written revision is [v5.0.70 (commit b4ad59e)](https://github.com/KunMoe/kun-galgame-forum/tree/b4ad59eb77d3eaf36d082aa528651039816e1dfa).
 
-# KUN Visual Novel Forum
+# 鲲 Galgame 论坛 (KUN Galgame Forum)
 
 ## Website Introduction
 
-KUN Visual Novel is a community of people who love visual novels and Galgames. Its public sites include:
+鲲 Galgame is a community of people who love visual novels and Galgames. Its public sites include:
 
-- [KUN Visual Novel Forum](https://www.kungal.com) (this project)
-- [KUN Visual Novel Sticker Pack](https://sticker.kungal.com)
-- [KUN Visual Novel Development Documentation](https://soft.moe/kun-visualnovel-docs/kun-forum.html)
-- [KUN Visual Novel Navigation](https://nav.kungal.org/)
-- [KUN Visual Novel Patch](https://www.moyu.moe)
-- [KUN Visual Novel Forum Status Page](https://down.kungal.com/)
+- [鲲 Galgame 论坛](https://www.kungal.com) (this project)
+- [鲲 Galgame 表情包](https://sticker.kungal.com)
+- [鲲 Galgame 开发文档](https://soft.moe/kun-visualnovel-docs/kun-forum.html)
+- [鲲 Galgame 导航](https://nav.kungal.org/)
+- [鲲 Galgame 补丁站](https://www.moyu.moe)
+- [鲲 Galgame 论坛状态页](https://down.kungal.com/)
 
-For more information, visit [About KUN Visual Novel](https://www.kungal.com/kungalgame).
+For more information, visit [About 鲲 Galgame](https://www.kungal.com/kungalgame).
 
 ## Features
 
