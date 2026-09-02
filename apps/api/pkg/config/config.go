@@ -12,7 +12,6 @@ type Config struct {
 	Redis          RedisConfig
 	OAuth          OAuthConfig
 	FileStorage    S3Config
-	Search         SearchConfig
 	CORS           CORSConfig
 	NextMoeAPI     NextMoeAPIConfig
 	NewsAPI        NewsAPIConfig
@@ -147,11 +146,6 @@ type S3Config struct {
 	SecretKey string
 }
 
-type SearchConfig struct {
-	MeilisearchURL string
-	MeilisearchKey string
-}
-
 type CORSConfig struct {
 	AllowOrigins string
 }
@@ -217,10 +211,6 @@ func Load() (*Config, error) {
 			Bucket:    envOrDefault("FILE_STORAGE_BUCKET", ""),
 			AccessKey: envOrDefault("FILE_STORAGE_ACCESS_KEY", ""),
 			SecretKey: envOrDefault("FILE_STORAGE_SECRET_KEY", ""),
-		},
-		Search: SearchConfig{
-			MeilisearchURL: envOrDefault("MEILISEARCH_URL", "http://127.0.0.1:7700"),
-			MeilisearchKey: envOrDefault("MEILISEARCH_KEY", ""),
 		},
 		CORS: CORSConfig{
 			AllowOrigins: envOrDefault(

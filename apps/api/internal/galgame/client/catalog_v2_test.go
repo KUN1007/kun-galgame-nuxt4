@@ -50,7 +50,7 @@ func TestRewriteV2JSON_CoverAndBannerBecomeSlots(t *testing.T) {
 func TestV2CatalogQuery_EmptySearchGetsFacets(t *testing.T) {
 	q := v2CatalogQuery("/catalog/works/search", url.Values{"limit": {"24"}})
 	if q.Get("facets") != "olang,tag_id" {
-		t.Fatalf("facets = %q, want olang,tag_id so empty browse uses Meili total", q.Get("facets"))
+		t.Fatalf("facets = %q, want olang,tag_id so empty browse uses the search total", q.Get("facets"))
 	}
 	if q.Get("include_total") != "true" {
 		t.Fatalf("include_total = %q", q.Get("include_total"))

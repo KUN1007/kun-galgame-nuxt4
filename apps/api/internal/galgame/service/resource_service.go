@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"strconv"
 
 	"kun-galgame-api/internal/constants"
@@ -287,11 +288,19 @@ func (s *ResourceService) CreateResource(
 	return nil
 }
 
+func claimRefusedByState(appErr *errors.AppError) bool {
+	return appErr != nil && appErr.StatusCode == http.StatusConflict
+}
+
 func (s *ResourceService) claimOnFirstResource(ctx context.Context, accessToken string, gid int) {
 	if accessToken == "" || s.catalog == nil || !s.catalog.Configured() {
 		return
 	}
 	if _, appErr := adoptAndPublish(ctx, s.catalog, accessToken, int64(gid)); appErr != nil {
+		if claimRefusedByState(appErr) {
+			slog.Info("resource: catalog 作品已有归属, 跳过静默认领", "gid", gid)
+			return
+		}
 		slog.Warn("resource: 静默认领 catalog 作品失败", "gid", gid, "error", appErr)
 	}
 }

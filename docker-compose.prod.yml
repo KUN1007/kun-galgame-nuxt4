@@ -10,10 +10,10 @@
 # kungal app's **Dokploy Environment** via ${VAR}.
 #
 # Set in kungal's Dokploy Environment:
-#   POSTGRES_PASSWORD  OAUTH_CLIENT_SECRET  JWT_SECRET  MEILI_MASTER_KEY
+#   POSTGRES_PASSWORD  OAUTH_CLIENT_SECRET  JWT_SECRET
 #   (optional) KUN_IMAGE_CLIENT_ID/SECRET  FILE_STORAGE_* (B2 工具集)  MAIL_*
 # These MUST match infra's: POSTGRES_PASSWORD = infra POSTGRES_PASSWORD;
-# MEILI_MASTER_KEY = infra MEILI_MASTER_KEY; OAUTH_CLIENT_SECRET = 注册论坛 client 的明文.
+# OAUTH_CLIENT_SECRET = 注册论坛 client 的明文.
 # (JWT_SECRET here is kungal's OWN session secret — need NOT match infra.)
 #
 #   docker compose -f docker-compose.prod.yml pull
@@ -90,9 +90,6 @@ x-kungal-api-env: &kungal-api-env
   MAIL_USER: ${MAIL_USER:-}
   MAIL_PASSWORD: ${MAIL_PASSWORD:-}
   MAIL_FROM: ${MAIL_FROM:-}
-  # search — key MUST == infra MEILI_MASTER_KEY
-  MEILISEARCH_URL: http://meilisearch:7700
-  MEILISEARCH_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in Dokploy (= infra 的同名值)}
   # NextMoe catalog galgame read surface (host base with no path suffix): the
   # client calls {base}/v2/catalog/* with Authorization: Bearer nmk_… . The /v1
   # family is being retired upstream, so no suffix belongs on this value.
