@@ -6,7 +6,7 @@
 
 返回 [README](./README.md)
 
-> **状态:已实现**(配置中心 W2,2026-09-02)。端点 `GET /settings`;实现在
+> **状态:已实现**(配置中心 W2,2026-09-02;W3-c 起上传两开关可按站点覆盖并按站执法)。端点 `GET /settings`;实现在
 > `internal/platform/settings/handler.go`(`Effective`),路由注册在 `cmd/oauth/main.go`。
 > 管理端是 OAuth 控制台的 `/settings` 页;内部模型(三层解析、审计、传播)见 infra
 > `docs/deploy/18-config-center.md`。
@@ -76,11 +76,13 @@
 |------|------|------|------|------|
 | `platform.read_only` | bool | `false` | 是 | `true` 时拒绝一切写操作(发帖、评论、编辑、上传、点赞、后台修改),回一句可读提示;读不受影响。用于数据库迁移等全平台维护窗口 |
 | `platform.notice` | string | `""` | 是 | 非空时在页面顶部展示这一行公告(≤ 500 字,单行);空不展示 |
-| `image.upload_enabled` | bool | `false` | 否 | `false` 时隐藏或禁用图片上传入口(图床本身此时对上传回 503) |
-| `artifact.upload_enabled` | bool | `false` | 否 | `false` 时隐藏或禁用文件上传入口(artifact 服务此时对上传回 503) |
+| `image.upload_enabled` | bool | `false` | 是 | `false` 时隐藏或禁用图片上传入口(图床对该站的上传此时回 503) |
+| `artifact.upload_enabled` | bool | `false` | 是 | `false` 时隐藏或禁用文件上传入口(artifact 服务对该站的上传此时回 503) |
 
 「可按站点覆盖」= 管理员可以在控制台选中某个站点后单独设置(例如只让 letmoe 进入只读)。
-不可按站点覆盖的键,每个站点拿到的都是平台值。
+不可按站点覆盖的键,每个站点拿到的都是平台值。上传两个开关不只随读面下发:图床与 artifact
+服务自己也按调用方 client 绑定的站点执法(W3-c 起),所以站点从读面看到的值与实际被放行/拒绝
+的行为一致。
 
 > 读面报告的是 OAuth 进程看到的值:数据库覆盖值,否则代码默认。上传两个开关在各自服务的
 > compose 里可能还设着同名环境变量地板,那个地板 OAuth 看不见——这正是 infra 侧「先在控制台建行、
