@@ -1,8 +1,9 @@
 package dto
 
 type ResourceListRequest struct {
-	Page  int `query:"page" validate:"min=1"`
-	Limit int `query:"limit" validate:"min=1,max=50"`
+	Page     int    `query:"page" validate:"min=1"`
+	Limit    int    `query:"limit" validate:"min=1,max=50"`
+	Keywords string `query:"keywords" validate:"omitempty,max=107"`
 }
 
 type GalgameResourcesRequest struct {

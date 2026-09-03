@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"kun-galgame-api/internal/constants"
 	"kun-galgame-api/internal/galgame/client"
@@ -23,6 +25,10 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// catalog answers one page of a keyword search, so the game-name half of a
+// resource match is capped at it.
+const resourceGalgameMatchCap = 100
 
 type ResourceService struct {
 	resourceRepo  *repository.ResourceRepository
@@ -78,6 +84,11 @@ func (s *ResourceService) GetResourceList(
 	currentUserID int,
 	isSFW bool,
 ) (*dto.ResourceListPage, *errors.AppError) {
+	if keywords := strings.Fields(strings.TrimSpace(req.Keywords)); len(keywords) > 0 {
+		ids := s.MatchedGalgameIDs(ctx, req.Keywords, isSFW)
+		return s.Search(ctx, keywords, ids, req.Page, req.Limit, currentUserID, isSFW), nil
+	}
+
 	total := s.resourceRepo.CountAll(isSFW)
 	rows := s.resourceRepo.ListPaginated(req.Page, req.Limit, isSFW)
 
@@ -85,6 +96,35 @@ func (s *ResourceService) GetResourceList(
 		Resources: s.hydrateCards(ctx, rows, currentUserID, isSFW),
 		Total:     total,
 	}, nil
+}
+
+// MatchedGalgameIDs is the half of a resource keyword match the forum cannot do
+// itself: it keeps no local copy of a game's name, so the games a keyword hits
+// have to come back from catalog as ids. A failed catalog search costs that
+// half, not the search — the note half is local and answers on its own.
+func (s *ResourceService) MatchedGalgameIDs(ctx context.Context, raw string, isSFW bool) []int {
+	if s.galgameClient == nil {
+		return nil
+	}
+	q := url.Values{
+		"q":     {raw},
+		"page":  {"1"},
+		"limit": {strconv.Itoa(resourceGalgameMatchCap)},
+		"sort":  {"relevance"},
+	}
+	client.ApplyWorksGate(q, isSFW)
+
+	res, appErr := s.galgameClient.CatalogWorksSearch(ctx, q)
+	if appErr != nil {
+		return nil
+	}
+	ids := make([]int, 0, len(res.Items))
+	for i := range res.Items {
+		if gid := client.CatalogItemGID(&res.Items[i]); gid > 0 {
+			ids = append(ids, gid)
+		}
+	}
+	return ids
 }
 
 // Search answers the search page's resource lane. galgameIDs are the games

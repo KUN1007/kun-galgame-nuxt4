@@ -350,7 +350,7 @@ const handleEditDone = () => {
             <KunButton
               variant="light"
               color="default"
-              :href="`/galgame-resource/${resource.id}`"
+              :href="`/galgame/resource/${resource.id}`"
             >
               <KunIcon name="lucide:external-link" />
               查看详情页

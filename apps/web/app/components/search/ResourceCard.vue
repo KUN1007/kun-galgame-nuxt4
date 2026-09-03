@@ -24,7 +24,7 @@ const note = computed(() => markdownToText(props.resource.note))
     color="default"
     underline="none"
     class-name="flex-col items-start w-full gap-1.5"
-    :to="`/galgame-resource/${resource.id}`"
+    :to="`/galgame/resource/${resource.id}`"
   >
     <div class="flex w-full items-baseline gap-2">
       <KunIcon

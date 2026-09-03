@@ -176,7 +176,7 @@ export const buildSitemapUrls = async (
           unknown
         >[],
       total: (d) => (d as { total?: number })?.total,
-      loc: (r) => `/galgame-resource/${num(r, 'id')}`,
+      loc: (r) => `/galgame/resource/${num(r, 'id')}`,
       lastmod: (r) => toIso(r.edited ?? r.created),
       priority: 0.6
     },

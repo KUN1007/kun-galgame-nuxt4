@@ -112,7 +112,7 @@ export const kunLayoutItem: KunLayoutItem[] = [
       {
         name: 'galgame-resource',
         icon: 'lucide:download',
-        router: '/galgame-resource',
+        router: '/galgame/resource',
         label: 'Gal 资源列表'
       },
       {
@@ -424,7 +424,7 @@ export const kunSidebarRail: KunRailGroup[] = [
           { label: 'Gal 工具资源', router: '/toolset', icon: 'lucide:wrench' },
           {
             label: 'Gal 资源列表',
-            router: '/galgame-resource',
+            router: '/galgame/resource',
             icon: 'lucide:download'
           },
           {
