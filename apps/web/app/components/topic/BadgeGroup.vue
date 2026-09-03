@@ -14,6 +14,7 @@ const props = withDefaults(
   }>(),
   {
     upvoteTime: null,
+    miniApps: () => [],
     isNavToSection: false
   }
 )

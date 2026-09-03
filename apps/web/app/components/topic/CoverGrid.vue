@@ -31,8 +31,11 @@ const singleWidth = computed(() => {
 const root = ref<HTMLElement | null>(null)
 const lightboxRoot = props.zoomable ? root : ref<HTMLElement | null>(null)
 
-const { isLightboxOpen, images, currentImageIndex } =
-  useContentLightbox(lightboxRoot)
+const {
+  isLightboxOpen,
+  images: lightboxImages,
+  currentImageIndex
+} = useContentLightbox(lightboxRoot)
 </script>
 
 <template>
@@ -82,7 +85,7 @@ const { isLightboxOpen, images, currentImageIndex } =
     <KunLightbox
       v-if="zoomable"
       v-model:is-open="isLightboxOpen"
-      :images="images"
+      :images="lightboxImages"
       :initial-index="currentImageIndex"
     />
   </div>

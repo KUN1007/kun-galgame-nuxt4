@@ -9,13 +9,10 @@ export const useTabQuery = (defaultValue: string, key = 'tab') => {
       return val || defaultValue
     },
     set(val) {
-      const query = { ...route.query }
-      if (val === defaultValue) {
-        delete query[key]
-      } else {
-        query[key] = val
-      }
-      router.replace({ query })
+      const { [key]: _dropped, ...rest } = route.query
+      router.replace({
+        query: val === defaultValue ? rest : { ...rest, [key]: val }
+      })
     }
   })
 }

@@ -32,7 +32,7 @@ defineProps<{
             <KunUserChip
               :disable-floating="true"
               :user="rating.user"
-              className="min-w-0 flex-1"
+              class-name="min-w-0 flex-1"
             />
             <span class="text-default-500 shrink-0 text-sm">
               <KunTime :time="rating.created" />

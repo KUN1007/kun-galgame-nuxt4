@@ -11,7 +11,7 @@ const props = withDefaults(
     mineIndex?: number
     unit?: string
   }>(),
-  { mineIndex: -1 }
+  { mineIndex: -1, unit: '分' }
 )
 
 const colorMode = useColorMode()
@@ -55,7 +55,7 @@ const options = computed(
       // its only tooltip background lives on those two classes — the tooltip
       // rendered fully transparent. colorMode.value is always resolved.
       theme: colorMode.value,
-      x: { formatter: (x: string) => `${x} ${props.unit ?? '分'}` },
+      x: { formatter: (x: string) => `${x} ${props.unit}` },
       y: { formatter: (y: number) => `${y} 人` }
     },
     grid: { borderColor: 'var(--color-default-200)', strokeDashArray: 4 },
