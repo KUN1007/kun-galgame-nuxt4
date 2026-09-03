@@ -32,6 +32,10 @@ func NewSearchService(
 	return &SearchService{repo: repo, galgameClient: galgameClient, enricher: enricher, userClient: userClient}
 }
 
+// OAuth's /users/search takes q and limit only — it has no offset, so the page
+// is cut here out of one capped fetch rather than asked for upstream.
+const userSearchMax = 50
+
 func tokenize(raw string) ([]string, *errors.AppError) {
 	keywords := strings.Fields(strings.TrimSpace(raw))
 	if len(keywords) == 0 {
@@ -98,8 +102,7 @@ func (s *SearchService) SearchUsers(
 		return nil, errors.ErrInternal("用户搜索未启用")
 	}
 
-	_ = page
-	users, err := s.userClient.SearchUsers(ctx, raw, limit)
+	users, err := s.userClient.SearchUsers(ctx, raw, userSearchMax)
 	if err != nil {
 		return nil, errors.ErrInternal(fmt.Sprintf("用户搜索失败: %v", err))
 	}
@@ -116,7 +119,16 @@ func (s *SearchService) SearchUsers(
 			Bio:    u.Bio,
 		})
 	}
-	return &dto.PaginatedResult[dto.UserItem]{Items: items, Total: int64(len(items))}, nil
+
+	total := int64(len(items))
+	start := (page - 1) * limit
+	if start < 0 || start >= len(items) {
+		return &dto.PaginatedResult[dto.UserItem]{Items: []dto.UserItem{}, Total: total}, nil
+	}
+	return &dto.PaginatedResult[dto.UserItem]{
+		Items: items[start:min(start+limit, len(items))],
+		Total: total,
+	}, nil
 }
 
 func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, limit int) (*dto.PaginatedResult[dto.ReplyItem], *errors.AppError) {

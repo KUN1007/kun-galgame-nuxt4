@@ -58,10 +58,11 @@ type CommentRow struct {
 }
 
 func (r *SearchRepository) SearchTopics(keywords []string, page, limit int) (rows []TopicRow, total int64) {
+	score, scoreArgs := topicRelevance(keywords)
 	query := r.db.Table("topic t").
 		Select(`t.id, t.title, t.view, t.status, t.like_count, t.reply_count,
 			t.comment_count, t.status_update_time, t.user_id,
-			t.is_nsfw, t.best_answer_id, t.upvote_time`).
+			t.is_nsfw, t.best_answer_id, t.upvote_time, `+score+` AS relevance`, scoreArgs...).
 		Where("t.status != 1")
 	for _, kw := range keywords {
 		like := "%" + kw + "%"
@@ -70,7 +71,7 @@ func (r *SearchRepository) SearchTopics(keywords []string, page, limit int) (row
 	}
 
 	query.Count(&total)
-	query.Order("t.status_update_time DESC").
+	query.Order("relevance DESC, t.status_update_time DESC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&rows)
 	return
@@ -94,10 +95,13 @@ func (r *SearchRepository) FindTopicMiniApps(topicIDs []int) map[int][]string {
 }
 
 func (r *SearchRepository) SearchReplies(keywords []string, page, limit int) (rows []ReplyRow, total int64) {
+	snippet, snippetArgs := contentSnippet("r.content", keywords)
+	score, scoreArgs := contentRelevance("r.content", keywords)
+
 	query := r.db.Table("topic_reply r").
-		Select(`r.id, r.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
-			SUBSTRING(COALESCE(r.content, ''), 1, 233) AS content, r.floor,
-			r.user_id, r.created`).
+		Select(`r.id, r.topic_id, t.title AS topic_title, t.user_id AS topic_user_id, `+
+			snippet+` AS content, r.floor, r.user_id, r.created, `+score+` AS relevance`,
+			append(snippetArgs, scoreArgs...)...).
 		Joins("LEFT JOIN topic t ON t.id = r.topic_id").
 		Where("r.status = 0")
 	for _, kw := range keywords {
@@ -105,17 +109,20 @@ func (r *SearchRepository) SearchReplies(keywords []string, page, limit int) (ro
 	}
 
 	query.Count(&total)
-	query.Order("r.created DESC").
+	query.Order("relevance DESC, r.created DESC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&rows)
 	return
 }
 
 func (r *SearchRepository) SearchComments(keywords []string, page, limit int) (rows []CommentRow, total int64) {
+	snippet, snippetArgs := contentSnippet("c.content", keywords)
+	score, scoreArgs := contentRelevance("c.content", keywords)
+
 	query := r.db.Table("topic_comment c").
-		Select(`c.id, c.topic_id, t.title AS topic_title, t.user_id AS topic_user_id,
-			SUBSTRING(c.content, 1, 233) AS content,
-			c.user_id, c.created`).
+		Select(`c.id, c.topic_id, t.title AS topic_title, t.user_id AS topic_user_id, `+
+			snippet+` AS content, c.user_id, c.created, `+score+` AS relevance`,
+			append(snippetArgs, scoreArgs...)...).
 		Joins("LEFT JOIN topic t ON t.id = c.topic_id").
 		Where("c.status = 0")
 	for _, kw := range keywords {
@@ -123,7 +130,7 @@ func (r *SearchRepository) SearchComments(keywords []string, page, limit int) (r
 	}
 
 	query.Count(&total)
-	query.Order("c.created DESC").
+	query.Order("relevance DESC, c.created DESC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&rows)
 	return
