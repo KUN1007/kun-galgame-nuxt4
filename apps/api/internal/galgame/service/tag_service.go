@@ -45,7 +45,7 @@ func (s *TagService) Search(
 	rawQuery url.Values,
 	isSFW bool,
 ) ([]dto.TaxonomySearchItem, *errors.AppError) {
-	hits, _, appErr := s.searchHits(ctx, rawQuery.Get("q"),
+	hits, _, appErr := s.searchHits(ctx, rawQuery.Get("q"), 1,
 		atoiOr(rawQuery.Get("limit"), 20), isSFW)
 	if appErr != nil {
 		return nil, appErr
@@ -63,10 +63,10 @@ func (s *TagService) Search(
 func (s *TagService) searchHits(
 	ctx context.Context,
 	keywords string,
-	limit int,
+	page, limit int,
 	isSFW bool,
 ) ([]client.CatalogEntityHit, int64, *errors.AppError) {
-	hits, total, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags", keywords, limit)
+	hits, total, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags", keywords, page, limit)
 	if appErr != nil {
 		return nil, 0, appErr
 	}
@@ -96,9 +96,10 @@ func (s *TagService) searchHits(
 		}
 		out = append(out, h)
 	}
-	// Catalog counted the rows this function then hid, so the raw total would
-	// promise more tags than an SFW reader can ever be shown.
-	total -= int64(len(hits) - len(out))
+	// The total is what the paginator divides into pages, so it must not depend
+	// on which page came back: subtracting the rows THIS page hid made the page
+	// count change every time the reader moved. It over-counts for an SFW
+	// reader instead, and the pages it hid rows from are simply short.
 	return out, max(total, int64(len(out))), nil
 }
 

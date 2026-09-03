@@ -8,10 +8,12 @@ const props = defineProps<{
   showCap?: boolean
 }>()
 
+const emit = defineEmits<{
+  open: [family: SearchEntityFamily]
+}>()
+
 const meta = computed(() => SEARCH_ENTITY_FAMILY_MAP[props.group.family])
 
-// The catalog search face answers one page and carries no cursor, so what the
-// limit did not fetch cannot be paged to — say so instead of implying a page 2.
 const isCapped = computed(
   () => props.showCap && props.group.total > props.group.items.length
 )
@@ -36,8 +38,15 @@ const isCapped = computed(
       />
     </div>
 
-    <p v-if="isCapped" class="text-default-400 text-xs">
-      按相关度显示前 {{ group.items.length }} 条, 共 {{ group.total }} 条
-    </p>
+    <KunButton
+      v-if="isCapped"
+      variant="light"
+      size="sm"
+      icon-position="right"
+      @click="emit('open', group.family)"
+    >
+      共 {{ group.total }} 条, 查看全部{{ meta.textValue }}
+      <KunIcon name="lucide:arrow-right" class="size-4" />
+    </KunButton>
   </section>
 </template>

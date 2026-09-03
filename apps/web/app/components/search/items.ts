@@ -102,6 +102,20 @@ export const SEARCH_ENTITY_FAMILIES: SearchEntityFamilyMeta[] = [
     icon: 'lucide:tag',
     path: '/galgame/tag',
     countUnit: '部作品'
+  },
+  {
+    value: 'series',
+    textValue: '系列',
+    icon: 'lucide:layers',
+    path: '/galgame/series',
+    countUnit: '部作品'
+  },
+  {
+    value: 'engine',
+    textValue: '引擎',
+    icon: 'carbon:ibm-engineering-lifecycle-mgmt',
+    path: '/galgame/engine',
+    countUnit: '部作品'
   }
 ]
 

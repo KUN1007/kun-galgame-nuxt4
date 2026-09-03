@@ -128,6 +128,14 @@ func v2CatalogQuery(path string, query url.Values) url.Values {
 		out.Del("type")
 		out.Set("object", v2SearchObject(t))
 	}
+	if path == "/catalog/search" {
+		if page := out.Get("page"); page != "" {
+			out.Del("page")
+			if n, err := strconv.Atoi(page); err == nil && n > 1 {
+				out.Set("cursor", encodePageCursor(n))
+			}
+		}
+	}
 	if path == "/catalog/works/search" || path == "/catalog/works" {
 		if out.Get("include_total") == "" {
 			out.Set("include_total", "true")

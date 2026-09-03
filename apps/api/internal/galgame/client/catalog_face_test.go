@@ -401,7 +401,7 @@ func TestCatalogFace_PathsAndCredentials(t *testing.T) {
 	})
 
 	t.Run("entity search → /v2/catalog/search", func(t *testing.T) {
-		if _, _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 10); err != nil {
+		if _, _, err := c.CatalogEntitySearch(ctx, "labels", "kun", 1, 10); err != nil {
 			t.Fatalf("CatalogEntitySearch: %v", err)
 		}
 		if rec.path != "/v2/catalog/search" {

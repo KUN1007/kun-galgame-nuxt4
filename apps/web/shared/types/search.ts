@@ -35,7 +35,13 @@ export type SearchResultComment = {
   created: Date | string
 }
 
-export type SearchEntityFamily = 'character' | 'company' | 'staff' | 'tag'
+export type SearchEntityFamily =
+  | 'character'
+  | 'company'
+  | 'staff'
+  | 'tag'
+  | 'series'
+  | 'engine'
 
 export interface SearchEntityItem {
   id: number

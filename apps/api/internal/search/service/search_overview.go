@@ -73,7 +73,7 @@ func (s *SearchService) Overview(
 	run("reply", func() { replies, _ = s.SearchReplies(ctx, raw, 1, overviewReplyLimit) })
 	run("comment", func() { comments, _ = s.SearchComments(ctx, raw, 1, overviewReplyLimit) })
 	run("entity", func() {
-		entities, _ = s.SearchEntities(ctx, raw, "", overviewEntityLimit, isSFW)
+		entities, _ = s.SearchEntities(ctx, raw, "", 1, overviewEntityLimit, isSFW)
 	})
 	run("resource", func() {
 		resources, _ = s.SearchResources(ctx, raw, 1, overviewResourceLimit, isSFW)
@@ -125,7 +125,7 @@ func (s *SearchService) SearchEntities(
 	ctx context.Context,
 	raw string,
 	family string,
-	limit int,
+	page, limit int,
 	isSFW bool,
 ) ([]galgameDto.EntitySearchGroup, *errors.AppError) {
 	if _, appErr := tokenize(raw); appErr != nil {
@@ -137,7 +137,10 @@ func (s *SearchService) SearchEntities(
 	if limit <= 0 {
 		limit = entitySearchDefaultLimit
 	}
-	return s.entityService.Search(ctx, raw, family, limit, isSFW)
+	if page <= 0 {
+		page = 1
+	}
+	return s.entityService.Search(ctx, raw, family, page, limit, isSFW)
 }
 
 func (s *SearchService) SearchToolsets(

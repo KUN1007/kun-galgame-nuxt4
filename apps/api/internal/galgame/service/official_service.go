@@ -40,7 +40,7 @@ func (s *OfficialService) Search(
 	rawQuery url.Values,
 ) ([]dto.TaxonomySearchItem, *errors.AppError) {
 	hits, _, appErr := s.galgameClient.CatalogEntitySearch(ctx, "labels",
-		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
+		rawQuery.Get("q"), 1, atoiOr(rawQuery.Get("limit"), 20))
 	if appErr != nil {
 		return nil, appErr
 	}

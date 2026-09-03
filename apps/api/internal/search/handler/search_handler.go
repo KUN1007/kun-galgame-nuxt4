@@ -50,7 +50,7 @@ func (h *SearchHandler) SearchEntities(c fiber.Ctx) error {
 	}
 
 	groups, appErr := h.searchService.SearchEntities(
-		c.Context(), req.Keywords, req.Family, req.Limit, utils.IsSFW(c),
+		c.Context(), req.Keywords, req.Family, req.Page, req.Limit, utils.IsSFW(c),
 	)
 	if appErr != nil {
 		return response.Error(c, appErr)

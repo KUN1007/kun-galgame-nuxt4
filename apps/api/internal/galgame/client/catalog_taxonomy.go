@@ -220,12 +220,15 @@ func (h *CatalogEntityHit) VocabularyName() string {
 	return CatalogVocabularyName(h.Localized, h.DisplayName)
 }
 
-func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, int64, *errors.AppError) {
+func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, page, limit int) ([]CatalogEntityHit, int64, *errors.AppError) {
 	q := url.Values{
 		"type":          {searchType},
 		"q":             {keywords},
 		"limit":         {strconv.Itoa(limit)},
 		"include_total": {"true"},
+	}
+	if page > 1 {
+		q.Set("page", strconv.Itoa(page))
 	}
 	openPopulation(q)
 	data, appErr := c.CatalogGet(ctx, "/catalog/search", q)

@@ -67,6 +67,36 @@ func TestV2CatalogQuery_PageBecomesCursor(t *testing.T) {
 	}
 }
 
+// The entity search face grew a cursor in catalog 2.4.0 and reuses the works
+// lane's page-number encoding, so the forum's paginator addresses it the same
+// way. Before that it answered exactly one page and the extra rows were
+// unreachable.
+func TestV2CatalogQuery_SearchPageBecomesCursor(t *testing.T) {
+	q := v2CatalogQuery("/catalog/search", url.Values{
+		"type": {"characters"}, "q": {"kun"}, "page": {"3"},
+	})
+	if q.Get("page") != "" {
+		t.Fatalf("page leaked: %q", q.Get("page"))
+	}
+	if got, want := q.Get("cursor"), encodePageCursor(3); got != want {
+		t.Fatalf("cursor = %q, want %q", got, want)
+	}
+	if q.Get("object") != "character" {
+		t.Fatalf("object = %q, want character", q.Get("object"))
+	}
+}
+
+// Page 1 must not carry a cursor: catalog rejects anything that is not a cur_
+// token, and "the first page" has no token to send.
+func TestV2CatalogQuery_SearchFirstPageSendsNoCursor(t *testing.T) {
+	q := v2CatalogQuery("/catalog/search", url.Values{
+		"type": {"tags"}, "q": {"kun"}, "page": {"1"},
+	})
+	if q.Get("cursor") != "" || q.Get("page") != "" {
+		t.Fatalf("page 1 sent cursor=%q page=%q", q.Get("cursor"), q.Get("page"))
+	}
+}
+
 // Its own variables, never the application's: internal/testdb/rule_test.go
 // fails the whole suite on os.Getenv("KUN_ in a test, so that a smoke run can
 // never silently inherit a live catalog from a stray .env.
@@ -172,7 +202,7 @@ func TestLiveV2DetailFaces(t *testing.T) {
 
 	// The staff page: the credits block lives on its own sub-face and is spliced
 	// back in, inheriting the parent's population gate.
-	hits, _, appErr := c.CatalogEntitySearch(ctx, "names", "田村", 3)
+	hits, _, appErr := c.CatalogEntitySearch(ctx, "names", "田村", 1, 3)
 	if appErr != nil {
 		t.Fatalf("CatalogEntitySearch names: %v", appErr)
 	}
@@ -193,7 +223,7 @@ func TestLiveV2DetailFaces(t *testing.T) {
 		t.Errorf("staff %d has no credits — the sub-face splice produced nothing", hits[0].ID)
 	}
 
-	chars, _, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 3)
+	chars, _, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 1, 3)
 	if appErr != nil || len(chars) == 0 {
 		t.Fatalf("character search: err=%v hits=%d", appErr, len(chars))
 	}
@@ -211,6 +241,44 @@ func TestLiveV2DetailFaces(t *testing.T) {
 		if ch.Traits[i].LocalName() == "" {
 			t.Errorf("trait %d renders as an empty chip: %+v", i, ch.Traits[i])
 			break
+		}
+	}
+}
+
+// The 资料库 tab paginates every family through this one face. A second page
+// that repeats the first would look like it worked and quietly show the same
+// rows forever, so identity of the two pages is the assertion.
+func TestLiveV2EntitySearchPages(t *testing.T) {
+	c, ctx := liveClient(t), context.Background()
+
+	first, total, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 1, 5)
+	if appErr != nil {
+		t.Fatalf("page 1: %v", appErr)
+	}
+	if total <= 5 || len(first) != 5 {
+		t.Fatalf("page 1: total=%d items=%d — too few rows to page", total, len(first))
+	}
+	second, _, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 2, 5)
+	if appErr != nil {
+		t.Fatalf("page 2: %v", appErr)
+	}
+	seen := map[int64]bool{}
+	for _, h := range first {
+		seen[h.ID] = true
+	}
+	for _, h := range second {
+		if seen[h.ID] {
+			t.Fatalf("page 2 repeats id %d from page 1", h.ID)
+		}
+	}
+
+	// series and engines joined the closed object vocabulary in catalog 2.4.0.
+	// Their indices are built only by the nightly reindex, so a deployment that
+	// has never run it answers an empty page rather than an error — which is
+	// why this asserts the call, not the row count.
+	for _, family := range []string{"series", "engines"} {
+		if _, _, appErr := c.CatalogEntitySearch(ctx, family, "a", 1, 5); appErr != nil {
+			t.Errorf("%s search: %v", family, appErr)
 		}
 	}
 }

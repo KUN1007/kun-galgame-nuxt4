@@ -15,15 +15,18 @@ const (
 	EntityFamilyCompany   = "company"
 	EntityFamilyStaff     = "staff"
 	EntityFamilyTag       = "tag"
+	EntityFamilySeries    = "series"
+	EntityFamilyEngine    = "engine"
 )
 
-// catalog answers one family per request and its search face carries no cursor,
-// so a family is a whole page: what limit does not fetch is unreachable.
+// catalog answers one family per request, so a page is a page of one family.
 var entityFamilies = []string{
 	EntityFamilyCharacter,
 	EntityFamilyCompany,
 	EntityFamilyStaff,
 	EntityFamilyTag,
+	EntityFamilySeries,
+	EntityFamilyEngine,
 }
 
 var entityCatalogType = map[string]string{
@@ -31,14 +34,19 @@ var entityCatalogType = map[string]string{
 	EntityFamilyCompany:   "labels",
 	EntityFamilyStaff:     "names",
 	EntityFamilyTag:       "tags",
+	EntityFamilySeries:    "series",
+	EntityFamilyEngine:    "engines",
 }
 
 // A credit name has neither a picture nor a work count of its own, so its cards
-// stay on the family icon; the other three pay for one batch request each.
+// stay on the family icon; the rest pay for one batch request each. Only the
+// character batch comes back with art — a series and an engine have no logo.
 var entityMediaType = map[string]string{
 	EntityFamilyCharacter: "characters",
 	EntityFamilyCompany:   "labels",
 	EntityFamilyTag:       "tags",
+	EntityFamilySeries:    "series",
+	EntityFamilyEngine:    "engines",
 }
 
 func IsEntityFamily(family string) bool {
@@ -62,7 +70,7 @@ func (s *EntitySearchService) Search(
 	ctx context.Context,
 	keywords string,
 	family string,
-	limit int,
+	page, limit int,
 	isSFW bool,
 ) ([]dto.EntitySearchGroup, *errors.AppError) {
 	families := entityFamilies
@@ -89,7 +97,7 @@ func (s *EntitySearchService) Search(
 			}()
 			defer wg.Done()
 
-			items, total, appErr := s.searchFamily(ctx, f, keywords, limit, isSFW)
+			items, total, appErr := s.searchFamily(ctx, f, keywords, page, limit, isSFW)
 			if appErr != nil {
 				slog.Warn("entity search family failed", "family", f, "error", appErr.Message)
 				mu.Lock()
@@ -111,11 +119,11 @@ func (s *EntitySearchService) Search(
 func (s *EntitySearchService) searchFamily(
 	ctx context.Context,
 	family, keywords string,
-	limit int,
+	page, limit int,
 	isSFW bool,
 ) ([]dto.EntitySearchItem, int64, *errors.AppError) {
 	if family == EntityFamilyTag {
-		hits, total, appErr := s.tagService.searchHits(ctx, keywords, limit, isSFW)
+		hits, total, appErr := s.tagService.searchHits(ctx, keywords, page, limit, isSFW)
 		if appErr != nil {
 			return nil, 0, appErr
 		}
@@ -132,7 +140,7 @@ func (s *EntitySearchService) searchFamily(
 	}
 
 	hits, total, appErr := s.galgameClient.CatalogEntitySearch(
-		ctx, entityCatalogType[family], keywords, limit)
+		ctx, entityCatalogType[family], keywords, page, limit)
 	if appErr != nil {
 		return nil, 0, appErr
 	}

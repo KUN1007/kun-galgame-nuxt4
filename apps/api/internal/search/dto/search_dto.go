@@ -20,7 +20,8 @@ type OverviewRequest struct {
 
 type EntitySearchRequest struct {
 	Keywords string `query:"keywords" validate:"required,max=107"`
-	Family   string `query:"family" validate:"omitempty,oneof=character company staff tag"`
+	Family   string `query:"family" validate:"omitempty,oneof=character company staff tag series engine"`
+	Page     int    `query:"page" validate:"omitempty,min=1"`
 	Limit    int    `query:"limit" validate:"min=1,max=60"`
 }
 

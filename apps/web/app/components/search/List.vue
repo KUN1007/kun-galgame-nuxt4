@@ -18,11 +18,10 @@ const total = ref(0)
 const pending = ref(!!props.keywords)
 const failed = ref(false)
 const page = ref(1)
+const top = useTemplateRef<HTMLElement>('top')
 
 const meta = computed(() => SEARCH_CATEGORY_MAP[props.type])
-const isComplete = computed(
-  () => total.value > 0 && results.value.length >= total.value
-)
+const totalPage = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
 let latest = 0
 
@@ -44,15 +43,14 @@ const fetchPage = (target: number) =>
 
 const load = async () => {
   const current = ++latest
-  page.value = 1
-  results.value = []
-  total.value = 0
   if (!props.keywords) {
+    results.value = []
+    total.value = 0
     pending.value = false
     return
   }
   pending.value = true
-  const data = await fetchPage(1)
+  const data = await fetchPage(page.value)
   if (current !== latest) {
     return
   }
@@ -64,30 +62,29 @@ const load = async () => {
   pending.value = false
 }
 
-const loadMore = async () => {
-  const current = latest
-  pending.value = true
-  const next = page.value + 1
-  const data = await fetchPage(next)
-  if (current !== latest) {
-    return
-  }
-  if (data) {
-    page.value = next
-    results.value = results.value.concat(data.items)
-    total.value = data.total
-  }
-  pending.value = false
-}
+watch(page, async () => {
+  await load()
+  // The paginator sits below a full page of results, so a page opened from it
+  // would otherwise start scrolled past its own first row.
+  top.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+})
 
-watch(() => props.keywords, load, { immediate: true })
+watch(
+  () => props.keywords,
+  () => {
+    page.value = 1
+    results.value = []
+    load()
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div ref="top" class="scroll-mt-40 space-y-6">
     <p class="text-default-500 text-sm">
       <template v-if="pending && !results.length">正在搜索…</template>
-      <template v-else-if="results.length">
+      <template v-else-if="total">
         共 <span class="text-default-700 tabular-nums">{{ total }}</span>
         {{ meta.countUnit }}
       </template>
@@ -98,33 +95,19 @@ watch(() => props.keywords, load, { immediate: true })
       :shape="type === 'galgame' || type === 'toolset' ? 'card' : 'row'"
     />
 
-    <SearchResult
-      v-if="results.length"
-      :results="results"
-      :type="type"
-      :keywords="keywords"
+    <KunLoading v-else-if="results.length" :loading="pending">
+      <SearchResult :results="results" :type="type" :keywords="keywords" />
+    </KunLoading>
+
+    <KunNull v-else-if="failed" description="搜索没能完成, 请稍后重试" />
+
+    <KunNull v-else-if="keywords" description="杂鱼杂鱼杂鱼~什么也没有搜索到" />
+
+    <KunPagination
+      v-if="totalPage > 1"
+      v-model:current-page="page"
+      :total-page="totalPage"
+      :is-loading="pending"
     />
-
-    <KunNull v-if="!pending && failed" description="搜索没能完成, 请稍后重试" />
-
-    <KunNull
-      v-else-if="!pending && !results.length && keywords"
-      description="杂鱼杂鱼杂鱼~什么也没有搜索到"
-    />
-
-    <KunDivider v-if="results.length">
-      <KunButton
-        v-if="!isComplete"
-        variant="flat"
-        :loading="pending"
-        :disabled="pending"
-        @click="loadMore"
-      >
-        加载更多
-      </KunButton>
-      <span v-else class="text-default-500 text-sm">
-        被榨干了呜呜呜呜呜, 一滴也不剩了
-      </span>
-    </KunDivider>
   </div>
 </template>
