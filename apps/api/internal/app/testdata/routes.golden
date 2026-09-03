@@ -100,6 +100,7 @@ GET    /api/galgame/audited                           cors.New → middleware.Na
 GET    /api/galgame/calendar                          cors.New → middleware.NamePreference → CalendarHandler.GetMonth
 GET    /api/galgame/calendar/pending                  cors.New → middleware.NamePreference → CalendarHandler.GetPending
 GET    /api/galgame/calendar/tba                      cors.New → middleware.NamePreference → CalendarHandler.GetTBA
+GET    /api/galgame/calendar/today                    cors.New → middleware.NamePreference → CalendarHandler.GetToday
 GET    /api/galgame/calendar/upcoming                 cors.New → middleware.NamePreference → CalendarHandler.GetUpcoming
 GET    /api/galgame/collection/:cid                   cors.New → middleware.NamePreference → OptionalAuth → GalgameCollectionHandler.GetDetail
 GET    /api/galgame/drafts                            cors.New → middleware.NamePreference → DraftsHandler.GetDrafts

@@ -38,3 +38,11 @@ type CalendarUpcomingPage struct {
 	Months []CalendarUpcomingMonth `json:"months"`
 	Count  int                     `json:"count"`
 }
+
+type CalendarTodayFlag struct {
+	Today      string `json:"today"`
+	HasRelease bool   `json:"has_release"`
+	// Seconds until the flag can change. The sidebar keeps the answer in local
+	// storage for that long instead of pulling a month of cards on every load.
+	ExpiresIn int `json:"expires_in"`
+}

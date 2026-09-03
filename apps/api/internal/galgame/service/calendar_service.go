@@ -101,6 +101,33 @@ func (s *CalendarService) GetMonth(
 	}, nil
 }
 
+// GetTodayFlag answers the one boolean the sidebar rail asks of the calendar.
+func (s *CalendarService) GetTodayFlag(
+	ctx context.Context,
+	isSFW bool,
+) (*dto.CalendarTodayFlag, *errors.AppError) {
+	page, appErr := s.fetchMonthRaw(ctx, "", isSFW)
+	if appErr != nil {
+		return nil, appErr
+	}
+	today := orElse(page.Meta.Today, calendarNow("2006-01-02"))
+
+	flag := &dto.CalendarTodayFlag{Today: today, ExpiresIn: secondsUntilCalendarMidnight()}
+	for _, item := range page.Items {
+		if item.ReleaseDate != nil && *item.ReleaseDate == today {
+			flag.HasRelease = true
+			break
+		}
+	}
+	return flag, nil
+}
+
+func secondsUntilCalendarMidnight() int {
+	now := time.Now().In(calendarLocation)
+	midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, calendarLocation)
+	return int(midnight.Sub(now).Seconds())
+}
+
 func (s *CalendarService) GetPending(
 	ctx context.Context,
 	rawQuery url.Values,

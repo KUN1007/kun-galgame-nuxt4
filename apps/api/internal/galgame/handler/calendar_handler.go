@@ -24,6 +24,14 @@ func (h *CalendarHandler) GetMonth(c fiber.Ctx) error {
 	return response.OK(c, page)
 }
 
+func (h *CalendarHandler) GetToday(c fiber.Ctx) error {
+	flag, appErr := h.calendarService.GetTodayFlag(c.Context(), utils.IsSFW(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, flag)
+}
+
 func (h *CalendarHandler) GetPending(c fiber.Ctx) error {
 	page, appErr := h.calendarService.GetPending(c.Context(), collectQuery(c), utils.IsSFW(c))
 	if appErr != nil {

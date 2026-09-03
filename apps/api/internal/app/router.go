@@ -131,6 +131,7 @@ func (a *App) setupRoutes() {
 	)
 	api.Get("/galgame/search/picker", a.GalgameQuizHandler.SearchGalgames)
 	api.Get("/galgame/calendar", a.GalgameCalendarHandler.GetMonth)
+	api.Get("/galgame/calendar/today", a.GalgameCalendarHandler.GetToday)
 	api.Get("/galgame/calendar/pending", a.GalgameCalendarHandler.GetPending)
 	api.Get("/galgame/calendar/tba", a.GalgameCalendarHandler.GetTBA)
 	api.Get("/galgame/calendar/upcoming", a.GalgameCalendarHandler.GetUpcoming)
