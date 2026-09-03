@@ -118,7 +118,10 @@ const foldedCount = computed(() => {
     >
       <span
         class="min-w-0 flex-1 truncate text-sm"
-        :class="hidden.has(identityOf(row.character_id)) && 'text-default-400 line-through'"
+        :class="
+          hidden.has(identityOf(row.character_id)) &&
+          'text-default-400 line-through'
+        "
       >
         {{ nameOf(row.character_id) }}
       </span>
@@ -145,7 +148,9 @@ const foldedCount = computed(() => {
       <KunButton
         size="sm"
         variant="flat"
-        :color="hidden.has(identityOf(row.character_id)) ? 'primary' : 'default'"
+        :color="
+          hidden.has(identityOf(row.character_id)) ? 'primary' : 'default'
+        "
         :disabled="disabled"
         @click="toggleHidden(row.character_id)"
       >

@@ -98,7 +98,10 @@ onMounted(async () => {
   }
   const creditCharacterIds = (): number[] => {
     const out = new Set<number>()
-    for (const pool of [data.value?.values?.['catalog.work.credits'], effective.value['catalog.work.credits']]) {
+    for (const pool of [
+      data.value?.values?.['catalog.work.credits'],
+      effective.value['catalog.work.credits']
+    ]) {
       if (!Array.isArray(pool)) {
         continue
       }
@@ -113,7 +116,11 @@ onMounted(async () => {
   }
 
   const families = [
-    { map: maps.tag, ids: relationIds('catalog.work.tag_ids'), path: 'galgame-tag' },
+    {
+      map: maps.tag,
+      ids: relationIds('catalog.work.tag_ids'),
+      path: 'galgame-tag'
+    },
     {
       map: maps.official,
       ids: relationIds('catalog.work.labels'),
@@ -124,7 +131,11 @@ onMounted(async () => {
       ids: relationIds('catalog.work.engine_ids'),
       path: 'galgame-engine'
     },
-    { map: maps.series, ids: relationIds('catalog.work.series_ids'), path: 'galgame-series' },
+    {
+      map: maps.series,
+      ids: relationIds('catalog.work.series_ids'),
+      path: 'galgame-series'
+    },
     {
       map: maps.character,
       ids: [...relationIds('catalog.work.roster'), ...creditCharacterIds()],

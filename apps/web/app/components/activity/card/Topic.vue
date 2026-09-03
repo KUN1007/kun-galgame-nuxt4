@@ -10,7 +10,10 @@ const covers = computed(() => (data.value?.cover_images ?? []).slice(0, 3))
 const topicId = computed(() => data.value?.topic_id ?? 0)
 const hasBadge = computed(() => {
   const d = data.value
-  return !!d && (d.has_best_answer || !!d.mini_apps?.length || d.is_nsfw || !!d.upvote_time)
+  return (
+    !!d &&
+    (d.has_best_answer || !!d.mini_apps?.length || d.is_nsfw || !!d.upvote_time)
+  )
 })
 
 const topReply = computed(() => data.value?.top_reply)
