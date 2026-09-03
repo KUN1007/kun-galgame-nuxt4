@@ -593,6 +593,7 @@ func New(cfg *config.Config) *App {
 		SearchHandler: searchHandler.NewSearchHandler(searchService.NewSearchService(
 			searchRepo.NewSearchRepository(db), gc, galgameEnricher, uc,
 			galgameService.NewEntitySearchService(gc, galgameTagSvc), toolsetCoreSvc,
+			galgameResourceSvc,
 		)),
 		ToolsetHandler:             toolsetHandler.NewToolsetHandler(toolsetCoreSvc),
 		ToolsetPracticalityHandler: toolsetHandler.NewPracticalityHandler(toolsetPracticalitySvc),

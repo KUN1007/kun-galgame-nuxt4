@@ -35,6 +35,27 @@ export const KUN_TOOLSET_TYPE_CONST = [
   'others'
 ] as const
 
+export const KUN_GALGAME_TOOLSET_TYPE_ICON_MAP: Record<string, string> = {
+  emulator: 'lucide:joystick',
+  translator: 'lucide:languages',
+  extractor: 'lucide:package-open',
+  converter: 'lucide:repeat',
+  engine: 'lucide:cog',
+  debug: 'lucide:bug',
+  launcher: 'lucide:rocket',
+  script: 'lucide:terminal',
+  docs: 'lucide:book-open',
+  others: 'lucide:wrench'
+}
+
+export const KUN_GALGAME_TOOLSET_PLATFORM_ICON_MAP: Record<string, string> = {
+  windows: 'ant-design:windows-outlined',
+  mac: 'iconoir:apple-mac',
+  linux: 'ant-design:linux-outlined',
+  emulator: 'lucide:terminal',
+  others: 'lucide:ellipsis'
+}
+
 export const KUN_GALGAME_TOOLSET_LANGUAGE_MAP: Record<string, string> = {
   all: '全部语言',
   'ja-jp': '日语',

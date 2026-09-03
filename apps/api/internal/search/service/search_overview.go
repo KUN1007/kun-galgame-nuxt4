@@ -14,12 +14,13 @@ import (
 // One lane's slice of the overview. Long-form lanes (topics, games) get more
 // rows than the ones that are only there to say "your keyword also lives here".
 const (
-	overviewTopicLimit   = 4
-	overviewGalgameLimit = 6
-	overviewEntityLimit  = 5
-	overviewUserLimit    = 6
-	overviewReplyLimit   = 3
-	overviewToolsetLimit = 3
+	overviewTopicLimit    = 8
+	overviewGalgameLimit  = 12
+	overviewEntityLimit   = 6
+	overviewResourceLimit = 6
+	overviewUserLimit     = 8
+	overviewReplyLimit    = 4
+	overviewToolsetLimit  = 4
 )
 
 const entitySearchDefaultLimit = 24
@@ -38,15 +39,16 @@ func (s *SearchService) Overview(
 	}
 
 	var (
-		wg       sync.WaitGroup
-		topics   *dto.PaginatedResult[dto.TopicItem]
-		galgames *dto.PaginatedResult[galgameDto.GalgameCard]
-		users    *dto.PaginatedResult[dto.UserItem]
-		replies  *dto.PaginatedResult[dto.ReplyItem]
-		comments *dto.PaginatedResult[dto.CommentItem]
-		entities []galgameDto.EntitySearchGroup
-		toolsets []toolsetDto.ToolsetCard
-		toolsetN int64
+		wg        sync.WaitGroup
+		topics    *dto.PaginatedResult[dto.TopicItem]
+		galgames  *dto.PaginatedResult[galgameDto.GalgameCard]
+		users     *dto.PaginatedResult[dto.UserItem]
+		replies   *dto.PaginatedResult[dto.ReplyItem]
+		comments  *dto.PaginatedResult[dto.CommentItem]
+		entities  []galgameDto.EntitySearchGroup
+		resources *dto.PaginatedResult[galgameDto.ResourceCard]
+		toolsets  []toolsetDto.ToolsetCard
+		toolsetN  int64
 	)
 	run := func(name string, lane func()) {
 		wg.Add(1)
@@ -73,25 +75,32 @@ func (s *SearchService) Overview(
 	run("entity", func() {
 		entities, _ = s.SearchEntities(ctx, raw, "", overviewEntityLimit, isSFW)
 	})
+	run("resource", func() {
+		resources, _ = s.SearchResources(ctx, raw, 1, overviewResourceLimit, isSFW)
+	})
 	run("toolset", func() {
 		toolsets, toolsetN = s.SearchToolsets(ctx, raw, 1, overviewToolsetLimit)
 	})
 	wg.Wait()
 
 	res := &dto.OverviewResult{
-		Topics:   []dto.TopicItem{},
-		Galgames: []galgameDto.GalgameCard{},
-		Entities: []galgameDto.EntitySearchGroup{},
-		Users:    []dto.UserItem{},
-		Replies:  []dto.ReplyItem{},
-		Comments: []dto.CommentItem{},
-		Toolsets: toolsets,
+		Topics:    []dto.TopicItem{},
+		Galgames:  []galgameDto.GalgameCard{},
+		Entities:  []galgameDto.EntitySearchGroup{},
+		Resources: []galgameDto.ResourceCard{},
+		Users:     []dto.UserItem{},
+		Replies:   []dto.ReplyItem{},
+		Comments:  []dto.CommentItem{},
+		Toolsets:  toolsets,
 	}
 	if topics != nil {
 		res.Topics, res.Totals.Topic = topics.Items, topics.Total
 	}
 	if galgames != nil {
 		res.Galgames, res.Totals.Galgame = galgames.Items, galgames.Total
+	}
+	if resources != nil {
+		res.Resources, res.Totals.Resource = resources.Items, resources.Total
 	}
 	if users != nil {
 		res.Users, res.Totals.User = users.Items, users.Total

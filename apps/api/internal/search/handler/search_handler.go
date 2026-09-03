@@ -83,6 +83,14 @@ func (h *SearchHandler) Search(c fiber.Ctx) error {
 			return response.Error(c, appErr)
 		}
 		return response.Paginated(c, res.Items, res.Total)
+	case "resource":
+		res, appErr := h.searchService.SearchResources(
+			c.Context(), req.Keywords, req.Page, req.Limit, utils.IsSFW(c),
+		)
+		if appErr != nil {
+			return response.Error(c, appErr)
+		}
+		return response.Paginated(c, res.Items, res.Total)
 	case "user":
 		res, appErr := h.searchService.SearchUsers(c.Context(), req.Keywords, req.Page, req.Limit)
 		if appErr != nil {

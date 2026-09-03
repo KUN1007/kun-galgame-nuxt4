@@ -1,14 +1,18 @@
 import type { HomeTopic, HomeGalgame } from './home'
 import type { ToolsetCard } from './toolset'
+import type { GalgameResourceCard } from './galgame-resource'
 
 export type SearchResultTopic = HomeTopic
 export type SearchResultGalgame = HomeGalgame
 export type SearchResultToolset = ToolsetCard
+export type SearchResultResource = GalgameResourceCard
 
 export interface SearchResultUser extends KunUser {
   bio: string
-  moemoepoint?: number
-  created?: Date | string
+  roles: string[]
+  created: string | null
+  topic_count: number
+  reply_count: number
 }
 
 export interface SearchResultReply {
@@ -38,6 +42,8 @@ export interface SearchEntityItem {
   family: SearchEntityFamily
   name: string
   alias?: string
+  image?: string
+  work_count?: number
 }
 
 export interface SearchEntityGroup {
@@ -53,9 +59,10 @@ export interface SearchEntityResult {
 
 export type SearchType =
   | 'all'
-  | 'topic'
   | 'galgame'
+  | 'topic'
   | 'entity'
+  | 'resource'
   | 'user'
   | 'reply'
   | 'comment'
@@ -66,6 +73,7 @@ export type SearchPagedType = Exclude<SearchType, 'all' | 'entity'>
 export type SearchResult =
   | SearchResultTopic
   | SearchResultGalgame
+  | SearchResultResource
   | SearchResultToolset
   | SearchResultUser
   | SearchResultReply
@@ -85,9 +93,10 @@ export interface SearchQuickResult {
 }
 
 export interface SearchOverviewTotals {
-  topic: number
   galgame: number
+  topic: number
   entity: number
+  resource: number
   user: number
   reply: number
   comment: number
@@ -98,6 +107,7 @@ export interface SearchOverviewResult {
   topics: SearchResultTopic[]
   galgames: SearchResultGalgame[]
   entities: SearchEntityGroup[]
+  resources: SearchResultResource[]
   users: SearchResultUser[]
   replies: SearchResultReply[]
   comments: SearchResultComment[]

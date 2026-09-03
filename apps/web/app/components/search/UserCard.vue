@@ -1,37 +1,65 @@
 <script setup lang="ts">
-defineProps<{
+import { KUN_USER_ROLE_MAP } from '~/constants/user'
+
+const props = defineProps<{
   user: SearchResultUser
   keywords?: string
 }>()
+
+// One chip, the highest rank the account holds — a name followed by four of
+// them is a badge collection, not an identity.
+const ROLE_RANK = ['ren', 'admin', 'moderator', 'creator']
+
+const role = computed(() =>
+  ROLE_RANK.find((name) => props.user.roles?.includes(name))
+)
 </script>
 
 <template>
-  <KunCard :href="`/user/${user.id}`" :is-hoverable="true" padding="md">
-    <div class="flex items-center gap-2">
-      <KunAvatar :disable-floating="true" :user="user" :is-navigation="false" />
-      <span class="truncate font-medium">
-        <SearchHighlight :text="user.name" :keywords="keywords" />
-      </span>
-    </div>
+  <KunCard :href="`/user/${user.id}`" :is-hoverable="true" padding="none">
+    <div class="flex w-full gap-3 p-3">
+      <KunAvatar
+        :disable-floating="true"
+        :user="user"
+        :is-navigation="false"
+        size="lg"
+        class-name="shrink-0"
+      />
 
-    <p
-      v-if="user.bio"
-      class="text-default-600 mt-2 line-clamp-2 text-sm break-all"
-    >
-      <SearchHighlight :text="user.bio" :keywords="keywords" />
-    </p>
+      <div class="min-w-0 flex-1 space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="truncate text-sm font-medium">
+            <SearchHighlight :text="user.name" :keywords="keywords" />
+          </span>
+          <KunChip v-if="role" size="xs" color="primary">
+            {{ KUN_USER_ROLE_MAP[role] }}
+          </KunChip>
+        </div>
 
-    <div
-      v-if="user.moemoepoint || user.created"
-      class="mt-2 flex items-center justify-between text-sm"
-    >
-      <div v-if="user.moemoepoint" class="text-secondary flex items-center">
-        <KunIcon name="lucide:lollipop" class="size-5" />
-        {{ user.moemoepoint }}
+        <p
+          v-if="user.bio"
+          class="text-default-600 line-clamp-2 text-xs break-all"
+        >
+          <SearchHighlight :text="user.bio" :keywords="keywords" />
+        </p>
+
+        <div
+          class="text-default-500 flex flex-wrap items-center gap-x-3 text-xs tabular-nums"
+        >
+          <span class="flex items-center gap-1">
+            <KunIcon name="lucide:square-gantt-chart" class="size-3.5" />
+            {{ user.topic_count }}
+          </span>
+          <span class="flex items-center gap-1">
+            <KunIcon name="carbon:reply" class="size-3.5" />
+            {{ user.reply_count }}
+          </span>
+          <span v-if="user.created" class="flex items-center gap-1">
+            <KunIcon name="lucide:calendar" class="size-3.5" />
+            <KunTime :time="user.created" type="date" show-year />
+          </span>
+        </div>
       </div>
-      <span v-if="user.created" class="text-default-700">
-        <KunTime :time="user.created" type="date" show-year />
-      </span>
     </div>
   </KunCard>
 </template>

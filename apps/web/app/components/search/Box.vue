@@ -44,7 +44,7 @@ const handleEnter = () => {
     size="lg"
     :autofocus="true"
     :is-clearable="true"
-    placeholder="搜索话题, Galgame, 角色, 会社, 用户, 回复与评论…"
+    placeholder="搜索 Galgame, 话题, 角色, 会社, 下载资源, 用户, 回复与评论…"
     @keydown.enter="handleEnter"
   >
     <template #prefix>

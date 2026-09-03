@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"kun-galgame-api/internal/galgame/client"
 	galgameDto "kun-galgame-api/internal/galgame/dto"
@@ -16,6 +17,7 @@ import (
 	"kun-galgame-api/internal/search/repository"
 	toolsetService "kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/role"
 	"kun-galgame-api/pkg/userclient"
 )
 
@@ -26,6 +28,7 @@ type SearchService struct {
 	userClient    *userclient.Client
 	entityService *galgameService.EntitySearchService
 	toolset       *toolsetService.ToolsetService
+	resource      *galgameService.ResourceService
 }
 
 func NewSearchService(
@@ -35,6 +38,7 @@ func NewSearchService(
 	userClient *userclient.Client,
 	entityService *galgameService.EntitySearchService,
 	toolset *toolsetService.ToolsetService,
+	resource *galgameService.ResourceService,
 ) *SearchService {
 	return &SearchService{
 		repo:          repo,
@@ -43,6 +47,7 @@ func NewSearchService(
 		userClient:    userClient,
 		entityService: entityService,
 		toolset:       toolset,
+		resource:      resource,
 	}
 }
 
@@ -127,10 +132,12 @@ func (s *SearchService) SearchUsers(
 			continue
 		}
 		items = append(items, dto.UserItem{
-			ID:     u.ID,
-			Name:   u.Name,
-			Avatar: u.Avatar,
-			Bio:    u.Bio,
+			ID:      u.ID,
+			Name:    u.Name,
+			Avatar:  u.Avatar,
+			Bio:     u.Bio,
+			Roles:   role.Union(u.Roles, u.SiteRoles),
+			Created: parseUserCreated(u.CreatedAt),
 		})
 	}
 
@@ -139,10 +146,29 @@ func (s *SearchService) SearchUsers(
 	if start < 0 || start >= len(items) {
 		return &dto.PaginatedResult[dto.UserItem]{Items: []dto.UserItem{}, Total: total}, nil
 	}
-	return &dto.PaginatedResult[dto.UserItem]{
-		Items: items[start:min(start+limit, len(items))],
-		Total: total,
-	}, nil
+	items = items[start:min(start+limit, len(items))]
+
+	ids := make([]int, len(items))
+	for i, item := range items {
+		ids[i] = item.ID
+	}
+	topics, replies := s.repo.CountUserPosts(ids)
+	for i := range items {
+		items[i].TopicCount, items[i].ReplyCount = topics[items[i].ID], replies[items[i].ID]
+	}
+
+	return &dto.PaginatedResult[dto.UserItem]{Items: items, Total: total}, nil
+}
+
+func parseUserCreated(raw string) *time.Time {
+	if raw == "" {
+		return nil
+	}
+	at, err := time.Parse(time.RFC3339, raw)
+	if err != nil || at.IsZero() {
+		return nil
+	}
+	return &at
 }
 
 func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, limit int) (*dto.PaginatedResult[dto.ReplyItem], *errors.AppError) {

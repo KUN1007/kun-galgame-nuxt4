@@ -224,10 +224,12 @@ type StaffDetail struct {
 }
 
 type EntitySearchItem struct {
-	ID     int    `json:"id"`
-	Family string `json:"family"`
-	Name   string `json:"name"`
-	Alias  string `json:"alias,omitempty"`
+	ID        int    `json:"id"`
+	Family    string `json:"family"`
+	Name      string `json:"name"`
+	Alias     string `json:"alias,omitempty"`
+	Image     string `json:"image,omitempty"`
+	WorkCount int    `json:"work_count,omitempty"`
 }
 
 type EntitySearchGroup struct {

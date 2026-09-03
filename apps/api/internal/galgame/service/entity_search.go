@@ -33,6 +33,14 @@ var entityCatalogType = map[string]string{
 	EntityFamilyTag:       "tags",
 }
 
+// A credit name has neither a picture nor a work count of its own, so its cards
+// stay on the family icon; the other three pay for one batch request each.
+var entityMediaType = map[string]string{
+	EntityFamilyCharacter: "characters",
+	EntityFamilyCompany:   "labels",
+	EntityFamilyTag:       "tags",
+}
+
 func IsEntityFamily(family string) bool {
 	_, ok := entityCatalogType[family]
 	return ok
@@ -119,6 +127,7 @@ func (s *EntitySearchService) searchFamily(
 				Name:   h.VocabularyName(),
 			})
 		}
+		s.attachMedia(ctx, family, items)
 		return items, total, nil
 	}
 
@@ -137,7 +146,35 @@ func (s *EntitySearchService) searchFamily(
 			Alias:  entityAlias(h, name),
 		})
 	}
+	s.attachMedia(ctx, family, items)
 	return items, total, nil
+}
+
+// attachMedia is decoration: a card without its face is still a usable result,
+// so a failed batch is logged and the family keeps its rows.
+func (s *EntitySearchService) attachMedia(
+	ctx context.Context, family string, items []dto.EntitySearchItem,
+) {
+	entity, ok := entityMediaType[family]
+	if !ok || len(items) == 0 {
+		return
+	}
+	ids := make([]int64, len(items))
+	for i, item := range items {
+		ids[i] = int64(item.ID)
+	}
+	media, appErr := s.galgameClient.CatalogEntityMediaBatch(ctx, entity, ids)
+	if appErr != nil {
+		slog.Warn("entity media batch failed", "family", family, "error", appErr.Message)
+		return
+	}
+	for i := range items {
+		m, ok := media[int64(items[i].ID)]
+		if !ok {
+			continue
+		}
+		items[i].Image, items[i].WorkCount = m.Image, m.WorkCount
+	}
 }
 
 func entityAlias(h client.CatalogEntityHit, name string) string {

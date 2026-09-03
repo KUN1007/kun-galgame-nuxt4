@@ -14,22 +14,28 @@ export const SEARCH_CATEGORIES: SearchCategory[] = [
     countUnit: '个结果'
   },
   {
-    value: 'topic',
-    textValue: '话题',
-    icon: 'lucide:message-square-text',
-    countUnit: '个话题'
-  },
-  {
     value: 'galgame',
     textValue: 'Galgame',
     icon: 'lucide:gamepad-2',
     countUnit: '个 Galgame'
   },
   {
+    value: 'topic',
+    textValue: '话题',
+    icon: 'lucide:message-square-text',
+    countUnit: '个话题'
+  },
+  {
     value: 'entity',
     textValue: '资料库',
     icon: 'lucide:library',
     countUnit: '个条目'
+  },
+  {
+    value: 'resource',
+    textValue: 'Galgame 资源',
+    icon: 'lucide:package',
+    countUnit: '个资源'
   },
   {
     value: 'user',
@@ -51,9 +57,9 @@ export const SEARCH_CATEGORIES: SearchCategory[] = [
   },
   {
     value: 'toolset',
-    textValue: 'Gal 工具资源',
+    textValue: 'Gal 工具',
     icon: 'lucide:wrench',
-    countUnit: '个资源'
+    countUnit: '个工具'
   }
 ]
 
@@ -66,6 +72,8 @@ export interface SearchEntityFamilyMeta {
   textValue: string
   icon: string
   path: string
+  /** Reads after N; a company and a tag count works, a character does not. */
+  countUnit?: string
 }
 
 export const SEARCH_ENTITY_FAMILIES: SearchEntityFamilyMeta[] = [
@@ -79,7 +87,8 @@ export const SEARCH_ENTITY_FAMILIES: SearchEntityFamilyMeta[] = [
     value: 'company',
     textValue: '会社',
     icon: 'lucide:building-2',
-    path: '/galgame/official'
+    path: '/galgame/official',
+    countUnit: '部作品'
   },
   {
     value: 'staff',
@@ -87,7 +96,13 @@ export const SEARCH_ENTITY_FAMILIES: SearchEntityFamilyMeta[] = [
     icon: 'lucide:signature',
     path: '/galgame/staff'
   },
-  { value: 'tag', textValue: '标签', icon: 'lucide:tag', path: '/galgame/tag' }
+  {
+    value: 'tag',
+    textValue: '标签',
+    icon: 'lucide:tag',
+    path: '/galgame/tag',
+    countUnit: '部作品'
+  }
 ]
 
 export const SEARCH_ENTITY_FAMILY_MAP = Object.fromEntries(

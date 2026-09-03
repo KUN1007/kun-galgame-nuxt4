@@ -26,8 +26,8 @@ const isEmpty = computed(() => {
 
 <template>
   <div v-if="pending" class="space-y-8">
-    <SearchSkeleton shape="row" :count="3" />
     <SearchSkeleton shape="card" :count="3" />
+    <SearchSkeleton shape="row" :count="3" />
   </div>
 
   <KunNull v-else-if="failed" description="搜索没能完成, 请稍后重试" />
@@ -36,20 +36,6 @@ const isEmpty = computed(() => {
 
   <div v-else-if="overview" class="space-y-10">
     <SearchSection
-      v-if="overview.topics.length"
-      type="topic"
-      :total="overview.totals.topic"
-      :shown="overview.topics.length"
-      @open="emit('open', $event)"
-    >
-      <div class="space-y-3">
-        <KunCard v-for="topic in overview.topics" :key="topic.id">
-          <HomeTopicCard :topic="topic" :keywords="keywords" />
-        </KunCard>
-      </div>
-    </SearchSection>
-
-    <SearchSection
       v-if="overview.galgames.length"
       type="galgame"
       :total="overview.totals.galgame"
@@ -57,6 +43,20 @@ const isEmpty = computed(() => {
       @open="emit('open', $event)"
     >
       <GalgameCard :is-transparent="true" :galgames="overview.galgames" />
+    </SearchSection>
+
+    <SearchSection
+      v-if="overview.topics.length"
+      type="topic"
+      :total="overview.totals.topic"
+      :shown="overview.topics.length"
+      @open="emit('open', $event)"
+    >
+      <div class="space-y-2">
+        <KunCard v-for="topic in overview.topics" :key="topic.id" padding="sm">
+          <SearchTopicCard :topic="topic" :keywords="keywords" />
+        </KunCard>
+      </div>
     </SearchSection>
 
     <SearchSection
@@ -78,13 +78,31 @@ const isEmpty = computed(() => {
     </SearchSection>
 
     <SearchSection
+      v-if="overview.resources.length"
+      type="resource"
+      :total="overview.totals.resource"
+      :shown="overview.resources.length"
+      @open="emit('open', $event)"
+    >
+      <div class="space-y-2">
+        <KunCard
+          v-for="resource in overview.resources"
+          :key="resource.id"
+          padding="sm"
+        >
+          <SearchResourceCard :resource="resource" :keywords="keywords" />
+        </KunCard>
+      </div>
+    </SearchSection>
+
+    <SearchSection
       v-if="overview.users.length"
       type="user"
       :total="overview.totals.user"
       :shown="overview.users.length"
       @open="emit('open', $event)"
     >
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div class="grid gap-2 sm:grid-cols-2">
         <SearchUserCard
           v-for="user in overview.users"
           :key="user.id"
@@ -101,8 +119,8 @@ const isEmpty = computed(() => {
       :shown="overview.replies.length"
       @open="emit('open', $event)"
     >
-      <div class="space-y-3">
-        <KunCard v-for="reply in overview.replies" :key="reply.id">
+      <div class="space-y-2">
+        <KunCard v-for="reply in overview.replies" :key="reply.id" padding="sm">
           <SearchReplyCard :reply="reply" :keywords="keywords" />
         </KunCard>
       </div>
@@ -115,8 +133,12 @@ const isEmpty = computed(() => {
       :shown="overview.comments.length"
       @open="emit('open', $event)"
     >
-      <div class="space-y-3">
-        <KunCard v-for="comment in overview.comments" :key="comment.id">
+      <div class="space-y-2">
+        <KunCard
+          v-for="comment in overview.comments"
+          :key="comment.id"
+          padding="sm"
+        >
           <SearchCommentCard :comment="comment" :keywords="keywords" />
         </KunCard>
       </div>
@@ -129,7 +151,7 @@ const isEmpty = computed(() => {
       :shown="overview.toolsets.length"
       @open="emit('open', $event)"
     >
-      <ToolsetCard :items="overview.toolsets" />
+      <ToolsetCard :items="overview.toolsets" :keywords="keywords" />
     </SearchSection>
   </div>
 </template>

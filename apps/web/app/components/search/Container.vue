@@ -89,12 +89,12 @@ const setType = (value: SearchType) => {
   <div class="min-h-[calc(100dvh-6rem)] space-y-6">
     <KunHeader
       name="搜索"
-      description="一次搜索整个论坛: 话题, Galgame, 资料库中的角色 / 会社 / Staff / 标签, 用户, 回复与评论。"
+      description="一次搜索整个论坛: Galgame, 话题, 资料库中的角色 / 会社 / Staff / 标签, Galgame 下载资源, 用户, 回复与评论。"
     >
       <template #endContent>
         <div class="text-default-500 text-sm">
-          搜索结果一并包含 NSFW 的 Galgame; 未开启 NSFW
-          时资料库中的成人标签会被隐藏。按厂商 / 会社 / 多标签精确筛选请前往
+          搜索结果一并包含 NSFW 的 Galgame; 未开启 NSFW 时, 资料库中的成人标签,
+          以及 R18 游戏的下载资源会被隐藏。按厂商 / 会社 / 多标签精确筛选请前往
           <KunLink to="/galgame/official">Galgame 会社资料库</KunLink>
           或者
           <KunLink to="/galgame/tag">Galgame 标签资料库</KunLink>。
@@ -102,17 +102,26 @@ const setType = (value: SearchType) => {
       </template>
     </KunHeader>
 
-    <SearchBox
-      :keywords="keywords"
-      @submit="setKeywords"
-      @remember="rememberHistory"
-    />
+    <!--
+      The box follows the reader down the page instead of scrolling away: on a
+      results page the next thing they want is almost always a different query.
+      Its own background is opaque because the rail slides underneath it.
+    -->
+    <div
+      class="bg-background/90 lg:sticky lg:top-[68px] lg:z-20 lg:-mx-2 lg:px-2 lg:py-2 lg:backdrop-blur"
+    >
+      <SearchBox
+        :keywords="keywords"
+        @submit="setKeywords"
+        @remember="rememberHistory"
+      />
+    </div>
 
     <SearchHistory v-if="!keywords" @select="setKeywords" />
 
     <div v-else class="gap-8 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)]">
       <div class="mb-6 lg:mb-0">
-        <div class="lg:sticky lg:top-20">
+        <div class="lg:sticky lg:top-[9.5rem]">
           <SearchNav
             :model-value="currentType"
             :totals="overview?.totals ?? null"

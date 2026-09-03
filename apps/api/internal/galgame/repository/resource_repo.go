@@ -66,6 +66,45 @@ func (r *ResourceRepository) ListPaginated(page, limit int, sfw bool) []model.Ga
 	return rows
 }
 
+// SearchPaginated answers the search page's resource lane. A keyword reaches a
+// resource two ways: through the uploader's note, and through the game it
+// belongs to — and the second one has to arrive as ids, because the forum keeps
+// no local copy of a game's name.
+func (r *ResourceRepository) SearchPaginated(
+	keywords []string, galgameIDs []int, page, limit int, sfw bool,
+) ([]model.GalgameResourceRow, int64) {
+	query := sfwResources(r.db.Table("galgame_resource"), sfw)
+	for _, kw := range keywords {
+		like := "%" + kw + "%"
+		if len(galgameIDs) > 0 {
+			query = query.Where(
+				"(galgame_resource.note ILIKE ? OR galgame_resource.galgame_id IN ?)",
+				like, galgameIDs)
+			continue
+		}
+		query = query.Where("galgame_resource.note ILIKE ?", like)
+	}
+
+	var total int64
+	query.Count(&total)
+
+	selection := "galgame_resource.*"
+	order := "galgame_resource.created DESC"
+	var args []any
+	if len(galgameIDs) > 0 {
+		selection += ", (CASE WHEN galgame_resource.galgame_id IN ? THEN 1 ELSE 0 END) AS relevance"
+		args = append(args, galgameIDs)
+		order = "relevance DESC, " + order
+	}
+
+	var rows []model.GalgameResourceRow
+	query.Select(selection, args...).
+		Order(order).
+		Offset((page - 1) * limit).Limit(limit).
+		Scan(&rows)
+	return rows, total
+}
+
 func (r *ResourceRepository) FindByID(id int) (model.GalgameResourceRow, bool) {
 	var row model.GalgameResourceRow
 	if err := r.db.Table("galgame_resource").Where("id = ?", id).Scan(&row).Error; err != nil || row.ID == 0 {

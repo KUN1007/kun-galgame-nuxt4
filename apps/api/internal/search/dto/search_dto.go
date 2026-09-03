@@ -9,7 +9,7 @@ import (
 
 type SearchRequest struct {
 	Keywords string `query:"keywords" validate:"required,max=107"`
-	Type     string `query:"type" validate:"required,oneof=topic galgame user reply comment"`
+	Type     string `query:"type" validate:"required,oneof=topic galgame resource user reply comment"`
 	Page     int    `query:"page" validate:"min=1"`
 	Limit    int    `query:"limit" validate:"min=1,max=12"`
 }
@@ -48,12 +48,17 @@ type TopicItem struct {
 }
 
 type UserItem struct {
-	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	Avatar      string    `json:"avatar"`
-	Bio         string    `json:"bio"`
-	Moemoepoint int       `json:"moemoepoint"`
-	Created     time.Time `json:"created"`
+	ID     int      `json:"id"`
+	Name   string   `json:"name"`
+	Avatar string   `json:"avatar"`
+	Bio    string   `json:"bio"`
+	Roles  []string `json:"roles"`
+	// OAuth owns the registration date and /users/search may answer without it,
+	// so this is a pointer: a zero time.Time serialises as year 1 and the card
+	// printed 0001年1月1日 for every account.
+	Created    *time.Time `json:"created"`
+	TopicCount int        `json:"topic_count"`
+	ReplyCount int        `json:"reply_count"`
 }
 
 type ReplyItem struct {
@@ -98,24 +103,26 @@ type PaginatedResult[T any] struct {
 }
 
 type OverviewTotals struct {
-	Topic   int64 `json:"topic"`
-	Galgame int64 `json:"galgame"`
-	Entity  int64 `json:"entity"`
-	User    int64 `json:"user"`
-	Reply   int64 `json:"reply"`
-	Comment int64 `json:"comment"`
-	Toolset int64 `json:"toolset"`
+	Topic    int64 `json:"topic"`
+	Galgame  int64 `json:"galgame"`
+	Entity   int64 `json:"entity"`
+	Resource int64 `json:"resource"`
+	User     int64 `json:"user"`
+	Reply    int64 `json:"reply"`
+	Comment  int64 `json:"comment"`
+	Toolset  int64 `json:"toolset"`
 }
 
 type OverviewResult struct {
-	Topics   []TopicItem                    `json:"topics"`
-	Galgames []galgameDto.GalgameCard       `json:"galgames"`
-	Entities []galgameDto.EntitySearchGroup `json:"entities"`
-	Users    []UserItem                     `json:"users"`
-	Replies  []ReplyItem                    `json:"replies"`
-	Comments []CommentItem                  `json:"comments"`
-	Toolsets []toolsetDto.ToolsetCard       `json:"toolsets"`
-	Totals   OverviewTotals                 `json:"totals"`
+	Topics    []TopicItem                    `json:"topics"`
+	Galgames  []galgameDto.GalgameCard       `json:"galgames"`
+	Entities  []galgameDto.EntitySearchGroup `json:"entities"`
+	Resources []galgameDto.ResourceCard      `json:"resources"`
+	Users     []UserItem                     `json:"users"`
+	Replies   []ReplyItem                    `json:"replies"`
+	Comments  []CommentItem                  `json:"comments"`
+	Toolsets  []toolsetDto.ToolsetCard       `json:"toolsets"`
+	Totals    OverviewTotals                 `json:"totals"`
 }
 
 type EntitySearchResult struct {

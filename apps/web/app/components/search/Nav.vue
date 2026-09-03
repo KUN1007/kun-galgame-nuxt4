@@ -33,7 +33,7 @@ const handleSelect = (value: string) =>
         :items="SEARCH_CATEGORIES"
         :model-value="modelValue"
         orientation="vertical"
-        variant="light"
+        variant="underlined"
         align="start"
         :full-width="true"
         @update:model-value="handleSelect"

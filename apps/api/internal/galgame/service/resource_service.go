@@ -81,6 +81,34 @@ func (s *ResourceService) GetResourceList(
 	total := s.resourceRepo.CountAll(isSFW)
 	rows := s.resourceRepo.ListPaginated(req.Page, req.Limit, isSFW)
 
+	return &dto.ResourceListPage{
+		Resources: s.hydrateCards(ctx, rows, currentUserID, isSFW),
+		Total:     total,
+	}, nil
+}
+
+// Search answers the search page's resource lane. galgameIDs are the games
+// catalog matched on the same keyword; the note match is the repository's.
+func (s *ResourceService) Search(
+	ctx context.Context,
+	keywords []string,
+	galgameIDs []int,
+	page, limit, currentUserID int,
+	isSFW bool,
+) *dto.ResourceListPage {
+	rows, total := s.resourceRepo.SearchPaginated(keywords, galgameIDs, page, limit, isSFW)
+	return &dto.ResourceListPage{
+		Resources: s.hydrateCards(ctx, rows, currentUserID, isSFW),
+		Total:     total,
+	}
+}
+
+func (s *ResourceService) hydrateCards(
+	ctx context.Context,
+	rows []model.GalgameResourceRow,
+	currentUserID int,
+	isSFW bool,
+) []dto.ResourceCard {
 	galgameIDs, userIDs := collectIDs(rows)
 	briefMap := s.fetchGalgameBriefsPublic(ctx, galgameIDs, isSFW)
 	userMap := s.userClient.Hydrate(ctx, userIDs)
@@ -107,8 +135,7 @@ func (s *ResourceService) GetResourceList(
 		card.DlsitePurchaseURL, card.DlsiteCouponURL, card.DlsiteCampaignName = store.PurchaseURL, store.CouponURL, store.CampaignName
 		cards = append(cards, card)
 	}
-
-	return &dto.ResourceListPage{Resources: cards, Total: total}, nil
+	return cards
 }
 
 type ResourceNotFound struct{}
