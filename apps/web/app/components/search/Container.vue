@@ -3,6 +3,32 @@ import { navItems } from './items'
 
 const { keywords } = storeToRefs(useTempSearchStore())
 
+// `keywords` lives in a temp store the whole page shares, but the URL is what
+// the command palette, a shared link and the back button all hand over, so the
+// two are kept in step here.
+const route = useRoute()
+const router = useRouter()
+
+const queryKeywords = computed(() => {
+  const value = route.query.keywords
+  return (Array.isArray(value) ? value[0] : value) ?? ''
+})
+
+watch(queryKeywords, (value) => (keywords.value = value), { immediate: true })
+
+watch(keywords, (value) => {
+  if (value === queryKeywords.value) {
+    return
+  }
+  const query = { ...route.query }
+  if (value) {
+    query.keywords = value
+  } else {
+    delete query.keywords
+  }
+  router.replace({ query })
+})
+
 interface SearchPage {
   items: SearchResult[]
   total: number
@@ -22,6 +48,11 @@ const isLoadComplete = computed(
 )
 
 const searchQuery = async (searchType?: string): Promise<SearchPage> => {
+  // Nothing awaits this watcher on the server, so an SSR fetch is a request
+  // whose answer is thrown away and then made again on hydration.
+  if (import.meta.server) {
+    return { items: [], total: 0 }
+  }
   isLoading.value = true
   const type = searchType || activeType.value
   if (type === 'toolset') {

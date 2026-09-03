@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	galgameDto "kun-galgame-api/internal/galgame/dto"
+)
 
 type SearchRequest struct {
 	Keywords string `query:"keywords" validate:"required,max=107"`
@@ -58,6 +62,23 @@ type CommentItem struct {
 	Content    string    `json:"content"`
 	User       UserBrief `json:"user"`
 	Created    time.Time `json:"created"`
+}
+
+type QuickSearchRequest struct {
+	Keywords string `query:"keywords" validate:"required,max=107"`
+}
+
+type QuickSearchTotals struct {
+	Topic   int64 `json:"topic"`
+	Galgame int64 `json:"galgame"`
+	User    int64 `json:"user"`
+}
+
+type QuickSearchResult struct {
+	Topics   []TopicItem              `json:"topics"`
+	Galgames []galgameDto.GalgameCard `json:"galgames"`
+	Users    []UserItem               `json:"users"`
+	Totals   QuickSearchTotals        `json:"totals"`
 }
 
 type PaginatedResult[T any] struct {

@@ -8,17 +8,6 @@ const { open: openAuthModal } = useAuthModal()
 
 const userMenu = ref<{ close: () => void } | null>(null)
 
-const onKeydown = async (event: KeyboardEvent) => {
-  if (event.ctrlKey && event.key.toLowerCase() === 'k') {
-    event.preventDefault()
-    await navigateTo('/search')
-  }
-}
-
-onMounted(() => window.addEventListener('keydown', onKeydown))
-
-onUnmounted(() => window.removeEventListener('keydown', onKeydown))
-
 const statusClasses = computed(() => {
   if (messageStatus.value === 'admin') {
     return 'bg-danger'
@@ -34,17 +23,7 @@ const statusClasses = computed(() => {
 
 <template>
   <div class="flex items-center space-x-1 leading-none">
-    <KunTooltip text="Ctrl + K 以快速搜索" position="bottom">
-      <KunButton
-        :is-icon-only="true"
-        variant="light"
-        color="default"
-        size="xl"
-        href="/search"
-      >
-        <KunIcon name="lucide:search" />
-      </KunButton>
-    </KunTooltip>
+    <SearchPalette />
 
     <KunButton
       :is-icon-only="true"

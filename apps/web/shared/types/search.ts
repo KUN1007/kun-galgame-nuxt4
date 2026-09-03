@@ -44,3 +44,16 @@ export type SearchResult =
   | SearchResultUser
   | SearchResultReply
   | SearchResultComment
+
+export interface SearchQuickTotals {
+  topic: number
+  galgame: number
+  user: number
+}
+
+export interface SearchQuickResult {
+  topics: SearchResultTopic[]
+  galgames: SearchResultGalgame[]
+  users: SearchResultUser[]
+  totals: SearchQuickTotals
+}

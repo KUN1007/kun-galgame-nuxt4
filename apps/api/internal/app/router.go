@@ -104,6 +104,7 @@ func (a *App) setupRoutes() {
 	api.Get("/resource", a.TopicHandler.GetResourceList)
 
 	api.Get("/search", a.SearchHandler.Search)
+	api.Get("/search/quick", a.SearchHandler.QuickSearch)
 
 	api.Get("/rss/topic", a.RSSHandler.GetTopicRSS)
 	api.Get("/rss/galgame", a.RSSHandler.GetGalgameRSS)

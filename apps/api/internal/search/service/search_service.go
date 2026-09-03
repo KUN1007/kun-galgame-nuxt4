@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 
 	"kun-galgame-api/internal/galgame/client"
 	galgameDto "kun-galgame-api/internal/galgame/dto"
@@ -237,4 +239,64 @@ func (s *SearchService) SearchComments(ctx context.Context, raw string, page, li
 		})
 	}
 	return &dto.PaginatedResult[dto.CommentItem]{Items: items, Total: total}, nil
+}
+
+// quickSearchLimit is per lane: the palette is a preview, the search page is the
+// whole result.
+const quickSearchLimit = 5
+
+// QuickSearch answers the command palette. A lane that fails is dropped rather
+// than failing the request — catalog and OAuth are remote, and a palette that
+// blanks out because one of them is slow is worse than one showing topics only.
+func (s *SearchService) QuickSearch(
+	ctx context.Context,
+	raw string,
+) (*dto.QuickSearchResult, *errors.AppError) {
+	if _, appErr := tokenize(raw); appErr != nil {
+		return nil, appErr
+	}
+
+	var (
+		wg       sync.WaitGroup
+		topics   *dto.PaginatedResult[dto.TopicItem]
+		galgames *dto.PaginatedResult[galgameDto.GalgameCard]
+		users    *dto.PaginatedResult[dto.UserItem]
+	)
+	run := func(lane func()) {
+		wg.Add(1)
+		go func() {
+			// fiber's recover middleware only wraps the handler goroutine, so a
+			// panic in a lane would take the process down with it instead of
+			// failing this one request.
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("quick search lane panicked", "panic", r)
+				}
+			}()
+			defer wg.Done()
+			lane()
+		}()
+	}
+	run(func() { topics, _ = s.SearchTopics(ctx, raw, 1, quickSearchLimit) })
+	run(func() {
+		galgames, _ = s.SearchGalgames(ctx, raw, 1, quickSearchLimit, false)
+	})
+	run(func() { users, _ = s.SearchUsers(ctx, raw, 1, quickSearchLimit) })
+	wg.Wait()
+
+	res := &dto.QuickSearchResult{
+		Topics:   []dto.TopicItem{},
+		Galgames: []galgameDto.GalgameCard{},
+		Users:    []dto.UserItem{},
+	}
+	if topics != nil {
+		res.Topics, res.Totals.Topic = topics.Items, topics.Total
+	}
+	if galgames != nil {
+		res.Galgames, res.Totals.Galgame = galgames.Items, galgames.Total
+	}
+	if users != nil {
+		res.Users, res.Totals.User = users.Items, users.Total
+	}
+	return res, nil
 }

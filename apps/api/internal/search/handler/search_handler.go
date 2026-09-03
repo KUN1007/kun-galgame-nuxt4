@@ -17,6 +17,19 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 	return &SearchHandler{searchService: searchService}
 }
 
+func (h *SearchHandler) QuickSearch(c fiber.Ctx) error {
+	var req dto.QuickSearchRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	res, appErr := h.searchService.QuickSearch(c.Context(), req.Keywords)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, res)
+}
+
 func (h *SearchHandler) Search(c fiber.Ctx) error {
 	var req dto.SearchRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
