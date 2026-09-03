@@ -64,9 +64,6 @@ export const kungalgameStoreReset = () => {
   tempReplyStore.replyRewrite = null
   tempReplyStore.lastSuccessfulReply = null
 
-  const tempSearchStore = useTempSearchStore()
-  tempSearchStore.keywords = ''
-
   const componentMessageStore = useComponentMessageStore()
   componentMessageStore.showAlert = false
   componentMessageStore.alertTitle = ''

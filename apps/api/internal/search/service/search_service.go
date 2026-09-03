@@ -14,6 +14,7 @@ import (
 	galgameService "kun-galgame-api/internal/galgame/service"
 	"kun-galgame-api/internal/search/dto"
 	"kun-galgame-api/internal/search/repository"
+	toolsetService "kun-galgame-api/internal/toolset/service"
 	"kun-galgame-api/pkg/errors"
 	"kun-galgame-api/pkg/userclient"
 )
@@ -23,6 +24,8 @@ type SearchService struct {
 	galgameClient *client.GalgameClient
 	enricher      *galgameService.GalgameEnricher
 	userClient    *userclient.Client
+	entityService *galgameService.EntitySearchService
+	toolset       *toolsetService.ToolsetService
 }
 
 func NewSearchService(
@@ -30,8 +33,17 @@ func NewSearchService(
 	galgameClient *client.GalgameClient,
 	enricher *galgameService.GalgameEnricher,
 	userClient *userclient.Client,
+	entityService *galgameService.EntitySearchService,
+	toolset *toolsetService.ToolsetService,
 ) *SearchService {
-	return &SearchService{repo: repo, galgameClient: galgameClient, enricher: enricher, userClient: userClient}
+	return &SearchService{
+		repo:          repo,
+		galgameClient: galgameClient,
+		enricher:      enricher,
+		userClient:    userClient,
+		entityService: entityService,
+		toolset:       toolset,
+	}
 }
 
 // OAuth's /users/search takes q and limit only — it has no offset, so the page

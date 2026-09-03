@@ -1,23 +1,21 @@
 <script setup lang="ts">
-import { navItems } from './items'
-
-const { keywords } = storeToRefs(useTempSearchStore())
-
-// `keywords` lives in a temp store the whole page shares, but the URL is what
-// the command palette, a shared link and the back button all hand over, so the
-// two are kept in step here.
 const route = useRoute()
 const router = useRouter()
 
-const queryKeywords = computed(() => {
+const { searchHistory } = storeToRefs(usePersistKUNGalgameSearchStore())
+
+// The URL is the only source of truth for what is being searched: the command
+// palette, a shared link and the back button all hand the keyword over that way.
+const keywords = computed(() => {
   const value = route.query.keywords
-  return (Array.isArray(value) ? value[0] : value) ?? ''
+  return ((Array.isArray(value) ? value[0] : value) ?? '').trim()
 })
 
-watch(queryKeywords, (value) => (keywords.value = value), { immediate: true })
+const activeType = useTabQuery('all', 'type')
+const currentType = computed(() => activeType.value as SearchType)
 
-watch(keywords, (value) => {
-  if (value === queryKeywords.value) {
+const setKeywords = (value: string) => {
+  if (value === keywords.value) {
     return
   }
   const query = { ...route.query }
@@ -26,96 +24,64 @@ watch(keywords, (value) => {
   } else {
     delete query.keywords
   }
+  delete query.family
   router.replace({ query })
-})
-
-interface SearchPage {
-  items: SearchResult[]
-  total: number
 }
 
-const results = ref<SearchResult[]>([])
-const total = ref(0)
-const isLoading = ref(false)
-const activeType = useTabQuery('topic', 'type')
-const pageData = reactive({
-  page: 1,
-  limit: 12
-})
+const rememberHistory = (value: string) => {
+  const kept = searchHistory.value.filter((item) => item !== value)
+  kept.push(value)
+  searchHistory.value = kept.slice(-20)
+}
 
-const isLoadComplete = computed(
-  () => total.value > 0 && results.value.length >= total.value
-)
+const overview = ref<SearchOverviewResult | null>(null)
+// Seeded from the URL rather than false: the immediate watcher below flips it
+// synchronously during hydration, so a false here renders a server tree without
+// the skeletons the client's first paint has, and every count mismatches.
+const overviewPending = ref(!!keywords.value)
+const overviewFailed = ref(false)
 
-const searchQuery = async (searchType?: string): Promise<SearchPage> => {
-  // Nothing awaits this watcher on the server, so an SSR fetch is a request
-  // whose answer is thrown away and then made again on hydration.
-  if (import.meta.server) {
-    return { items: [], total: 0 }
+let latest = 0
+
+// The overview is fetched for every tab, not just 全部: its totals are what the
+// category rail counts with, so a deep link straight into 回复 still gets them.
+const loadOverview = async (value: string) => {
+  const current = ++latest
+  if (!value) {
+    overview.value = null
+    overviewFailed.value = false
+    overviewPending.value = false
+    return
   }
-  isLoading.value = true
-  const type = searchType || activeType.value
-  if (type === 'toolset') {
-    const result = await kunFetch<SearchPage>('/toolset', {
-      method: 'GET',
-      query: {
-        query: keywords.value,
-        ...pageData
-      }
-    })
-    isLoading.value = false
-    return result ?? { items: [], total: 0 }
-  }
-  const result = await kunFetch<SearchPage>('/search', {
+  overviewPending.value = true
+  const data = await kunFetch<SearchOverviewResult>('/search/overview', {
     method: 'GET',
-    query: {
-      keywords: keywords.value,
-      type,
-      ...pageData
-    }
+    query: { keywords: value }
   })
-  isLoading.value = false
-  return result ?? { items: [], total: 0 }
-}
-
-const handleSetType = async (value: SearchType) => {
-  activeType.value = value
-  pageData.page = 1
-  results.value = []
-  total.value = 0
-
-  if (keywords.value) {
-    const page = await searchQuery(value)
-    results.value = page.items
-    total.value = page.total
-  } else {
-    isLoading.value = false
+  if (current !== latest) {
+    return
   }
+  overview.value = data
+  // kunFetch already popped a toast; without this the content column would just
+  // be blank, which reads as "no results" rather than "the request failed".
+  overviewFailed.value = !data
+  overviewPending.value = false
 }
 
+// Nothing awaits this on the server, so an SSR fetch is a request whose answer
+// is thrown away and then made again on hydration.
 watch(
-  () => keywords.value,
-  async () => {
-    pageData.page = 1
-
-    if (keywords.value) {
-      const page = await searchQuery()
-      results.value = page.items
-      total.value = page.total
-    } else {
-      results.value = []
-      total.value = 0
-      isLoading.value = false
+  keywords,
+  (value) => {
+    if (!import.meta.server) {
+      loadOverview(value)
     }
   },
   { immediate: true }
 )
 
-const handleLoadMore = async () => {
-  pageData.page++
-  const page = await searchQuery()
-  results.value = results.value.concat(page.items)
-  total.value = page.total
+const setType = (value: SearchType) => {
+  activeType.value = value
 }
 </script>
 
@@ -123,55 +89,61 @@ const handleLoadMore = async () => {
   <div class="min-h-[calc(100dvh-6rem)] space-y-6">
     <KunHeader
       name="搜索"
-      description="您可以在本页面搜索本论坛的所有话题, Galgame, 用户, 回复, 评论。"
+      description="一次搜索整个论坛: 话题, Galgame, 资料库中的角色 / 会社 / Staff / 标签, 用户, 回复与评论。"
     >
       <template #endContent>
-        <div class="text-default-500">
-          当前的搜索会一并搜索 NSFW 内容, 如果您要按照 Galgame 厂商 / 会社 /
-          标签搜索, 或者需要 <KunLink to="/galgame/tag">多标签搜索</KunLink> ,
-          请前往
-          <KunLink to="/galgame/official"> Galgame 会社资料库 </KunLink>
+        <div class="text-default-500 text-sm">
+          搜索结果一并包含 NSFW 的 Galgame; 未开启 NSFW
+          时资料库中的成人标签会被隐藏。按厂商 / 会社 / 多标签精确筛选请前往
+          <KunLink to="/galgame/official">Galgame 会社资料库</KunLink>
           或者
-          <KunLink to="/galgame/tag"> Galgame 标签资料库 </KunLink>
-          的页面进行搜索。
+          <KunLink to="/galgame/tag">Galgame 标签资料库</KunLink>。
         </div>
       </template>
     </KunHeader>
-    <KunTab
-      :items="navItems"
-      :model-value="activeType"
-      @update:model-value="(value) => handleSetType(value as SearchType)"
-      size="sm"
+
+    <SearchBox
+      :keywords="keywords"
+      @submit="setKeywords"
+      @remember="rememberHistory"
     />
 
-    <SearchBox />
+    <SearchHistory v-if="!keywords" @select="setKeywords" />
 
-    <SearchHistory v-if="!keywords" />
+    <div v-else class="gap-8 lg:grid lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <div class="mb-6 lg:mb-0">
+        <div class="lg:sticky lg:top-20">
+          <SearchNav
+            :model-value="currentType"
+            :totals="overview?.totals ?? null"
+            :pending="overviewPending"
+            @update:model-value="setType"
+          />
+        </div>
+      </div>
 
-    <SearchResult
-      :results="results"
-      :type="activeType as SearchType"
-      v-if="results.length"
-    />
+      <div class="min-w-0">
+        <SearchOverview
+          v-if="currentType === 'all'"
+          :keywords="keywords"
+          :overview="overview"
+          :pending="overviewPending"
+          :failed="overviewFailed"
+          @open="setType"
+        />
 
-    <KunDivider v-if="results.length >= 12">
-      <slot />
-      <KunButton
-        variant="flat"
-        :loading="isLoading"
-        :disabled="isLoading || isLoadComplete"
-        @click="handleLoadMore"
-      >
-        加载更多
-      </KunButton>
-      <span v-if="isLoadComplete">被榨干了呜呜呜呜呜, 一滴也不剩了</span>
-    </KunDivider>
+        <SearchEntities
+          v-else-if="currentType === 'entity'"
+          :keywords="keywords"
+        />
 
-    <KunNull
-      v-if="!results.length && keywords && !isLoading"
-      description="杂鱼杂鱼杂鱼~什么也没有搜索到"
-    />
-
-    <KunLoading v-if="isLoading" />
+        <SearchList
+          v-else
+          :key="currentType"
+          :keywords="keywords"
+          :type="currentType as SearchPagedType"
+        />
+      </div>
+    </div>
   </div>
 </template>

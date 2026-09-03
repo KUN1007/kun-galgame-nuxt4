@@ -2,6 +2,8 @@
 defineProps<{
   topic: HomeTopic
   isTransparent?: boolean
+  /** Search only: highlights the matched run inside the title. */
+  keywords?: string
 }>()
 </script>
 
@@ -15,7 +17,7 @@ defineProps<{
       <h3
         class="hover:text-primary line-clamp-2 text-base font-medium transition-colors sm:text-lg"
       >
-        {{ topic.title }}
+        <SearchHighlight :text="topic.title" :keywords="keywords" />
       </h3>
 
       <span class="text-default-500 shrink-0 text-sm">

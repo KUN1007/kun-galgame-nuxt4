@@ -11,7 +11,7 @@ import (
 )
 
 func TestQuickSearch_RequiresAKeyword(t *testing.T) {
-	svc := NewSearchService(nil, nil, nil, nil)
+	svc := NewSearchService(nil, nil, nil, nil, nil, nil)
 
 	if _, appErr := svc.QuickSearch(context.Background(), "   "); appErr == nil {
 		t.Fatal("QuickSearch accepted a blank query")
@@ -31,6 +31,8 @@ func TestQuickSearch_AnswersEvenWhenEveryLaneBreaks(t *testing.T) {
 		nil,
 		client.New(srv.URL, "nm_test_key", ""),
 		&galgameService.GalgameEnricher{},
+		nil,
+		nil,
 		nil,
 	)
 

@@ -30,6 +30,38 @@ func (h *SearchHandler) QuickSearch(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
+func (h *SearchHandler) Overview(c fiber.Ctx) error {
+	var req dto.OverviewRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	res, appErr := h.searchService.Overview(c.Context(), req.Keywords, utils.IsSFW(c))
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, res)
+}
+
+func (h *SearchHandler) SearchEntities(c fiber.Ctx) error {
+	var req dto.EntitySearchRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	groups, appErr := h.searchService.SearchEntities(
+		c.Context(), req.Keywords, req.Family, req.Limit, utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	res := dto.EntitySearchResult{Groups: groups}
+	for _, group := range groups {
+		res.Total += group.Total
+	}
+	return response.OK(c, res)
+}
+
 func (h *SearchHandler) Search(c fiber.Ctx) error {
 	var req dto.SearchRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {

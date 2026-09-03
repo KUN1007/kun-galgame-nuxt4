@@ -220,27 +220,29 @@ func (h *CatalogEntityHit) VocabularyName() string {
 	return CatalogVocabularyName(h.Localized, h.DisplayName)
 }
 
-func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, *errors.AppError) {
+func (c *GalgameClient) CatalogEntitySearch(ctx context.Context, searchType, keywords string, limit int) ([]CatalogEntityHit, int64, *errors.AppError) {
 	q := url.Values{
-		"type":  {searchType},
-		"q":     {keywords},
-		"limit": {strconv.Itoa(limit)},
+		"type":          {searchType},
+		"q":             {keywords},
+		"limit":         {strconv.Itoa(limit)},
+		"include_total": {"true"},
 	}
 	openPopulation(q)
 	data, appErr := c.CatalogGet(ctx, "/catalog/search", q)
 	if appErr != nil {
-		return nil, appErr
+		return nil, 0, appErr
 	}
 	var parsed struct {
 		Items []CatalogEntityHit `json:"items"`
+		Total int64              `json:"total"`
 	}
 	if err := json.Unmarshal(data, &parsed); err != nil {
-		return nil, errors.ErrInternal("解析 Catalog 实体搜索响应失败")
+		return nil, 0, errors.ErrInternal("解析 Catalog 实体搜索响应失败")
 	}
 	if parsed.Items == nil {
 		parsed.Items = []CatalogEntityHit{}
 	}
-	return parsed.Items, nil
+	return parsed.Items, parsed.Total, nil
 }
 
 func (c *GalgameClient) CatalogSexualTagIDs(ctx context.Context, ids []int) map[int]bool {

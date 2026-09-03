@@ -172,7 +172,7 @@ func TestLiveV2DetailFaces(t *testing.T) {
 
 	// The staff page: the credits block lives on its own sub-face and is spliced
 	// back in, inheriting the parent's population gate.
-	hits, appErr := c.CatalogEntitySearch(ctx, "names", "田村", 3)
+	hits, _, appErr := c.CatalogEntitySearch(ctx, "names", "田村", 3)
 	if appErr != nil {
 		t.Fatalf("CatalogEntitySearch names: %v", appErr)
 	}
@@ -193,7 +193,7 @@ func TestLiveV2DetailFaces(t *testing.T) {
 		t.Errorf("staff %d has no credits — the sub-face splice produced nothing", hits[0].ID)
 	}
 
-	chars, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 3)
+	chars, _, appErr := c.CatalogEntitySearch(ctx, "characters", "a", 3)
 	if appErr != nil || len(chars) == 0 {
 		t.Fatalf("character search: err=%v hits=%d", appErr, len(chars))
 	}

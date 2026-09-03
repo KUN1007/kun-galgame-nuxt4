@@ -4,6 +4,7 @@ import (
 	"time"
 
 	galgameDto "kun-galgame-api/internal/galgame/dto"
+	toolsetDto "kun-galgame-api/internal/toolset/dto"
 )
 
 type SearchRequest struct {
@@ -11,6 +12,16 @@ type SearchRequest struct {
 	Type     string `query:"type" validate:"required,oneof=topic galgame user reply comment"`
 	Page     int    `query:"page" validate:"min=1"`
 	Limit    int    `query:"limit" validate:"min=1,max=12"`
+}
+
+type OverviewRequest struct {
+	Keywords string `query:"keywords" validate:"required,max=107"`
+}
+
+type EntitySearchRequest struct {
+	Keywords string `query:"keywords" validate:"required,max=107"`
+	Family   string `query:"family" validate:"omitempty,oneof=character company staff tag"`
+	Limit    int    `query:"limit" validate:"min=1,max=60"`
 }
 
 type UserBrief struct {
@@ -84,4 +95,30 @@ type QuickSearchResult struct {
 type PaginatedResult[T any] struct {
 	Items []T
 	Total int64
+}
+
+type OverviewTotals struct {
+	Topic   int64 `json:"topic"`
+	Galgame int64 `json:"galgame"`
+	Entity  int64 `json:"entity"`
+	User    int64 `json:"user"`
+	Reply   int64 `json:"reply"`
+	Comment int64 `json:"comment"`
+	Toolset int64 `json:"toolset"`
+}
+
+type OverviewResult struct {
+	Topics   []TopicItem                    `json:"topics"`
+	Galgames []galgameDto.GalgameCard       `json:"galgames"`
+	Entities []galgameDto.EntitySearchGroup `json:"entities"`
+	Users    []UserItem                     `json:"users"`
+	Replies  []ReplyItem                    `json:"replies"`
+	Comments []CommentItem                  `json:"comments"`
+	Toolsets []toolsetDto.ToolsetCard       `json:"toolsets"`
+	Totals   OverviewTotals                 `json:"totals"`
+}
+
+type EntitySearchResult struct {
+	Groups []galgameDto.EntitySearchGroup `json:"groups"`
+	Total  int64                          `json:"total"`
 }

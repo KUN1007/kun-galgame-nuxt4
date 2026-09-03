@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   comment: SearchResultComment
+  keywords?: string
 }>()
 </script>
 
@@ -9,34 +10,27 @@ defineProps<{
     color="default"
     underline="none"
     :to="commentPermalink(`/topic/${comment.topic_id}`, comment.id)"
-    class="flex-col items-start"
+    class-name="flex-col items-start w-full"
   >
-    <div class="flex items-center gap-2">
-      <KunIcon class="text-primary h-5 w-5" name="uil:comment-dots" />
-      <span class="text-lg">{{ comment.topic_title }}</span>
-      <span class="text-default-500 ml-auto text-sm">
+    <div class="flex w-full items-center gap-2">
+      <KunIcon class="text-primary size-5 shrink-0" name="uil:comment-dots" />
+      <span class="truncate text-lg">
+        <SearchHighlight :text="comment.topic_title" :keywords="keywords" />
+      </span>
+      <span class="text-default-500 ml-auto shrink-0 text-sm">
         <KunTime :time="comment.created" />
       </span>
     </div>
 
     <div
-      class="border-primary bg-primary/10 my-2 rounded border-l-3 p-2 text-sm"
+      class="border-primary bg-primary/10 my-2 w-full rounded border-l-3 p-2 text-sm"
     >
-      {{ comment.content }}
+      <SearchHighlight :text="comment.content" :keywords="keywords" />
     </div>
 
-    <div class="flex flex-wrap items-center gap-2">
-      <div class="flex items-center">
-        <KunAvatar :user="comment.user" :is-navigation="false" />
-        <span class="ml-2 text-sm">{{ comment.user.name }}</span>
-      </div>
-      <template v-if="comment.target_user">
-        <KunIcon name="lucide:arrow-right" class="h-4 w-4" />
-        <div class="flex items-center">
-          <KunAvatar :user="comment.target_user" :is-navigation="false" />
-          <span class="ml-2 text-sm">{{ comment.target_user.name }}</span>
-        </div>
-      </template>
+    <div class="flex items-center">
+      <KunAvatar :user="comment.user" :is-navigation="false" />
+      <span class="ml-2 text-sm">{{ comment.user.name }}</span>
     </div>
   </KunLink>
 </template>

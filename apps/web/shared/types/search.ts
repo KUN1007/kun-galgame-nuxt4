@@ -12,6 +12,7 @@ export interface SearchResultUser extends KunUser {
 }
 
 export interface SearchResultReply {
+  id: number
   topic_id: number
   topic_title: string
   floor: number
@@ -30,13 +31,38 @@ export type SearchResultComment = {
   created: Date | string
 }
 
+export type SearchEntityFamily = 'character' | 'company' | 'staff' | 'tag'
+
+export interface SearchEntityItem {
+  id: number
+  family: SearchEntityFamily
+  name: string
+  alias?: string
+}
+
+export interface SearchEntityGroup {
+  family: SearchEntityFamily
+  total: number
+  items: SearchEntityItem[]
+}
+
+export interface SearchEntityResult {
+  groups: SearchEntityGroup[]
+  total: number
+}
+
 export type SearchType =
+  | 'all'
   | 'topic'
   | 'galgame'
-  | 'toolset'
+  | 'entity'
   | 'user'
   | 'reply'
   | 'comment'
+  | 'toolset'
+
+export type SearchPagedType = Exclude<SearchType, 'all' | 'entity'>
+
 export type SearchResult =
   | SearchResultTopic
   | SearchResultGalgame
@@ -56,4 +82,25 @@ export interface SearchQuickResult {
   galgames: SearchResultGalgame[]
   users: SearchResultUser[]
   totals: SearchQuickTotals
+}
+
+export interface SearchOverviewTotals {
+  topic: number
+  galgame: number
+  entity: number
+  user: number
+  reply: number
+  comment: number
+  toolset: number
+}
+
+export interface SearchOverviewResult {
+  topics: SearchResultTopic[]
+  galgames: SearchResultGalgame[]
+  entities: SearchEntityGroup[]
+  users: SearchResultUser[]
+  replies: SearchResultReply[]
+  comments: SearchResultComment[]
+  toolsets: SearchResultToolset[]
+  totals: SearchOverviewTotals
 }

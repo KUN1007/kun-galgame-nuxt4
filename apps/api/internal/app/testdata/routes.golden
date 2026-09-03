@@ -129,6 +129,8 @@ GET    /api/resource                                  cors.New → middleware.Na
 GET    /api/rss/galgame                               cors.New → middleware.NamePreference → RSSHandler.GetGalgameRSS
 GET    /api/rss/topic                                 cors.New → middleware.NamePreference → RSSHandler.GetTopicRSS
 GET    /api/search                                    cors.New → middleware.NamePreference → SearchHandler.Search
+GET    /api/search/entity                             cors.New → middleware.NamePreference → SearchHandler.SearchEntities
+GET    /api/search/overview                           cors.New → middleware.NamePreference → SearchHandler.Overview
 GET    /api/search/quick                              cors.New → middleware.NamePreference → SearchHandler.QuickSearch
 GET    /api/section                                   cors.New → middleware.NamePreference → SectionHandler.GetSectionTopics
 GET    /api/toolset                                   cors.New → middleware.NamePreference → OptionalAuth → ToolsetHandler.GetList

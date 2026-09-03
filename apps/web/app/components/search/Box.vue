@@ -1,59 +1,54 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 
-const { searchHistory } = storeToRefs(usePersistKUNGalgameSearchStore())
-const { keywords } = storeToRefs(useTempSearchStore())
+const props = defineProps<{
+  keywords: string
+}>()
 
-const isFocus = ref(false)
-const input = ref<HTMLElement | null>(null)
-const inputValue = ref('')
+const emit = defineEmits<{
+  submit: [value: string]
+  remember: [value: string]
+}>()
 
-watchDebounced(
-  () => inputValue.value,
-  (value) => {
-    keywords.value = value.trim()
-  },
-  { debounce: 500 }
-)
+const draft = ref(props.keywords)
 
 watch(
-  keywords,
+  () => props.keywords,
   (value) => {
-    if (value !== inputValue.value.trim()) {
-      inputValue.value = value
+    if (value !== draft.value.trim()) {
+      draft.value = value
     }
-  },
-  { immediate: true }
+  }
 )
 
-onMounted(() => input.value?.focus())
+watchDebounced(draft, (value) => emit('submit', value.trim()), {
+  debounce: 400
+})
 
-const handleInputBlur = () => {
-  isFocus.value = false
-  if (!keywords.value.trim()) {
-    return
-  }
-
-  if (!searchHistory.value.includes(keywords.value)) {
-    searchHistory.value.push(keywords.value)
-  }
-}
-
+// Only an explicit Enter is worth remembering. The debounced watcher above sees
+// every prefix of what is being typed, so recording there fills the history
+// with 汉, 汉化, 汉化补.
 const handleEnter = () => {
-  keywords.value = inputValue.value.trim()
+  const value = draft.value.trim()
+  emit('submit', value)
+  if (value) {
+    emit('remember', value)
+  }
 }
 </script>
 
 <template>
   <KunInput
-    ref="input"
-    v-model="inputValue"
-    type="search"
+    v-model="draft"
+    type="text"
     size="lg"
-    :color="isFocus ? 'primary' : 'default'"
-    placeholder="输入内容以自动搜索"
-    @focus="isFocus = true"
-    @blur="handleInputBlur"
+    :autofocus="true"
+    :is-clearable="true"
+    placeholder="搜索话题, Galgame, 角色, 会社, 用户, 回复与评论…"
     @keydown.enter="handleEnter"
-  />
+  >
+    <template #prefix>
+      <KunIcon name="lucide:search" class="text-default-400 size-5" />
+    </template>
+  </KunInput>
 </template>

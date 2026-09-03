@@ -222,3 +222,16 @@ type StaffDetail struct {
 	NextOffset   *int           `json:"next_offset"`
 	MovedTo      int            `json:"moved_to,omitempty"`
 }
+
+type EntitySearchItem struct {
+	ID     int    `json:"id"`
+	Family string `json:"family"`
+	Name   string `json:"name"`
+	Alias  string `json:"alias,omitempty"`
+}
+
+type EntitySearchGroup struct {
+	Family string             `json:"family"`
+	Total  int64              `json:"total"`
+	Items  []EntitySearchItem `json:"items"`
+}

@@ -45,10 +45,30 @@ func (s *TagService) Search(
 	rawQuery url.Values,
 	isSFW bool,
 ) ([]dto.TaxonomySearchItem, *errors.AppError) {
-	hits, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags",
-		rawQuery.Get("q"), atoiOr(rawQuery.Get("limit"), 20))
+	hits, _, appErr := s.searchHits(ctx, rawQuery.Get("q"),
+		atoiOr(rawQuery.Get("limit"), 20), isSFW)
 	if appErr != nil {
 		return nil, appErr
+	}
+	items := make([]dto.TaxonomySearchItem, 0, len(hits))
+	for _, h := range hits {
+		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.VocabularyName()})
+	}
+	return items, nil
+}
+
+// searchHits carries the hidden-tier and SFW filtering that every tag surface
+// owes the reader; the unified entity search needs the hits themselves and the
+// catalog total, neither of which survives the TaxonomySearchItem projection.
+func (s *TagService) searchHits(
+	ctx context.Context,
+	keywords string,
+	limit int,
+	isSFW bool,
+) ([]client.CatalogEntityHit, int64, *errors.AppError) {
+	hits, total, appErr := s.galgameClient.CatalogEntitySearch(ctx, "tags", keywords, limit)
+	if appErr != nil {
+		return nil, 0, appErr
 	}
 
 	kept := make([]client.CatalogEntityHit, 0, len(hits))
@@ -69,14 +89,17 @@ func (s *TagService) Search(
 		}
 	}
 
-	items := make([]dto.TaxonomySearchItem, 0, len(kept))
+	out := make([]client.CatalogEntityHit, 0, len(kept))
 	for _, h := range kept {
 		if sexual[int(h.ID)] {
 			continue
 		}
-		items = append(items, dto.TaxonomySearchItem{ID: int(h.ID), Name: h.VocabularyName()})
+		out = append(out, h)
 	}
-	return items, nil
+	// Catalog counted the rows this function then hid, so the raw total would
+	// promise more tags than an SFW reader can ever be shown.
+	total -= int64(len(hits) - len(out))
+	return out, max(total, int64(len(out))), nil
 }
 
 func (s *TagService) GetByMultiTag(

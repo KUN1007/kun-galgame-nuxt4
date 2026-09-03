@@ -29,7 +29,7 @@ func (r *searchRecorder) service(t *testing.T) *SearchService {
 		_, _ = w.Write([]byte(`{"items":[],"total":0}`))
 	}))
 	t.Cleanup(srv.Close)
-	return NewSearchService(nil, client.New(srv.URL, "nm_test_key", ""), &galgameService.GalgameEnricher{}, nil)
+	return NewSearchService(nil, client.New(srv.URL, "nm_test_key", ""), &galgameService.GalgameEnricher{}, nil, nil, nil)
 }
 
 func (r *searchRecorder) get(key string) string {
