@@ -33,7 +33,7 @@
 - **萌萌点** — 全生态统一的贡献积分，权威余额与流水由 OAuth 持有
 - **富内容编辑** — 基于 Milkdown 与 CodeMirror 的共享鲲编辑器，支持 KaTeX、代码高亮、@ 提及与图片上传
 - **个性化外观** — 深色与浅色模式，以及页面透明度、字体、背景图和内容分级偏好
-- **搜索与发现** — 基于 Meilisearch 的搜索、排行榜、动态流、发售日历、收藏夹与推荐
+- **搜索与发现** — 覆盖话题、回复、子评论、用户与游戏的站内搜索，以及排行榜、动态流、发售日历、收藏夹与推荐
 - **SEO 与订阅** — Nuxt SSR、Schema.org 元数据、分片站点地图、规范化重定向，以及话题和视觉小说 RSS
 
 ## 架构
@@ -72,7 +72,7 @@
 | 后端 API   | [Go 1.26](https://go.dev/) + [Fiber v3](https://gofiber.io/)                           |
 | 数据库     | PostgreSQL + [GORM](https://gorm.io/)，使用显式原生 SQL migration，不运行 AutoMigrate  |
 | 缓存与会话 | Redis                                                                                  |
-| 搜索       | [Meilisearch](https://www.meilisearch.com/)                                            |
+| 搜索       | 论坛内容走 PostgreSQL，游戏与分类词表走共享 Catalog 服务                               |
 | 身份验证   | OAuth 支撑的 BFF 会话，90 天滑动有效期                                                 |
 | 共享服务   | Catalog、Community、Trust、Image、Artifact 与 OAuth 客户端                             |
 | 定时任务   | [robfig/cron](https://github.com/robfig/cron)，负责每日维护与 Catalog 事件同步         |
@@ -101,7 +101,7 @@
 
 ## 快速开始
 
-**前置依赖：** 带 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL、Redis 与 Meilisearch。完整本地功能还需要 `nextmoe-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 与 Trust 服务。
+**前置依赖：** 带 Corepack 的 Node.js 24+、Go 1.26+、PostgreSQL 与 Redis。完整本地功能还需要 `nextmoe-infra` 提供的 OAuth、Catalog、Image、Artifact、Community 与 Trust 服务。
 
 先启动本地共享平台：
 

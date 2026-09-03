@@ -33,7 +33,7 @@
 - **萌萌点（Moemoepoint）** — エコシステム共通の貢献ポイント。正規の残高と台帳は OAuth が管理
 - **リッチコンテンツ編集** — Milkdown と CodeMirror を基盤にした共通 KUN エディター。KaTeX、シンタックスハイライト、メンション、画像アップロードに対応
 - **外観のカスタマイズ** — ライト・ダークモード、ページ透明度、フォント、背景画像、コンテンツレーティング設定
-- **検索と発見** — Meilisearch による検索、ランキング、アクティビティフィード、発売カレンダー、コレクション、推薦
+- **検索と発見** — トピック・返信・コメント・ユーザー・ゲームを横断するサイト内検索、ランキング、アクティビティフィード、発売カレンダー、コレクション、推薦
 - **SEO とフィード** — Nuxt SSR、Schema.org メタデータ、分割サイトマップ、正規化リダイレクト、トピックとビジュアルノベルの RSS
 
 ## アーキテクチャ
@@ -72,7 +72,7 @@
 | バックエンド API       | [Go 1.26](https://go.dev/) + [Fiber v3](https://gofiber.io/)                                             |
 | データベース           | PostgreSQL + [GORM](https://gorm.io/)。明示的な生 SQL migration を使用し、AutoMigrate は実行しない       |
 | キャッシュとセッション | Redis                                                                                                    |
-| 検索                   | [Meilisearch](https://www.meilisearch.com/)                                                              |
+| 検索                   | フォーラムのコンテンツは PostgreSQL、ゲームと分類語彙は共有 Catalog サービス                             |
 | 認証                   | OAuth を背後に持つ BFF セッション。90 日間のスライディング有効期限                                       |
 | 共通サービス           | Catalog、Community、Trust、Image、Artifact、OAuth クライアント                                           |
 | スケジューラー         | [robfig/cron](https://github.com/robfig/cron) による日次メンテナンスと Catalog イベント同期              |
@@ -101,7 +101,7 @@
 
 ## はじめに
 
-**前提条件：** Corepack 付き Node.js 24+、Go 1.26+、PostgreSQL、Redis、Meilisearch。ローカルですべての機能を使うには、`nextmoe-infra` の OAuth、Catalog、Image、Artifact、Community、Trust サービスも必要です。
+**前提条件：** Corepack 付き Node.js 24+、Go 1.26+、PostgreSQL、Redis。ローカルですべての機能を使うには、`nextmoe-infra` の OAuth、Catalog、Image、Artifact、Community、Trust サービスも必要です。
 
 最初にローカル共通基盤を起動します。
 

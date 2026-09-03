@@ -33,7 +33,7 @@ For more information, visit [About 鲲 Galgame](https://www.kungal.com/kungalgam
 - **Moemoepoint** — An ecosystem-wide contribution score whose authoritative balance and ledger are owned by OAuth
 - **Rich content editing** — The shared KUN editor, built on Milkdown and CodeMirror, with KaTeX, syntax highlighting, mentions, and image uploads
 - **Personalized appearance** — Light and dark modes, configurable transparency, fonts, background images, and content-rating preferences
-- **Search and discovery** — Meilisearch-backed search, rankings, activity feeds, release calendars, collections, and recommendations
+- **Search and discovery** — Site-wide search across topics, replies, comments, users, and visual novels, plus rankings, activity feeds, release calendars, collections, and recommendations
 - **SEO and feeds** — Nuxt SSR, Schema.org metadata, chunked sitemaps, canonical redirects, and RSS feeds for topics and visual novels
 
 ## Architecture
@@ -72,7 +72,7 @@ The retired Galgame Wiki family is not a contract for new work. Some compatibili
 | Backend API          | [Go 1.26](https://go.dev/) + [Fiber v3](https://gofiber.io/)                                                           |
 | Database             | PostgreSQL through [GORM](https://gorm.io/), with explicit raw-SQL migrations and no AutoMigrate                       |
 | Cache and sessions   | Redis                                                                                                                  |
-| Search               | [Meilisearch](https://www.meilisearch.com/)                                                                            |
+| Search               | PostgreSQL for forum content; the shared Catalog service for visual novels and taxonomy                                |
 | Authentication       | OAuth-backed BFF session with a 90-day sliding lifetime                                                                |
 | Shared services      | Catalog, Community, Trust, Image, Artifact, and OAuth clients                                                          |
 | Scheduler            | [robfig/cron](https://github.com/robfig/cron) for daily maintenance and Catalog event synchronization                  |
@@ -101,7 +101,7 @@ The retired Galgame Wiki family is not a contract for new work. Some compatibili
 
 ## Getting Started
 
-**Prerequisites:** Node.js 24+ with Corepack, Go 1.26+, PostgreSQL, Redis, and Meilisearch. Full local functionality also requires the OAuth, Catalog, Image, Artifact, Community, and Trust services from `nextmoe-infra`.
+**Prerequisites:** Node.js 24+ with Corepack, Go 1.26+, PostgreSQL, and Redis. Full local functionality also requires the OAuth, Catalog, Image, Artifact, Community, and Trust services from `nextmoe-infra`.
 
 Start the local shared platform first:
 
