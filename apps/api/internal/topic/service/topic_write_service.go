@@ -109,6 +109,10 @@ func (s *TopicWriteService) Create(
 	userID int,
 	req *dto.CreateTopicRequest,
 ) (int, *errors.AppError) {
+	scope, grants, accessErr := normalizeTopicAccess(req.AccessScope, req.AccessRoles, req.AccessUserIDs, userID, true)
+	if accessErr != nil {
+		return 0, accessErr
+	}
 	hasConsumeSection := anyConsumeSection(req.Sections)
 
 	coverInput := req.CoverImages
@@ -149,6 +153,7 @@ func (s *TopicWriteService) Create(
 		}
 
 		topic := &topicModel.Topic{
+			AccessScope: scope,
 			Title:       req.Title,
 			Content:     req.Content,
 			Category:    req.Category,
@@ -157,6 +162,9 @@ func (s *TopicWriteService) Create(
 			CoverImages: covers,
 		}
 		if err := s.topicRepo.CreateTopic(tx, topic); err != nil {
+			return err
+		}
+		if err := s.topicRepo.ReplaceAccessGrants(tx, topic.ID, grants); err != nil {
 			return err
 		}
 		newTopicID = topic.ID
@@ -213,6 +221,10 @@ func (s *TopicWriteService) Update(
 		return errors.ErrForbidden("您没有权限编辑此话题")
 	}
 
+	scope, grants, accessErr := normalizeTopicAccess(req.AccessScope, req.AccessRoles, req.AccessUserIDs, topic.UserID, false)
+	if accessErr != nil {
+		return accessErr
+	}
 	oldSections, err := s.taxonomyRepo.FindSectionNamesByTopicID(topicID)
 	if err != nil {
 		return errors.ErrInternal("更新话题失败")
@@ -235,6 +247,7 @@ func (s *TopicWriteService) Update(
 	now := time.Now()
 	txErr := s.topicRepo.DB().Transaction(func(tx *gorm.DB) error {
 		if err := s.topicRepo.UpdateTopicFields(tx, topicID, map[string]any{
+			"access_scope":       scope,
 			"title":              req.Title,
 			"content":            req.Content,
 			"category":           req.Category,
@@ -243,6 +256,10 @@ func (s *TopicWriteService) Update(
 			"edited":             &now,
 			"status_update_time": now,
 		}); err != nil {
+			return err
+		}
+
+		if err := s.topicRepo.ReplaceAccessGrants(tx, topicID, grants); err != nil {
 			return err
 		}
 

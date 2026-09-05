@@ -83,7 +83,7 @@ func (h *PollHandler) Vote(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.pollService.Vote(c.Context(), user.ID, &req); appErr != nil {
+	if appErr := h.pollService.Vote(c.Context(), user, &req); appErr != nil {
 		return response.Error(c, appErr)
 	}
 

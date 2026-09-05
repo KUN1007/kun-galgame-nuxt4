@@ -5,6 +5,7 @@ const MODERATOR_PERMISSIONS = [
   'topic.edit_any',
   'topic.hide',
   'topic.view_hidden',
+  'topic.view_restricted',
   'topic.set_best_answer',
   'reply.edit_any',
   'reply.delete_any',

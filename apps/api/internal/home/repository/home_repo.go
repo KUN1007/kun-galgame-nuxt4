@@ -1,6 +1,7 @@
 package repository
 
 import (
+	topicRepo "kun-galgame-api/internal/topic/repository"
 	"time"
 
 	"gorm.io/gorm"
@@ -83,6 +84,7 @@ func (r *HomeRepository) FindHomeTopics(limit int, isSFW bool) ([]TopicRow, erro
 			topic.best_answer_id, topic.upvote_time, topic.status_update_time,
 			topic.user_id`).
 		Where("topic.status != 1").
+		Where(topicRepo.SharedListPredicate("topic", false)).
 		Where(`topic.id NOT IN (
 			SELECT tsr.topic_id FROM topic_section_relation tsr
 			JOIN topic_section ts ON ts.id = tsr.topic_section_id

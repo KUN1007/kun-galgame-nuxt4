@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	topicRepo "kun-galgame-api/internal/topic/repository"
 	"strings"
 	"time"
 
@@ -659,7 +660,7 @@ func (r *ActivityRepository) FetchFeed(types []string, limit int, cur *Cursor, i
 }
 
 func (r *ActivityRepository) FetchTopicFeed(limit int, cur *Cursor, isSFW bool, sectionMode string) ([]ActivityRow, error) {
-	conds := []string{"t.status != 1"}
+	conds := []string{"t.status != 1", topicRepo.SharedListPredicate("t", false)}
 	args := []any{}
 	if isSFW {
 		conds = append(conds, "NOT t.is_nsfw")

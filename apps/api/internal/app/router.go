@@ -71,7 +71,7 @@ func (a *App) setupRoutes() {
 	api.Get("/ranking/topic", a.RankingHandler.GetTopicRanking)
 	api.Get("/ranking/user", a.RankingHandler.GetUserRanking)
 
-	api.Get("/section", a.SectionHandler.GetSectionTopics)
+	api.Get("/section", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SectionHandler.GetSectionTopics)
 	api.Get("/category", a.SectionHandler.GetCategories)
 
 	api.Get("/doc/article", a.DocArticleHandler.GetArticles)
@@ -101,12 +101,12 @@ func (a *App) setupRoutes() {
 	api.Get("/news/archive", a.NewsHandler.GetArchive)
 	api.Get("/news/month", a.NewsHandler.GetMonth)
 
-	api.Get("/resource", a.TopicHandler.GetResourceList)
+	api.Get("/resource", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.TopicHandler.GetResourceList)
 
-	api.Get("/search", a.SearchHandler.Search)
-	api.Get("/search/quick", a.SearchHandler.QuickSearch)
-	api.Get("/search/overview", a.SearchHandler.Overview)
-	api.Get("/search/entity", a.SearchHandler.SearchEntities)
+	api.Get("/search", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.Search)
+	api.Get("/search/quick", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.QuickSearch)
+	api.Get("/search/overview", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.Overview)
+	api.Get("/search/entity", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.SearchEntities)
 
 	api.Get("/rss/topic", a.RSSHandler.GetTopicRSS)
 	api.Get("/rss/galgame", a.RSSHandler.GetGalgameRSS)

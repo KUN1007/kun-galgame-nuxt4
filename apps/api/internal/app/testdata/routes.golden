@@ -129,14 +129,14 @@ GET    /api/ranking/galgame                           cors.New → middleware.Na
 GET    /api/ranking/topic                             cors.New → middleware.NamePreference → RankingHandler.GetTopicRanking
 GET    /api/ranking/user                              cors.New → middleware.NamePreference → RankingHandler.GetUserRanking
 GET    /api/report/reasons                            cors.New → middleware.NamePreference → OptionalAuth → Auth → TrustHandler.GetReasons
-GET    /api/resource                                  cors.New → middleware.NamePreference → TopicHandler.GetResourceList
+GET    /api/resource                                  cors.New → middleware.NamePreference → OptionalAuth → TopicHandler.GetResourceList
 GET    /api/rss/galgame                               cors.New → middleware.NamePreference → RSSHandler.GetGalgameRSS
 GET    /api/rss/topic                                 cors.New → middleware.NamePreference → RSSHandler.GetTopicRSS
-GET    /api/search                                    cors.New → middleware.NamePreference → SearchHandler.Search
-GET    /api/search/entity                             cors.New → middleware.NamePreference → SearchHandler.SearchEntities
-GET    /api/search/overview                           cors.New → middleware.NamePreference → SearchHandler.Overview
-GET    /api/search/quick                              cors.New → middleware.NamePreference → SearchHandler.QuickSearch
-GET    /api/section                                   cors.New → middleware.NamePreference → SectionHandler.GetSectionTopics
+GET    /api/search                                    cors.New → middleware.NamePreference → OptionalAuth → SearchHandler.Search
+GET    /api/search/entity                             cors.New → middleware.NamePreference → OptionalAuth → SearchHandler.SearchEntities
+GET    /api/search/overview                           cors.New → middleware.NamePreference → OptionalAuth → SearchHandler.Overview
+GET    /api/search/quick                              cors.New → middleware.NamePreference → OptionalAuth → SearchHandler.QuickSearch
+GET    /api/section                                   cors.New → middleware.NamePreference → OptionalAuth → SectionHandler.GetSectionTopics
 GET    /api/toolset                                   cors.New → middleware.NamePreference → OptionalAuth → ToolsetHandler.GetList
 GET    /api/toolset/:id                               cors.New → middleware.NamePreference → OptionalAuth → ToolsetHandler.GetDetail
 GET    /api/toolset/:id/comments                      cors.New → middleware.NamePreference → OptionalAuth → ResourceCommentHandler.ToolsetList

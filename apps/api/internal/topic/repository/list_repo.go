@@ -39,7 +39,7 @@ type TopicCardRow struct {
 func (r *TopicListRepository) FindList(
 	page, limit int,
 	sortField, sortOrder, category string,
-	isNSFW bool,
+	isNSFW, authenticated bool,
 ) ([]TopicCardRow, int64, error) {
 	var rows []TopicCardRow
 	var total int64
@@ -50,7 +50,8 @@ func (r *TopicListRepository) FindList(
 			topic.comment_count, topic.best_answer_id,
 			topic.status_update_time, topic.created, topic.upvote_time,
 			topic.cover_images, topic.user_id`).
-		Where("topic.status != 1")
+		Where("topic.status != 1").
+		Where(SharedListPredicate("topic", authenticated))
 
 	if !isNSFW {
 		query = query.Where("topic.is_nsfw = false")
@@ -86,7 +87,7 @@ func topicOrderCol(sortField string) string {
 func (r *TopicListRepository) FindResourceList(
 	page, limit int,
 	sortField, sortOrder, category string,
-	isNSFW bool,
+	isNSFW, authenticated bool,
 ) ([]TopicCardRow, int64, error) {
 	var rows []TopicCardRow
 	var total int64
@@ -100,6 +101,7 @@ func (r *TopicListRepository) FindResourceList(
 		Joins(`JOIN topic_section_relation tsr ON tsr.topic_id = topic.id`).
 		Joins(`JOIN topic_section ts ON ts.id = tsr.topic_section_id`).
 		Where("topic.status != 1").
+		Where(SharedListPredicate("topic", authenticated)).
 		Where("ts.name IN ?", []string{"g-seeking", "g-other", "t-help"}).
 		Group("topic.id")
 

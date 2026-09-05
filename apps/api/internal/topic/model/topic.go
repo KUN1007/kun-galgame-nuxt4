@@ -3,6 +3,7 @@ package model
 import "time"
 
 type Topic struct {
+	AccessScope      string     `gorm:"column:access_scope;not null;default:public" json:"access_scope"`
 	ID               int        `gorm:"primaryKey;autoIncrement" json:"id"`
 	Title            string     `gorm:"type:varchar(233);not null" json:"title"`
 	Content          string     `gorm:"type:text;not null" json:"content"`

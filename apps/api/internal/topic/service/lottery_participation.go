@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"kun-galgame-api/internal/middleware"
 	"log/slog"
 	"time"
 
@@ -13,11 +14,22 @@ import (
 	"gorm.io/gorm"
 )
 
-func (s *LotteryService) Enter(ctx context.Context, userID int, lotteryID int) *errors.AppError {
+func (s *LotteryService) Enter(ctx context.Context, user *middleware.UserInfo, lotteryID int) *errors.AppError {
+	userID := user.ID
 	lottery, err := s.lotteryRepo.FindByID(lotteryID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该抽奖")
 	}
+	topicRepo := s.topicRepo
+	topic, topicErr := topicRepo.FindByID(lottery.TopicID)
+	if topicErr != nil {
+		return errors.ErrNotFound("未找到该话题")
+	}
+
+	if _, appErr := requireTopicRead(topicRepo, topic, user); appErr != nil {
+		return appErr
+	}
+
 	if appErr := s.entryBlocker(ctx, lottery, userID); appErr != nil {
 		return appErr
 	}

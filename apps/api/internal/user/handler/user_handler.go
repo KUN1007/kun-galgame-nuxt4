@@ -163,7 +163,9 @@ func (h *UserHandler) GetUserTopics(c fiber.Ctx) error {
 			return response.Error(c, errors.ErrForbidden("您没有权限查看该用户的隐藏话题"))
 		}
 	}
-	items, total, appErr := h.userContentService.GetUserTopics(c.Context(), userID, &req, utils.IsSFW(c))
+	viewer := middleware.GetUser(c)
+	canViewRestricted := viewer != nil && (viewer.ID == userID || perm.CanUser(viewer.ID, viewer.Roles, perm.TopicViewRestricted))
+	items, total, appErr := h.userContentService.GetUserTopics(c.Context(), userID, &req, utils.IsSFW(c), viewer != nil, canViewRestricted)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

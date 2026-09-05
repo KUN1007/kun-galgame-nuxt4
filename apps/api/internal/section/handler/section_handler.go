@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"kun-galgame-api/internal/middleware"
 	"kun-galgame-api/internal/section/dto"
 	"kun-galgame-api/internal/section/service"
 	"kun-galgame-api/pkg/response"
@@ -23,7 +24,7 @@ func (h *SectionHandler) GetSectionTopics(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	resp, appErr := h.sectionService.GetSectionTopics(c.Context(), &req)
+	resp, appErr := h.sectionService.GetSectionTopics(c.Context(), &req, middleware.GetUser(c) != nil)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

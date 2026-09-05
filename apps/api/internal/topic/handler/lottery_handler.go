@@ -114,7 +114,7 @@ func (h *LotteryHandler) Enter(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	if appErr := h.lotteryService.Enter(c.Context(), user.ID, req.LotteryID); appErr != nil {
+	if appErr := h.lotteryService.Enter(c.Context(), user, req.LotteryID); appErr != nil {
 		return response.Error(c, appErr)
 	}
 	return response.OKMessage(c, "参与成功, 祝您好运")

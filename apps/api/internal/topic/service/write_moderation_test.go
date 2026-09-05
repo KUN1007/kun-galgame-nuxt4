@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"kun-galgame-api/internal/middleware"
 	"testing"
 
 	"kun-galgame-api/internal/topic/dto"
@@ -41,7 +42,7 @@ func TestCreateCommentDeniedNothingPersisted(t *testing.T) {
 		gate.NewCheckService(scriptedChecker{decision: gate.DecisionDeny}),
 		gate.NewScanService(nil),
 	)
-	resp, appErr := svc.CreateComment(context.Background(), 7, 1, 1, 2, nil, "违禁内容")
+	resp, appErr := svc.CreateComment(context.Background(), &middleware.UserInfo{ID: 7}, 1, 1, 2, nil, "违禁内容")
 	if appErr == nil {
 		t.Fatal("deny must return an error")
 	}

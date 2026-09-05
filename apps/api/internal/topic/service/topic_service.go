@@ -9,7 +9,6 @@ import (
 	"kun-galgame-api/internal/topic/repository"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
-	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -106,12 +105,12 @@ func (s *TopicService) GetTopicReactionHistory(ctx context.Context, topicID int)
 func (s *TopicService) GetList(
 	ctx context.Context,
 	req *dto.ListTopicsRequest,
-	isNSFW bool,
+	isNSFW, authenticated bool,
 ) ([]dto.TopicCard, int64, *errors.AppError) {
 	rows, total, err := s.listRepo.FindList(
 		req.Page, req.Limit,
 		req.SortField, req.SortOrder, req.Category,
-		isNSFW,
+		isNSFW, authenticated,
 	)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取话题列表失败")
@@ -123,12 +122,12 @@ func (s *TopicService) GetList(
 func (s *TopicService) GetResourceList(
 	ctx context.Context,
 	req *dto.ListTopicsRequest,
-	isNSFW bool,
+	isNSFW, authenticated bool,
 ) ([]dto.TopicCard, int64, *errors.AppError) {
 	rows, total, err := s.listRepo.FindResourceList(
 		req.Page, req.Limit,
 		req.SortField, req.SortOrder, req.Category,
-		isNSFW,
+		isNSFW, authenticated,
 	)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取资源话题列表失败")
@@ -174,8 +173,9 @@ func (s *TopicService) GetDetail(
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该话题")
 	}
-	if topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden))) {
-		return nil, errors.ErrNotFound("未找到该话题")
+	grants, appErr := requireTopicRead(s.topicRepo, topic, userInfo)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	g, _ := errgroup.WithContext(ctx)
@@ -259,6 +259,8 @@ func (s *TopicService) GetDetail(
 	}
 
 	detail := &dto.TopicDetail{
+		AccessScope:    topic.AccessScope,
+		AccessGrants:   topicDetailGrants(topic, userInfo, grants),
 		ID:             topic.ID,
 		Title:          topic.Title,
 		Content:        topic.Content,

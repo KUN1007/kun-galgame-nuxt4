@@ -18,7 +18,6 @@ import (
 	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
-	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -60,8 +59,12 @@ func NewReplyService(
 }
 
 func (s *ReplyService) LocateReply(topicID, floor, commentID, limit int, userInfo *middleware.UserInfo) (*dto.ReplyLocateResponse, *errors.AppError) {
-	if topic, err := s.topicRepo.FindByID(topicID); err != nil || (topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden)))) {
+	topic, err := s.topicRepo.FindByID(topicID)
+	if err != nil {
 		return nil, errors.ErrNotFound("未找到该话题")
+	}
+	if _, appErr := requireTopicRead(s.topicRepo, topic, userInfo); appErr != nil {
+		return nil, appErr
 	}
 	replyID := 0
 	if commentID > 0 {
@@ -98,8 +101,8 @@ func (s *ReplyService) GetReplies(
 	if err != nil {
 		return []dto.TopicReplyResponse{}, nil
 	}
-	if topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden))) {
-		return nil, errors.ErrNotFound("未找到该话题")
+	if _, appErr := requireTopicRead(s.topicRepo, topic, userInfo); appErr != nil {
+		return nil, appErr
 	}
 
 	var specialIDs []int
@@ -144,9 +147,12 @@ func (s *ReplyService) GetReplyDetail(
 		return nil, errors.ErrNotFound("未找到该回复")
 	}
 
-	topic, _ := s.topicRepo.FindByID(rows[0].TopicID)
-	if topic == nil || (topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden)))) {
+	topic, topicErr := s.topicRepo.FindByID(rows[0].TopicID)
+	if topicErr != nil {
 		return nil, errors.ErrNotFound("未找到该回复")
+	}
+	if _, appErr := requireTopicRead(s.topicRepo, topic, userInfo); appErr != nil {
+		return nil, appErr
 	}
 	responses := s.buildReplyResponses(ctx, rows, topic, userInfo)
 	if len(responses) == 0 {
@@ -157,12 +163,17 @@ func (s *ReplyService) GetReplyDetail(
 
 func (s *ReplyService) CreateReply(
 	ctx context.Context,
-	userID int,
+	user *middleware.UserInfo,
 	req *dto.CreateReplyRequest,
 ) (*dto.TopicReplyResponse, *errors.AppError) {
+	userID := user.ID
 	topic, err := s.topicRepo.FindByID(req.TopicID)
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该话题")
+	}
+
+	if _, appErr := requireTopicRead(s.topicRepo, topic, user); appErr != nil {
+		return nil, appErr
 	}
 
 	if strings.TrimSpace(req.Content) == "" {

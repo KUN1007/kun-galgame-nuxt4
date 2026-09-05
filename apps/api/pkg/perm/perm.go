@@ -3,11 +3,12 @@ package perm
 type Permission string
 
 const (
-	TopicEditAny       Permission = "topic.edit_any"
-	TopicHide          Permission = "topic.hide"
-	TopicViewHidden    Permission = "topic.view_hidden"
-	TopicDeleteAny     Permission = "topic.delete_any"
-	TopicSetBestAnswer Permission = "topic.set_best_answer"
+	TopicEditAny        Permission = "topic.edit_any"
+	TopicHide           Permission = "topic.hide"
+	TopicViewHidden     Permission = "topic.view_hidden"
+	TopicViewRestricted Permission = "topic.view_restricted"
+	TopicDeleteAny      Permission = "topic.delete_any"
+	TopicSetBestAnswer  Permission = "topic.set_best_answer"
 
 	ReplyEditAny   Permission = "reply.edit_any"
 	ReplyDeleteAny Permission = "reply.delete_any"
@@ -83,6 +84,7 @@ var moderatorPerms = []Permission{
 	TopicEditAny,
 	TopicHide,
 	TopicViewHidden,
+	TopicViewRestricted,
 	TopicSetBestAnswer,
 	ReplyEditAny,
 	ReplyDeleteAny,

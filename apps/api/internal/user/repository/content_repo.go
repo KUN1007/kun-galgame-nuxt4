@@ -1,6 +1,7 @@
 package repository
 
 import (
+	topicRepo "kun-galgame-api/internal/topic/repository"
 	"time"
 
 	"kun-galgame-api/internal/user/dto"
@@ -75,13 +76,16 @@ func (r *UserContentRepository) FindUserLikedPostIDs(userID int) ([]LikedPostRow
 	return rows, err
 }
 
-func (r *UserContentRepository) FindUserTopics(userID int, queryType string, page, limit int, isSFW bool) ([]dto.UserTopic, int64, error) {
+func (r *UserContentRepository) FindUserTopics(userID int, queryType string, page, limit int, isSFW, authenticated, canViewRestricted bool) ([]dto.UserTopic, int64, error) {
 	offset := (page - 1) * limit
 	var results []dto.UserTopic
 	var total int64
 
 	baseQuery := r.db.Table("topic").
 		Select("topic.id, topic.title, topic.created")
+	if queryType != "topic_hide" && !canViewRestricted {
+		baseQuery = baseQuery.Where(topicRepo.SharedListPredicate("topic", authenticated))
+	}
 
 	switch queryType {
 	case "topic":

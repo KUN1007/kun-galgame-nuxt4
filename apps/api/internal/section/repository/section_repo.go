@@ -1,6 +1,7 @@
 package repository
 
 import (
+	topicRepo "kun-galgame-api/internal/topic/repository"
 	"time"
 
 	"gorm.io/gorm"
@@ -45,7 +46,7 @@ type LatestTopicRow struct {
 }
 
 func (r *SectionRepository) FindSectionTopics(
-	section, sortOrder string, page, limit int,
+	section, sortOrder string, page, limit int, authenticated bool,
 ) (rows []SectionTopicRow, total int64, err error) {
 	query := r.db.Table("topic t").
 		Select(`t.id, t.title, SUBSTRING(t.content, 1, 233) AS content,
@@ -53,7 +54,8 @@ func (r *SectionRepository) FindSectionTopics(
 			t.best_answer_id, t.user_id, t.created`).
 		Joins("JOIN topic_section_relation tsr ON tsr.topic_id = t.id").
 		Joins("JOIN topic_section ts ON ts.id = tsr.topic_section_id").
-		Where("ts.name = ? AND t.status != 1", section)
+		Where("ts.name = ? AND t.status != 1", section).
+		Where(topicRepo.SharedListPredicate("t", authenticated))
 
 	if err = query.Count(&total).Error; err != nil {
 		return
@@ -75,7 +77,7 @@ func (r *SectionRepository) FindCategoryStats(category string) ([]SectionStatRow
 		FROM topic_section ts
 		JOIN topic_section_relation tsr ON tsr.topic_section_id = ts.id
 		JOIN topic t ON t.id = tsr.topic_id AND t.status != 1
-			AND t.category = ?
+			AND `+topicRepo.SharedListPredicate("t", false)+` AND t.category = ?
 		GROUP BY ts.id, ts.name
 		ORDER BY ts.id
 	`, category).Scan(&rows).Error
@@ -89,7 +91,7 @@ func (r *SectionRepository) FindLatestTopicsInSection(sectionID int, category st
 		FROM topic t
 		JOIN topic_section_relation tsr ON tsr.topic_id = t.id
 		WHERE tsr.topic_section_id = ? AND t.status != 1
-			AND t.category = ?
+			AND `+topicRepo.SharedListPredicate("t", false)+` AND t.category = ?
 		ORDER BY t.created DESC LIMIT ?
 	`, sectionID, category, limit).Scan(&rows)
 	return rows

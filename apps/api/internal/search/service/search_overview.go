@@ -32,7 +32,7 @@ const entitySearchDefaultLimit = 24
 func (s *SearchService) Overview(
 	ctx context.Context,
 	raw string,
-	isSFW bool,
+	isSFW, authenticated bool,
 ) (*dto.OverviewResult, *errors.AppError) {
 	if _, appErr := tokenize(raw); appErr != nil {
 		return nil, appErr
@@ -65,13 +65,13 @@ func (s *SearchService) Overview(
 			lane()
 		}()
 	}
-	run("topic", func() { topics, _ = s.SearchTopics(ctx, raw, 1, overviewTopicLimit) })
+	run("topic", func() { topics, _ = s.SearchTopics(ctx, raw, 1, overviewTopicLimit, authenticated) })
 	run("galgame", func() {
 		galgames, _ = s.SearchGalgames(ctx, raw, 1, overviewGalgameLimit, false)
 	})
-	run("user", func() { users, _ = s.SearchUsers(ctx, raw, 1, overviewUserLimit) })
-	run("reply", func() { replies, _ = s.SearchReplies(ctx, raw, 1, overviewReplyLimit) })
-	run("comment", func() { comments, _ = s.SearchComments(ctx, raw, 1, overviewReplyLimit) })
+	run("user", func() { users, _ = s.SearchUsers(ctx, raw, 1, overviewUserLimit, authenticated) })
+	run("reply", func() { replies, _ = s.SearchReplies(ctx, raw, 1, overviewReplyLimit, authenticated) })
+	run("comment", func() { comments, _ = s.SearchComments(ctx, raw, 1, overviewReplyLimit, authenticated) })
 	run("entity", func() {
 		entities, _ = s.SearchEntities(ctx, raw, "", 1, overviewEntityLimit, isSFW)
 	})

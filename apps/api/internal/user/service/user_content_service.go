@@ -181,11 +181,11 @@ func (s *UserContentService) buildGalgameCards(
 	return cards
 }
 
-func (s *UserContentService) GetUserTopics(ctx context.Context, userID int, req *dto.UserTopicsRequest, isSFW bool) ([]dto.UserTopic, int64, *errors.AppError) {
+func (s *UserContentService) GetUserTopics(ctx context.Context, userID int, req *dto.UserTopicsRequest, isSFW, authenticated, canViewRestricted bool) ([]dto.UserTopic, int64, *errors.AppError) {
 	if s.hideTarget(ctx, userID) {
 		return []dto.UserTopic{}, 0, nil
 	}
-	items, total, err := s.userContentRepo.FindUserTopics(userID, req.Type, req.Page, req.Limit, isSFW)
+	items, total, err := s.userContentRepo.FindUserTopics(userID, req.Type, req.Page, req.Limit, isSFW, authenticated, canViewRestricted)
 	if err != nil {
 		return nil, 0, errors.ErrInternal("获取用户话题列表失败")
 	}

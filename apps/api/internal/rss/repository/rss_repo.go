@@ -2,6 +2,7 @@ package repository
 
 import (
 	"kun-galgame-api/internal/rss/dto"
+	topicRepo "kun-galgame-api/internal/topic/repository"
 
 	"gorm.io/gorm"
 )
@@ -20,6 +21,7 @@ func (r *RSSRepository) FindRecentSFWTopics() []dto.TopicRSSItem {
 		Select(`t.id, t.title, SUBSTRING(t.content, 1, 233) AS description,
 			t.user_id, t.created`).
 		Where("t.status != 1 AND t.is_nsfw = false").
+		Where(topicRepo.SharedListPredicate("t", false)).
 		Order("t.created DESC").
 		Limit(10).
 		Find(&topics)

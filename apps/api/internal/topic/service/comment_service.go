@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"kun-galgame-api/internal/middleware"
 	"log/slog"
 	"strconv"
 	"time"
@@ -50,11 +51,12 @@ func NewCommentService(
 
 func (s *CommentService) CreateComment(
 	ctx context.Context,
-	userID int,
+	user *middleware.UserInfo,
 	topicID, replyID, targetUserID int,
 	parentCommentID *int,
 	content string,
 ) (*dto.TopicCommentResponse, *errors.AppError) {
+	userID := user.ID
 	if parentCommentID != nil {
 		parent, err := s.commentRepo.FindCommentByID(*parentCommentID)
 		if err != nil || parent.TopicReplyID != replyID {
@@ -66,6 +68,16 @@ func (s *CommentService) CreateComment(
 	decision, matched := s.check.Decision(ctx, content, &authorID)
 	if decision == gate.DecisionDeny {
 		return nil, errContentBlocked()
+	}
+
+	topicRepo := repository.NewTopicRepository(s.replyRepo.DB())
+	topic, topicErr := topicRepo.FindByID(topicID)
+	if topicErr != nil {
+		return nil, errors.ErrNotFound("未找到该话题")
+	}
+
+	if _, appErr := requireTopicRead(topicRepo, topic, user); appErr != nil {
+		return nil, appErr
 	}
 
 	comment := &topicModel.TopicComment{

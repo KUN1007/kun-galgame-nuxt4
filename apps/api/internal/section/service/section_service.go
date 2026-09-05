@@ -21,8 +21,8 @@ func NewSectionService(
 	return &SectionService{repo: repo, userClient: userClient}
 }
 
-func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionTopicsRequest) (*dto.SectionTopicsResponse, *errors.AppError) {
-	rows, total, err := s.repo.FindSectionTopics(req.Section, req.SortOrder, req.Page, req.Limit)
+func (s *SectionService) GetSectionTopics(ctx context.Context, req *dto.SectionTopicsRequest, authenticated bool) (*dto.SectionTopicsResponse, *errors.AppError) {
+	rows, total, err := s.repo.FindSectionTopics(req.Section, req.SortOrder, req.Page, req.Limit, authenticated)
 	if err != nil {
 		return nil, errors.ErrInternal("获取板块话题失败")
 	}

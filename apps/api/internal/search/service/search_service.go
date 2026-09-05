@@ -63,12 +63,12 @@ func tokenize(raw string) ([]string, *errors.AppError) {
 	return keywords, nil
 }
 
-func (s *SearchService) SearchTopics(ctx context.Context, raw string, page, limit int) (*dto.PaginatedResult[dto.TopicItem], *errors.AppError) {
+func (s *SearchService) SearchTopics(ctx context.Context, raw string, page, limit int, authenticated bool) (*dto.PaginatedResult[dto.TopicItem], *errors.AppError) {
 	keywords, appErr := tokenize(raw)
 	if appErr != nil {
 		return nil, appErr
 	}
-	rows, total := s.repo.SearchTopics(keywords, page, limit)
+	rows, total := s.repo.SearchTopics(keywords, page, limit, authenticated)
 
 	uids := userclient.CollectIDs(rows, func(r repository.TopicRow) int { return r.UserID })
 	userMap := s.userClient.Hydrate(ctx, uids)
@@ -113,6 +113,7 @@ func (s *SearchService) SearchUsers(
 	ctx context.Context,
 	raw string,
 	page, limit int,
+	authenticated bool,
 ) (*dto.PaginatedResult[dto.UserItem], *errors.AppError) {
 	if _, appErr := tokenize(raw); appErr != nil {
 		return nil, appErr
@@ -152,7 +153,7 @@ func (s *SearchService) SearchUsers(
 	for i, item := range items {
 		ids[i] = item.ID
 	}
-	topics, replies := s.repo.CountUserPosts(ids)
+	topics, replies := s.repo.CountUserPosts(ids, authenticated)
 	for i := range items {
 		items[i].TopicCount, items[i].ReplyCount = topics[items[i].ID], replies[items[i].ID]
 	}
@@ -171,12 +172,12 @@ func parseUserCreated(raw string) *time.Time {
 	return &at
 }
 
-func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, limit int) (*dto.PaginatedResult[dto.ReplyItem], *errors.AppError) {
+func (s *SearchService) SearchReplies(ctx context.Context, raw string, page, limit int, authenticated bool) (*dto.PaginatedResult[dto.ReplyItem], *errors.AppError) {
 	keywords, appErr := tokenize(raw)
 	if appErr != nil {
 		return nil, appErr
 	}
-	rows, total := s.repo.SearchReplies(keywords, page, limit)
+	rows, total := s.repo.SearchReplies(keywords, page, limit, authenticated)
 
 	uids := userclient.CollectIDs(rows, func(r repository.ReplyRow) int { return r.UserID })
 	for _, r := range rows {
@@ -245,12 +246,12 @@ func (s *SearchService) SearchGalgames(
 	}, nil
 }
 
-func (s *SearchService) SearchComments(ctx context.Context, raw string, page, limit int) (*dto.PaginatedResult[dto.CommentItem], *errors.AppError) {
+func (s *SearchService) SearchComments(ctx context.Context, raw string, page, limit int, authenticated bool) (*dto.PaginatedResult[dto.CommentItem], *errors.AppError) {
 	keywords, appErr := tokenize(raw)
 	if appErr != nil {
 		return nil, appErr
 	}
-	rows, total := s.repo.SearchComments(keywords, page, limit)
+	rows, total := s.repo.SearchComments(keywords, page, limit, authenticated)
 
 	uids := userclient.CollectIDs(rows, func(r repository.CommentRow) int { return r.UserID })
 	for _, r := range rows {
@@ -289,6 +290,7 @@ const quickSearchLimit = 5
 func (s *SearchService) QuickSearch(
 	ctx context.Context,
 	raw string,
+	authenticated bool,
 ) (*dto.QuickSearchResult, *errors.AppError) {
 	if _, appErr := tokenize(raw); appErr != nil {
 		return nil, appErr
@@ -315,11 +317,11 @@ func (s *SearchService) QuickSearch(
 			lane()
 		}()
 	}
-	run(func() { topics, _ = s.SearchTopics(ctx, raw, 1, quickSearchLimit) })
+	run(func() { topics, _ = s.SearchTopics(ctx, raw, 1, quickSearchLimit, authenticated) })
 	run(func() {
 		galgames, _ = s.SearchGalgames(ctx, raw, 1, quickSearchLimit, false)
 	})
-	run(func() { users, _ = s.SearchUsers(ctx, raw, 1, quickSearchLimit) })
+	run(func() { users, _ = s.SearchUsers(ctx, raw, 1, quickSearchLimit, authenticated) })
 	wg.Wait()
 
 	res := &dto.QuickSearchResult{

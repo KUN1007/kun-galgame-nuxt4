@@ -78,6 +78,8 @@ type MyTopicInteractions struct {
 }
 
 type TopicDetail struct {
+	AccessScope      string                           `json:"access_scope"`
+	AccessGrants     *TopicAccessGrants               `json:"access_grants,omitempty"`
 	ID               int                              `json:"id"`
 	Title            string                           `json:"title"`
 	Content          string                           `json:"content_markdown"`
@@ -119,23 +121,34 @@ type TopicBestAnswer struct {
 }
 
 type CreateTopicRequest struct {
-	Title       string   `json:"title" validate:"required,min=1,max=233"`
-	Content     string   `json:"content" validate:"required,min=1,max=100007"`
-	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
-	Sections    []string `json:"section" validate:"required,min=1,max=3"`
-	IsNSFW      bool     `json:"is_nsfw"`
-	CoverImages []string `json:"cover_images" validate:"omitempty,max=9"`
+	AccessScope   string   `json:"access_scope"`
+	AccessRoles   []string `json:"access_roles"`
+	AccessUserIDs []int    `json:"access_user_ids"`
+	Title         string   `json:"title" validate:"required,min=1,max=233"`
+	Content       string   `json:"content" validate:"required,min=1,max=100007"`
+	Category      string   `json:"category" validate:"required,oneof=galgame technique others"`
+	Sections      []string `json:"section" validate:"required,min=1,max=3"`
+	IsNSFW        bool     `json:"is_nsfw"`
+	CoverImages   []string `json:"cover_images" validate:"omitempty,max=9"`
 }
 
 type UpdateTopicRequest struct {
-	Title       string   `json:"title" validate:"required,min=1,max=233"`
-	Content     string   `json:"content" validate:"required,min=1,max=100007"`
-	Category    string   `json:"category" validate:"required,oneof=galgame technique others"`
-	Sections    []string `json:"section" validate:"required,min=1,max=3"`
-	IsNSFW      bool     `json:"is_nsfw"`
-	CoverImages []string `json:"cover_images" validate:"omitempty,max=9"`
+	AccessScope   string   `json:"access_scope"`
+	AccessRoles   []string `json:"access_roles"`
+	AccessUserIDs []int    `json:"access_user_ids"`
+	Title         string   `json:"title" validate:"required,min=1,max=233"`
+	Content       string   `json:"content" validate:"required,min=1,max=100007"`
+	Category      string   `json:"category" validate:"required,oneof=galgame technique others"`
+	Sections      []string `json:"section" validate:"required,min=1,max=3"`
+	IsNSFW        bool     `json:"is_nsfw"`
+	CoverImages   []string `json:"cover_images" validate:"omitempty,max=9"`
 }
 
 type TopicInteractionRequest struct {
 	TopicID int `json:"topic_id" validate:"required,min=1"`
+}
+
+type TopicAccessGrants struct {
+	Roles   []string `json:"roles"`
+	UserIDs []int    `json:"user_ids"`
 }

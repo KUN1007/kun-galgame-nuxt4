@@ -165,13 +165,24 @@ func (s *PollService) GetPollsByTopic(
 
 func (s *PollService) Vote(
 	ctx context.Context,
-	userID int,
+	user *middleware.UserInfo,
 	req *dto.VoteRequest,
 ) *errors.AppError {
+	userID := user.ID
 	poll, err := s.pollRepo.FindByID(req.PollID)
 	if err != nil {
 		return errors.ErrNotFound("未找到该投票")
 	}
+	topicRepo := s.topicRepo
+	topic, topicErr := topicRepo.FindByID(poll.TopicID)
+	if topicErr != nil {
+		return errors.ErrNotFound("未找到该话题")
+	}
+
+	if _, appErr := requireTopicRead(topicRepo, topic, user); appErr != nil {
+		return appErr
+	}
+
 	if poll.Status == "closed" {
 		return errors.ErrBadRequest("投票已被关闭")
 	}

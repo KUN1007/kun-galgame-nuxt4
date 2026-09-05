@@ -13,7 +13,7 @@ import (
 func TestQuickSearch_RequiresAKeyword(t *testing.T) {
 	svc := NewSearchService(nil, nil, nil, nil, nil, nil, nil)
 
-	if _, appErr := svc.QuickSearch(context.Background(), "   "); appErr == nil {
+	if _, appErr := svc.QuickSearch(context.Background(), "   ", false); appErr == nil {
 		t.Fatal("QuickSearch accepted a blank query")
 	}
 }
@@ -37,7 +37,7 @@ func TestQuickSearch_AnswersEvenWhenEveryLaneBreaks(t *testing.T) {
 		nil,
 	)
 
-	res, appErr := svc.QuickSearch(context.Background(), "汉化")
+	res, appErr := svc.QuickSearch(context.Background(), "汉化", false)
 	if appErr != nil {
 		t.Fatalf("QuickSearch: %v", appErr)
 	}

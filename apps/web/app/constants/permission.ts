@@ -27,6 +27,7 @@ export const KUN_PERMISSION_META: Record<ForumPermission, KunPermissionMeta> = {
   'topic.edit_any': { label: '编辑任意话题', group: '话题' },
   'topic.hide': { label: '隐藏话题', group: '话题' },
   'topic.view_hidden': { label: '查看被隐藏的话题', group: '话题' },
+  'topic.view_restricted': { label: '查看受限话题', group: '话题' },
   'topic.delete_any': { label: '彻底删除话题', group: '话题' },
   'topic.set_best_answer': { label: '设置最佳答案', group: '话题' },
   'reply.edit_any': { label: '编辑任意回复', group: '回复' },

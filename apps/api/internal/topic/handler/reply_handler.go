@@ -84,7 +84,7 @@ func (h *ReplyHandler) CreateReply(c fiber.Ctx) error {
 		return response.Error(c, appErr)
 	}
 
-	reply, appErr := h.replyService.CreateReply(c.Context(), user.ID, &req)
+	reply, appErr := h.replyService.CreateReply(c.Context(), user, &req)
 	if appErr != nil {
 		return response.Error(c, appErr)
 	}

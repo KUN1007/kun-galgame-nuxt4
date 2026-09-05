@@ -34,7 +34,7 @@ func (h *CommentHandler) CreateComment(c fiber.Ctx) error {
 	}
 
 	created, appErr := h.commentService.CreateComment(
-		c.Context(), user.ID,
+		c.Context(), user,
 		req.TopicID, req.ReplyID, req.TargetUserID, req.ParentCommentID, req.Content,
 	)
 	if appErr != nil {

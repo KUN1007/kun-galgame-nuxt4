@@ -3,7 +3,7 @@ package perm
 import "testing"
 
 var allPerms = []Permission{
-	TopicEditAny, TopicHide, TopicViewHidden, TopicDeleteAny, TopicSetBestAnswer,
+	TopicEditAny, TopicHide, TopicViewHidden, TopicViewRestricted, TopicDeleteAny, TopicSetBestAnswer,
 	ReplyEditAny, ReplyDeleteAny, ReplyPin,
 	CommentTopicEdit, CommentTopicDelete,
 	CommentGalgameEdit, CommentGalgameDelete,
@@ -36,8 +36,8 @@ var adminOnly = map[Permission]bool{
 }
 
 const (
-	totalPerms = 58
-	modPerms   = 55
+	totalPerms = 59
+	modPerms   = 56
 )
 
 func isAdminOnly(p Permission) bool { return adminOnly[p] }

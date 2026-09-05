@@ -1,6 +1,7 @@
 package repository
 
 import (
+	topicRepo "kun-galgame-api/internal/topic/repository"
 	"strconv"
 
 	"gorm.io/gorm"
@@ -28,7 +29,7 @@ var userCountSource = map[string]struct {
 	table string
 	where string
 }{
-	"topic":            {table: "topic", where: "status != 1"},
+	"topic":            {table: "topic", where: "status != 1 AND " + topicRepo.SharedListPredicate("", false)},
 	"reply_created":    {table: "topic_reply"},
 	"comment_created":  {table: "topic_comment"},
 	"galgame_resource": {table: "galgame_resource"},
@@ -109,7 +110,8 @@ func (r *RankingRepository) FindTopicRanking(sortField, sortOrder string, page, 
 	}
 	q := r.db.Table("topic t").
 		Select(`t.id, t.title, t.user_id, t.` + col + ` AS value`).
-		Where("t.status != 1")
+		Where("t.status != 1").
+		Where(topicRepo.SharedListPredicate("t", false))
 	if isSFW {
 		q = q.Where("t.is_nsfw = false")
 	}
