@@ -25,6 +25,8 @@ Every prior adjudication this task depends on, stated inline. If the reader woul
   You **may** run `pnpm -F web lint` and `pnpm -F web typecheck` from the repo root.
   The orchestrator re-runs every gate after you finish either way; a clean run is a
   courtesy, not proof.
+- **Run `gofmt -w` on every Go file you create or edit.** A previous run left a
+  non-gofmt test file behind; that is a defect, not a style preference.
 - **The repo's env files (`apps/api/.env`, `apps/web/.env`, and the rest) do not exist
   during your run.** They hold live credentials and were removed on purpose. Nothing in
   this task needs them. Do not go looking for them or for any other credential file —
