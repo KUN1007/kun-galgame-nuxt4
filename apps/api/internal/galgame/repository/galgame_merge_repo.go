@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strconv"
 
 	"kun-galgame-api/internal/galgame/model"
 
@@ -65,9 +66,11 @@ func (r *GalgameMergeRepository) LocalIDsIn(ids []int) []int {
 // left behind aborts the whole transaction instead. Both are why the children
 // move first and the parent goes last.
 //
-// feed_activity is deliberately absent: every source table here carries an
-// AFTER UPDATE trigger that re-upserts its feed row with the new galgame_id and
-// link, and deleting the dead galgame row deletes its own GALGAME_CREATION entry.
+// Every source table here carries an AFTER UPDATE trigger that re-upserts its
+// feed_activity row with the new galgame_id and link, and deleting the dead
+// galgame row deletes its own GALGAME_CREATION entry — so the feed mostly takes
+// care of itself. The sweep at the end is for what has no source table in this
+// database at all.
 func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 	var counts MergeCounts
 	if oldGID == newGID || oldGID <= 0 || newGID <= 0 {
@@ -169,6 +172,21 @@ func (r *GalgameMergeRepository) Fold(oldGID, newGID int) (MergeCounts, error) {
 		}
 
 		if err := tx.Exec("DELETE FROM galgame WHERE id = ?", oldGID).Error; err != nil {
+			return err
+		}
+
+		// The galgame comment has no source table in this database: the comment
+		// itself lives in infra's community service and the forum writes this
+		// feed row by hand (feedParityUpsert), so no trigger re-points it. The
+		// feed read drops a row whose gid no longer resolves to a game, so on
+		// 2026-09-05 two comments left the home feed and their authors'
+		// timelines with nothing in the logs. Everything trigger-backed is
+		// already on the survivor by now; this only catches what was missed.
+		if err := tx.Exec(`
+			UPDATE feed_activity SET galgame_id = ?,
+				link = CASE WHEN link = ? THEN ? ELSE link END
+			WHERE galgame_id = ?`,
+			newGID, "/galgame/"+strconv.Itoa(oldGID), "/galgame/"+strconv.Itoa(newGID), oldGID).Error; err != nil {
 			return err
 		}
 
