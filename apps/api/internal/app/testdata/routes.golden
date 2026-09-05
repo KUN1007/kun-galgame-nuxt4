@@ -166,7 +166,7 @@ GET    /api/user/:id/ratings                          cors.New → middleware.Na
 GET    /api/user/:id/replies                          cors.New → middleware.NamePreference → UserHandler.GetUserReplies
 GET    /api/user/:id/resources                        cors.New → middleware.NamePreference → UserHandler.GetUserResources
 GET    /api/user/:id/toolsets                         cors.New → middleware.NamePreference → ToolsetHandler.GetUserToolsets
-GET    /api/user/:id/topics                           cors.New → middleware.NamePreference → UserHandler.GetUserTopics
+GET    /api/user/:id/topics                           cors.New → middleware.NamePreference → OptionalAuth → UserHandler.GetUserTopics
 GET    /api/user/creator/status                       cors.New → middleware.NamePreference → Auth → CreatorHandler.Status
 GET    /api/user/moemoepoint/log                      cors.New → middleware.NamePreference → Auth → UserHandler.GetMoemoepointLog
 GET    /api/user/notification-preferences             cors.New → middleware.NamePreference → Auth → UserHandler.GetNotificationPreferences

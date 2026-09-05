@@ -9,6 +9,7 @@ type Topic struct {
 	View             int        `gorm:"default:0" json:"view"`
 	IsNSFW           bool       `gorm:"column:is_nsfw;default:false" json:"is_nsfw"`
 	Status           int        `gorm:"default:0" json:"status"`
+	HiddenBy         string     `gorm:"column:hidden_by;default:''" json:"hidden_by"`
 	Category         string     `gorm:"not null" json:"category"`
 	StatusUpdateTime time.Time  `gorm:"column:status_update_time;autoCreateTime" json:"status_update_time"`
 	Edited           *time.Time `gorm:"" json:"edited"`

@@ -523,15 +523,11 @@ func (s *TopicWriteService) ToggleHide(ctx context.Context, userID int, canModer
 	if err != nil {
 		return errors.ErrNotFound("未找到该话题")
 	}
-	if topic.UserID != userID && !canModerate {
-		return errors.ErrForbidden("您没有权限操作此话题")
+	newStatus, hiddenBy, decisionErr := hideDecision(topic, userID, canModerate)
+	if decisionErr != nil {
+		return decisionErr
 	}
-
-	newStatus := 1
-	if topic.Status == 1 {
-		newStatus = 0
-	}
-	if err := s.topicRepo.UpdateFields(topicID, map[string]any{"status": newStatus}); err != nil {
+	if err := s.topicRepo.UpdateFields(topicID, map[string]any{"status": newStatus, "hidden_by": hiddenBy}); err != nil {
 		return errors.ErrInternal("操作失败")
 	}
 	return nil

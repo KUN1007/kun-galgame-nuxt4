@@ -490,10 +490,10 @@ func New(cfg *config.Config) *App {
 	trustRegistry := enforce.Registry{
 		"forum_topic": {
 			Hide: func(_ context.Context, id int) error {
-				return topicRepository.UpdateFields(id, map[string]any{"status": 1})
+				return topicRepository.UpdateFields(id, map[string]any{"status": 1, "hidden_by": "trust"})
 			},
 			Remove: func(_ context.Context, id int) error {
-				return topicRepository.UpdateFields(id, map[string]any{"status": 1})
+				return topicRepository.UpdateFields(id, map[string]any{"status": 1, "hidden_by": "trust"})
 			},
 			AuthorID: func(_ context.Context, id int) (int, error) {
 				t, err := topicRepository.FindByID(id)

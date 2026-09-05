@@ -9,6 +9,7 @@ import (
 	"kun-galgame-api/internal/topic/repository"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -173,6 +174,9 @@ func (s *TopicService) GetDetail(
 	if err != nil {
 		return nil, errors.ErrNotFound("未找到该话题")
 	}
+	if topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden))) {
+		return nil, errors.ErrNotFound("未找到该话题")
+	}
 
 	g, _ := errgroup.WithContext(ctx)
 
@@ -261,6 +265,7 @@ func (s *TopicService) GetDetail(
 		ContentHtml:    markdown.ResolveMentionNames(markdown.Render(topic.Content), topicMentionNames),
 		View:           topic.View,
 		Status:         topic.Status,
+		HiddenBy:       topic.HiddenBy,
 		IsNSFW:         topic.IsNSFW,
 		Category:       topic.Category,
 		Sections:       sections,

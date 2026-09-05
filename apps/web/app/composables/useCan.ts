@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 const MODERATOR_PERMISSIONS = [
   'topic.edit_any',
   'topic.hide',
+  'topic.view_hidden',
   'topic.set_best_answer',
   'reply.edit_any',
   'reply.delete_any',
@@ -60,7 +61,8 @@ const MODERATOR_PERMISSIONS = [
 
 const ADMIN_ONLY_PERMISSIONS = [
   'admin.dashboard',
-  'user.purge_content'
+  'user.purge_content',
+  'topic.delete_any'
 ] as const
 
 const ADMIN_PERMISSIONS = [

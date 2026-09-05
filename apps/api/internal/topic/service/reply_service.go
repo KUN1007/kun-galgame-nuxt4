@@ -18,6 +18,7 @@ import (
 	"kun-galgame-api/internal/trust/gate"
 	userRepo "kun-galgame-api/internal/user/repository"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/userclient"
 
 	"github.com/redis/go-redis/v9"
@@ -58,7 +59,10 @@ func NewReplyService(
 	}
 }
 
-func (s *ReplyService) LocateReply(topicID, floor, commentID, limit int) (*dto.ReplyLocateResponse, *errors.AppError) {
+func (s *ReplyService) LocateReply(topicID, floor, commentID, limit int, userInfo *middleware.UserInfo) (*dto.ReplyLocateResponse, *errors.AppError) {
+	if topic, err := s.topicRepo.FindByID(topicID); err != nil || (topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden)))) {
+		return nil, errors.ErrNotFound("未找到该话题")
+	}
 	replyID := 0
 	if commentID > 0 {
 		f, rid, ok, err := s.replyRepo.FindReplyFloorByCommentID(topicID, commentID)
@@ -93,6 +97,9 @@ func (s *ReplyService) GetReplies(
 	topic, err := s.topicRepo.FindByID(req.TopicID)
 	if err != nil {
 		return []dto.TopicReplyResponse{}, nil
+	}
+	if topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden))) {
+		return nil, errors.ErrNotFound("未找到该话题")
 	}
 
 	var specialIDs []int
@@ -138,6 +145,9 @@ func (s *ReplyService) GetReplyDetail(
 	}
 
 	topic, _ := s.topicRepo.FindByID(rows[0].TopicID)
+	if topic == nil || (topic.Status == 1 && (userInfo == nil || (userInfo.ID != topic.UserID && !perm.CanUser(userInfo.ID, userInfo.Roles, perm.TopicViewHidden)))) {
+		return nil, errors.ErrNotFound("未找到该回复")
+	}
 	responses := s.buildReplyResponses(ctx, rows, topic, userInfo)
 	if len(responses) == 0 {
 		return nil, errors.ErrNotFound("未找到该回复")

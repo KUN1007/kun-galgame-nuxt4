@@ -84,6 +84,7 @@ type TopicDetail struct {
 	ContentHtml      string                           `json:"content_html"`
 	View             int                              `json:"view"`
 	Status           int                              `json:"status"`
+	HiddenBy         string                           `json:"hidden_by"`
 	IsNSFW           bool                             `json:"is_nsfw"`
 	Category         string                           `json:"category"`
 	Sections         []string                         `json:"section"`

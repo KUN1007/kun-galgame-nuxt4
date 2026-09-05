@@ -5,6 +5,8 @@ type Permission string
 const (
 	TopicEditAny       Permission = "topic.edit_any"
 	TopicHide          Permission = "topic.hide"
+	TopicViewHidden    Permission = "topic.view_hidden"
+	TopicDeleteAny     Permission = "topic.delete_any"
 	TopicSetBestAnswer Permission = "topic.set_best_answer"
 
 	ReplyEditAny   Permission = "reply.edit_any"
@@ -80,6 +82,7 @@ const (
 var moderatorPerms = []Permission{
 	TopicEditAny,
 	TopicHide,
+	TopicViewHidden,
 	TopicSetBestAnswer,
 	ReplyEditAny,
 	ReplyDeleteAny,
@@ -134,7 +137,7 @@ var moderatorPerms = []Permission{
 	TrustReview,
 }
 
-var adminPerms = append(append([]Permission{}, moderatorPerms...), AdminDashboard, UserPurgeContent)
+var adminPerms = append(append([]Permission{}, moderatorPerms...), AdminDashboard, UserPurgeContent, TopicDeleteAny)
 
 var Bundles = map[string][]Permission{
 	"moderator": moderatorPerms,

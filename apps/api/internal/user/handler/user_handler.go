@@ -7,6 +7,7 @@ import (
 	"kun-galgame-api/internal/user/dto"
 	"kun-galgame-api/internal/user/service"
 	"kun-galgame-api/pkg/errors"
+	"kun-galgame-api/pkg/perm"
 	"kun-galgame-api/pkg/response"
 	"kun-galgame-api/pkg/utils"
 
@@ -155,6 +156,12 @@ func (h *UserHandler) GetUserTopics(c fiber.Ctx) error {
 	var req dto.UserTopicsRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
 		return response.Error(c, appErr)
+	}
+	if req.Type == "topic_hide" {
+		u := middleware.GetUser(c)
+		if u == nil || (u.ID != userID && !perm.CanUser(u.ID, u.Roles, perm.TopicViewHidden)) {
+			return response.Error(c, errors.ErrForbidden("您没有权限查看该用户的隐藏话题"))
+		}
 	}
 	items, total, appErr := h.userContentService.GetUserTopics(c.Context(), userID, &req, utils.IsSFW(c))
 	if appErr != nil {
