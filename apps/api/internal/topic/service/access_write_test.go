@@ -49,10 +49,15 @@ func TestNormalizeTopicAccess(t *testing.T) {
 			}
 		})
 	}
-	for _, role := range []string{"user", "creator", "moderator", "admin", "ren"} {
+	for _, role := range []string{"creator", "moderator", "admin", "ren"} {
 		if _, _, err := normalizeTopicAccess("role", []string{role}, nil, 1, false); err != nil {
 			t.Fatalf("role %s: %v", role, err)
 		}
+	}
+	// A role:user grant can never match a real session (OAuth omits "user"
+	// from the roles claim), so accepting it would publish invisible topics.
+	if _, _, err := normalizeTopicAccess("role", []string{"user"}, nil, 1, false); err == nil {
+		t.Fatal("role user accepted")
 	}
 	users := make([]int, 50)
 	for i := range users {

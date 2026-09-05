@@ -20,7 +20,11 @@ func normalizeTopicAccess(scope string, roles []string, userIDs []int, authorID 
 			return "", nil, errors.ErrBadRequest("访问角色须为 1 至 8 个")
 		}
 		for _, role := range roles {
-			if !slices.Contains([]string{"user", "creator", "moderator", "admin", "ren"}, role) {
+			// "user" is rejected on purpose: OAuth never puts it in the roles
+			// claim (docs/oauth/11-roles.md §2 — implicit default identity), so
+			// a user grant matches nobody and the topic silently goes invisible
+			// to everyone the author picked. The login scope is that feature.
+			if !slices.Contains([]string{"creator", "moderator", "admin", "ren"}, role) {
 				return "", nil, errors.ErrBadRequest("无效的访问角色")
 			}
 			if !seen[role] {
