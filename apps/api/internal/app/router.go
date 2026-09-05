@@ -368,6 +368,9 @@ func (a *App) setupRoutes() {
 
 	admin.Get("/admin/user/:id/content-stats", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.GetUserContentStats)
 	admin.Delete("/admin/user/:id/content", middleware.RequirePermission(perm.UserPurgeContent), a.AdminPurgeHandler.PurgeUserContent)
+	admin.Get("/admin/topic/hidden", middleware.RequirePermission(perm.TopicViewHidden), a.AdminTopicHandler.ListHidden)
+	admin.Get("/admin/topic/:tid/purge-stats", middleware.RequirePermission(perm.TopicDeleteAny), a.AdminTopicHandler.PurgeStats)
+	admin.Delete("/admin/topic/:tid", middleware.RequirePermission(perm.TopicDeleteAny), a.AdminTopicHandler.Delete)
 
 	// RequireAdmin, not RequirePermission: overrides must never be able to lock
 	// admins out of the surface that repairs overrides.

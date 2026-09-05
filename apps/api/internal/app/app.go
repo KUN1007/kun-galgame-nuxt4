@@ -112,6 +112,7 @@ type App struct {
 	MessageChatHandler             *msgHandler.ChatHandler
 	AdminOverviewHandler           *adminHandler.OverviewHandler
 	AdminPurgeHandler              *adminHandler.PurgeHandler
+	AdminTopicHandler              *adminHandler.TopicAdminHandler
 	AdminRolePermissionHandler     *adminHandler.RolePermissionHandler
 	AdminUserPermissionHandler     *adminHandler.UserPermissionHandler
 	AdminPermissionAuditHandler    *adminHandler.PermissionAuditHandler
@@ -459,6 +460,7 @@ func New(cfg *config.Config) *App {
 	adminOverviewRepo := adminRepo.NewOverviewRepository(db)
 	adminOverviewSvc := adminService.NewOverviewService(adminOverviewRepo)
 	adminPurgeSvc := adminService.NewPurgeService(adminRepo.NewPurgeRepository(db), uc, communityCli)
+	adminTopicSvc := adminService.NewTopicAdminService(adminRepo.NewTopicAdminRepository(db), uc)
 	adminRolePermRepo := adminRepo.NewRolePermissionRepository(db)
 	adminUserPermRepo := adminRepo.NewUserPermissionRepository(db)
 	adminPermSync := adminService.NewPermissionOverrideSync(adminRolePermRepo, adminUserPermRepo)
@@ -551,6 +553,7 @@ func New(cfg *config.Config) *App {
 		MessageChatHandler:             msgHandler.NewChatHandler(chatSvc),
 		AdminOverviewHandler:           adminHandler.NewOverviewHandler(adminOverviewSvc),
 		AdminPurgeHandler:              adminHandler.NewPurgeHandler(adminPurgeSvc),
+		AdminTopicHandler:              adminHandler.NewTopicAdminHandler(adminTopicSvc),
 		AdminRolePermissionHandler:     adminHandler.NewRolePermissionHandler(adminRolePermSvc),
 		AdminUserPermissionHandler:     adminHandler.NewUserPermissionHandler(adminUserPermSvc),
 		AdminPermissionAuditHandler:    adminHandler.NewPermissionAuditHandler(adminPermAuditSvc),
