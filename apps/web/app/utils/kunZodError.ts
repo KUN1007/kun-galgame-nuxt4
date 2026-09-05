@@ -44,6 +44,9 @@ export const KUN_FIELD_LABELS: Record<string, string> = {
   targets: '标签',
   category: '分类',
   section: '分区',
+  access_scope: '访问范围',
+  access_roles: '可见角色',
+  access_user_ids: '可见用户',
   size: '大小',
   code: '验证码'
 }

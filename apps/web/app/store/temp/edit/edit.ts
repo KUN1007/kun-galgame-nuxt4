@@ -12,6 +12,9 @@ export const useTempEditStore = defineStore(
     const section = ref<EditStoreTemp['section']>([])
     const isNSFW = ref<EditStoreTemp['isNSFW']>(false)
     const coverImages = ref<EditStoreTemp['coverImages']>([])
+    const accessScope = ref<EditStoreTemp['accessScope']>('public')
+    const accessRoles = ref<EditStoreTemp['accessRoles']>([])
+    const accessUserIds = ref<EditStoreTemp['accessUserIds']>([])
     const isTopicRewriting = ref<EditStoreTemp['isTopicRewriting']>(false)
 
     const resetRewriteTopicData = () => {
@@ -22,6 +25,9 @@ export const useTempEditStore = defineStore(
       section.value = []
       isNSFW.value = false
       coverImages.value = []
+      accessScope.value = 'public'
+      accessRoles.value = []
+      accessUserIds.value = []
       isTopicRewriting.value = false
     }
 
@@ -33,6 +39,9 @@ export const useTempEditStore = defineStore(
       section,
       isNSFW,
       coverImages,
+      accessScope,
+      accessRoles,
+      accessUserIds,
       isTopicRewriting,
       resetRewriteTopicData
     }

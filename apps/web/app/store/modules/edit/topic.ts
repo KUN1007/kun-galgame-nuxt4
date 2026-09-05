@@ -12,6 +12,9 @@ export const usePersistEditTopicStore = defineStore(
     const section = ref<EditStorePersist['section']>([])
     const isNSFW = ref<EditStorePersist['isNSFW']>(false)
     const coverImages = ref<EditStorePersist['coverImages']>([])
+    const accessScope = ref<EditStorePersist['accessScope']>('public')
+    const accessRoles = ref<EditStorePersist['accessRoles']>([])
+    const accessUserIds = ref<EditStorePersist['accessUserIds']>([])
 
     const resetTopicData = () => {
       title.value = ''
@@ -20,6 +23,9 @@ export const usePersistEditTopicStore = defineStore(
       section.value = []
       isNSFW.value = false
       coverImages.value = []
+      accessScope.value = 'public'
+      accessRoles.value = []
+      accessUserIds.value = []
     }
 
     return {
@@ -30,6 +36,9 @@ export const usePersistEditTopicStore = defineStore(
       section,
       isNSFW,
       coverImages,
+      accessScope,
+      accessRoles,
+      accessUserIds,
       resetTopicData
     }
   },

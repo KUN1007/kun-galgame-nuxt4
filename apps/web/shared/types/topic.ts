@@ -27,6 +27,11 @@ export interface TopicBestAnswerSummary {
   created: Date | string
 }
 
+export interface TopicAccessGrants {
+  roles: string[]
+  user_ids: number[]
+}
+
 export interface TopicDetail {
   id: number
   title: string
@@ -35,6 +40,8 @@ export interface TopicDetail {
   view: number
   status: number
   hidden_by: string
+  access_scope: string
+  access_grants?: TopicAccessGrants
   is_nsfw: boolean
   category: string
   section: string[]

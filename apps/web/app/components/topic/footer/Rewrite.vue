@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { KunTooltip } from '#components'
+import { toTopicAccessRoles, toTopicAccessScope } from '~/constants/topic'
 
 const props = defineProps<{
   topic: TopicDetail
@@ -14,6 +15,9 @@ const {
   section,
   isNSFW,
   coverImages,
+  accessScope,
+  accessRoles,
+  accessUserIds,
   isTopicRewriting
 } = storeToRefs(useTempEditStore())
 const { id: userId } = usePersistUserStore()
@@ -30,6 +34,9 @@ const rewriteTopic = async () => {
   section.value = props.topic.section ?? []
   isNSFW.value = !!props.topic.is_nsfw
   coverImages.value = props.topic.cover_images ?? []
+  accessScope.value = toTopicAccessScope(props.topic.access_scope)
+  accessRoles.value = toTopicAccessRoles(props.topic.access_grants?.roles)
+  accessUserIds.value = props.topic.access_grants?.user_ids ?? []
   isTopicRewriting.value = true
 
   await navigateTo('/edit/topic')

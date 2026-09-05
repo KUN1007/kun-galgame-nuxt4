@@ -141,6 +141,11 @@ watch(
         :hidden-by="topic.hidden_by"
       />
 
+      <TopicDetailScopeNotice
+        v-if="topic.access_scope && topic.access_scope !== 'public'"
+        :scope="topic.access_scope"
+      />
+
       <TopicDetailMaster :topic="topic" />
 
       <TopicMiniappContainer

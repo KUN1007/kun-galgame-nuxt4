@@ -1,4 +1,5 @@
-import type { KunSelectOption } from '@kungal/ui-vue'
+import type { KunCheckBoxGroupOption, KunSelectOption } from '@kungal/ui-vue'
+import { KUN_USER_ROLE_MAP } from '~/constants/user'
 
 export const KUN_TOPIC_CATEGORY: Record<string, string> = {
   galgame: 'Galgame',
@@ -208,6 +209,102 @@ export const KUN_TOPIC_HIDDEN_BY: Record<string, TopicHiddenByMeta> = {
 
 export const topicHiddenByMeta = (hiddenBy: string): TopicHiddenByMeta =>
   KUN_TOPIC_HIDDEN_BY[hiddenBy] ?? KUN_TOPIC_HIDDEN_BY_FALLBACK
+
+export const KUN_TOPIC_ACCESS_SCOPE_CONST = [
+  'public',
+  'login',
+  'role',
+  'users'
+] as const
+
+export type TopicAccessScope = (typeof KUN_TOPIC_ACCESS_SCOPE_CONST)[number]
+
+export interface TopicAccessScopeMeta {
+  label: string
+  icon: string
+  hint: string
+  notice: string
+  description: string
+}
+
+export const KUN_TOPIC_ACCESS_SCOPE_FALLBACK: TopicAccessScopeMeta = {
+  label: '受限',
+  icon: 'lucide:lock',
+  hint: '这个话题的访问范围受到限制',
+  notice: '本话题的访问范围受限',
+  description: '只有符合条件的用户可以打开它'
+}
+
+export const KUN_TOPIC_ACCESS_SCOPE: Record<string, TopicAccessScopeMeta> = {
+  public: {
+    label: '公开',
+    icon: 'lucide:globe',
+    hint: '所有人都能打开这个话题, 它会正常出现在列表, 搜索与首页动态中',
+    notice: '本话题公开可见',
+    description: '所有人都能打开它'
+  },
+  login: {
+    label: '登录用户可见',
+    icon: 'lucide:log-in',
+    hint: '未登录的访客打不开这个话题。它仍然会出现在已登录用户的列表与搜索中, 但不会进入首页动态, 排行榜与 RSS',
+    notice: '本话题仅登录用户可见',
+    description: '未登录的访客打不开它, 它也不会出现在首页动态, 排行榜与 RSS 中'
+  },
+  role: {
+    label: '指定角色可见',
+    icon: 'lucide:shield',
+    hint: '只有持有选中角色的用户能打开这个话题 (您自己与管理人员始终可以打开)。它不会出现在任何列表与搜索中, 只能通过链接访问',
+    notice: '本话题仅指定角色可见',
+    description: '它不会出现在任何列表与搜索中, 只能通过链接访问'
+  },
+  users: {
+    label: '指定用户可见',
+    icon: 'lucide:users',
+    hint: '只有被指定的用户能打开这个话题 (您自己与管理人员始终可以打开)。它不会出现在任何列表与搜索中, 只能通过链接访问',
+    notice: '本话题仅指定用户可见',
+    description: '它不会出现在任何列表与搜索中, 只能通过链接访问'
+  }
+}
+
+export const topicAccessScopeMeta = (scope: string): TopicAccessScopeMeta =>
+  KUN_TOPIC_ACCESS_SCOPE[scope] ?? KUN_TOPIC_ACCESS_SCOPE_FALLBACK
+
+export const KUN_TOPIC_ACCESS_SCOPE_OPTIONS: KunSelectOption<TopicAccessScope>[] =
+  KUN_TOPIC_ACCESS_SCOPE_CONST.map((value) => ({
+    value,
+    label: topicAccessScopeMeta(value).label
+  }))
+
+// `user` is missing on purpose. The API accepts it as a grant subject, but OAuth
+// never puts it in the roles claim (docs/oauth/11-roles.md §2 — it is the
+// implicit default identity), so a `user` grant matches nobody and the topic
+// silently becomes invisible to everyone the author picked. The login scope is
+// what "any signed-in user" means here.
+export const KUN_TOPIC_ACCESS_ROLE_CONST = [
+  'creator',
+  'moderator',
+  'admin',
+  'ren'
+] as const
+
+export type TopicAccessRole = (typeof KUN_TOPIC_ACCESS_ROLE_CONST)[number]
+
+export const KUN_TOPIC_ACCESS_ROLE_OPTIONS: KunCheckBoxGroupOption<TopicAccessRole>[] =
+  KUN_TOPIC_ACCESS_ROLE_CONST.map((value) => ({
+    value,
+    label: KUN_USER_ROLE_MAP[value] ?? value
+  }))
+
+export const KUN_TOPIC_ACCESS_ROLE_LIMIT = 8
+export const KUN_TOPIC_ACCESS_USER_LIMIT = 50
+
+export const toTopicAccessScope = (scope?: string): TopicAccessScope =>
+  KUN_TOPIC_ACCESS_SCOPE_CONST.find((value) => value === scope) ?? 'public'
+
+export const toTopicAccessRoles = (roles?: string[]): TopicAccessRole[] =>
+  (roles ?? []).filter((role): role is TopicAccessRole =>
+    KUN_TOPIC_ACCESS_ROLE_CONST.some((value) => value === role)
+  )
 
 export const KUN_LOTTERY_ENTRY_MODE: Record<string, string> = {
   signup: '报名参与',

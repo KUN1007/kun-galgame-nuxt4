@@ -1,3 +1,5 @@
+import type { TopicAccessRole, TopicAccessScope } from '~/constants/topic'
+
 export interface EditStorePersist {
   mode: 'preview' | 'code'
 
@@ -7,6 +9,9 @@ export interface EditStorePersist {
   section: string[]
   isNSFW: boolean
   coverImages: string[]
+  accessScope: TopicAccessScope
+  accessRoles: TopicAccessRole[]
+  accessUserIds: number[]
 }
 
 export interface EditStoreTemp {
@@ -17,6 +22,9 @@ export interface EditStoreTemp {
   section: string[]
   isNSFW: boolean
   coverImages: string[]
+  accessScope: TopicAccessScope
+  accessRoles: TopicAccessRole[]
+  accessUserIds: number[]
 
   isTopicRewriting: boolean
 }

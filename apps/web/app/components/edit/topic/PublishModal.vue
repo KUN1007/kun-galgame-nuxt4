@@ -135,6 +135,8 @@ const confirmText = computed(() => {
           </p>
         </section>
 
+        <EditTopicAccessScope />
+
         <section class="space-y-3">
           <EditTopicCoverPicker />
         </section>

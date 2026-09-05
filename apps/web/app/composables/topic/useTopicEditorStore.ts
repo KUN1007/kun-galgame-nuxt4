@@ -1,4 +1,8 @@
-import type { TopicCategoryKey } from '~/constants/topic'
+import type {
+  TopicAccessRole,
+  TopicAccessScope,
+  TopicCategoryKey
+} from '~/constants/topic'
 
 export const useTopicEditorStore = () => {
   const tempStore = useTempEditStore()
@@ -50,12 +54,36 @@ export const useTopicEditorStore = () => {
     }
   })
 
+  const accessScope = computed<TopicAccessScope>({
+    get: () => activeStore.value.accessScope,
+    set: (value) => {
+      activeStore.value.accessScope = value
+    }
+  })
+
+  const accessRoles = computed<TopicAccessRole[]>({
+    get: () => activeStore.value.accessRoles,
+    set: (value) => {
+      activeStore.value.accessRoles = value
+    }
+  })
+
+  const accessUserIds = computed<number[]>({
+    get: () => activeStore.value.accessUserIds,
+    set: (value) => {
+      activeStore.value.accessUserIds = value
+    }
+  })
+
   return {
     category,
     section,
     title,
     content,
     isNSFW,
-    coverImages
+    coverImages,
+    accessScope,
+    accessRoles,
+    accessUserIds
   }
 }

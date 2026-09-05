@@ -6,8 +6,17 @@ import {
 } from '~/config/moemoepoint'
 
 export const useTopicSubmitter = () => {
-  const { category, section, title, content, isNSFW, coverImages } =
-    useTopicEditorStore()
+  const {
+    category,
+    section,
+    title,
+    content,
+    isNSFW,
+    coverImages,
+    accessScope,
+    accessRoles,
+    accessUserIds
+  } = useTopicEditorStore()
   const tempStore = useTempEditStore()
   const persistStore = usePersistEditTopicStore()
   const { moemoepoint } = usePersistUserStore()
@@ -32,13 +41,18 @@ export const useTopicSubmitter = () => {
       return
     }
 
+    // PUT /topic/:tid answers 400 "无效的话题访问范围" when access_scope is
+    // missing, so every submit carries it, a default-public topic included.
     const data = {
       title: title.value,
       content: content.value,
       category: category.value,
       section: section.value,
       is_nsfw: isNSFW.value,
-      cover_images: coverImages.value
+      cover_images: coverImages.value,
+      access_scope: accessScope.value,
+      access_roles: accessScope.value === 'role' ? accessRoles.value : [],
+      access_user_ids: accessScope.value === 'users' ? accessUserIds.value : []
     }
 
     const submitData = isRewriteMode.value
