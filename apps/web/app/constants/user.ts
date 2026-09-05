@@ -72,11 +72,16 @@ const createUserPageNavItems = <T extends string>(
   }))
 }
 
-export const kunUserTopicNavItem = (userId: number): KunTabItem[] => {
+export const kunUserTopicNavItem = (
+  userId: number,
+  canSeeHidden: boolean
+): KunTabItem[] => {
   return createUserPageNavItems(
     userId,
     'topic',
-    KUN_USER_PAGE_TOPIC_TYPE.filter((t) => t !== 'topic_favorite'),
+    KUN_USER_PAGE_TOPIC_TYPE.filter(
+      (t) => t !== 'topic_favorite' && (canSeeHidden || t !== 'topic_hide')
+    ),
     TOPIC_NAV_CONFIG
   )
 }

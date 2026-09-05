@@ -31,6 +31,7 @@ const topicId = computed(() => {
 provide<number>('topicId', topicId.value)
 
 const { data } = await useKunFetch<TopicDetail>(`/topic/${topicId.value}`, {
+  key: `topic-detail-${topicId.value}`,
   method: 'GET',
   watch: false,
   query: { topic_id: topicId.value }
@@ -182,7 +183,7 @@ if (data.value) {
 
 <template>
   <div>
-    <template v-if="data && data.status !== 1">
+    <template v-if="data">
       <TopicDetail v-if="isShowTopic" :topic="data" />
 
       <KunCard v-else :is-hoverable="false" :is-transparent="false">
@@ -191,11 +192,6 @@ if (data.value) {
       </KunCard>
     </template>
 
-    <KunNull v-if="!data" description="未找到这个话题" />
-
-    <KunNull
-      v-if="data && data.status === 1"
-      description="话题被隐藏, 或您未开启网站 NSFW 模式"
-    />
+    <KunNull v-else description="未找到这个话题" />
   </div>
 </template>

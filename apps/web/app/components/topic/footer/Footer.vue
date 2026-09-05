@@ -55,7 +55,12 @@ const { id } = usePersistUserStore()
             <KunIcon class-name="text-lg" name="lucide:share-2" />
             分享
           </KunButton>
-          <TopicFooterHide v-if="id" :topic-id="topic.id" />
+          <TopicFooterHide
+            v-if="id"
+            :topic-id="topic.id"
+            :status="topic.status"
+            :hidden-by="topic.hidden_by"
+          />
           <ReportButton
             v-if="topic.user.id !== id"
             menu

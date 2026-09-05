@@ -174,6 +174,41 @@ export const TOPIC_POLL_VISIBILITY_MAP: Record<string, string> = {
   after_deadline: '结束后可见结果'
 }
 
+type TopicHiddenByColor = 'default' | 'warning' | 'danger'
+
+export interface TopicHiddenByMeta {
+  label: string
+  notice: string
+  color: TopicHiddenByColor
+}
+
+export const KUN_TOPIC_HIDDEN_BY_FALLBACK: TopicHiddenByMeta = {
+  label: '已隐藏',
+  notice: '该话题已被隐藏',
+  color: 'default'
+}
+
+export const KUN_TOPIC_HIDDEN_BY: Record<string, TopicHiddenByMeta> = {
+  author: {
+    label: '作者隐藏',
+    notice: '该话题已被作者隐藏',
+    color: 'warning'
+  },
+  moderator: {
+    label: '管理员隐藏',
+    notice: '该话题已被管理员隐藏',
+    color: 'danger'
+  },
+  trust: {
+    label: '风纪隐藏',
+    notice: '该话题已因违规处理被隐藏',
+    color: 'danger'
+  }
+}
+
+export const topicHiddenByMeta = (hiddenBy: string): TopicHiddenByMeta =>
+  KUN_TOPIC_HIDDEN_BY[hiddenBy] ?? KUN_TOPIC_HIDDEN_BY_FALLBACK
+
 export const KUN_LOTTERY_ENTRY_MODE: Record<string, string> = {
   signup: '报名参与',
   reply: '回帖后参与',

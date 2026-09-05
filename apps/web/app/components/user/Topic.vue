@@ -9,6 +9,12 @@ const props = defineProps<{
   type: (typeof KUN_USER_PAGE_TOPIC_TYPE)[number]
 }>()
 
+const { id: currentUserId } = usePersistUserStore()
+const canViewHiddenTopic = useCan('topic.view_hidden')
+const canSeeHidden = computed(
+  () => currentUserId === props.userId || canViewHiddenTopic.value
+)
+
 const activeTab = ref(props.type)
 const pageData = reactive({
   page: 1,
@@ -45,7 +51,7 @@ const handleUpdateTopicHideStatus = async (topicId: number) => {
 <template>
   <div class="space-y-3">
     <KunTab
-      :items="kunUserTopicNavItem(userId)"
+      :items="kunUserTopicNavItem(userId, canSeeHidden)"
       :model-value="activeTab"
       variant="light"
       size="sm"

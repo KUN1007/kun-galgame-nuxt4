@@ -136,6 +136,11 @@ watch(
     <TopicDetailMasterUser v-if="topic.user" :user="topic.user" />
 
     <div class="min-w-0 flex-1 space-y-4">
+      <TopicDetailHiddenNotice
+        v-if="topic.status === 1"
+        :hidden-by="topic.hidden_by"
+      />
+
       <TopicDetailMaster :topic="topic" />
 
       <TopicMiniappContainer

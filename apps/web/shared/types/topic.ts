@@ -34,6 +34,7 @@ export interface TopicDetail {
   content_html: string
   view: number
   status: number
+  hidden_by: string
   is_nsfw: boolean
   category: string
   section: string[]

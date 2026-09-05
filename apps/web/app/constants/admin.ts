@@ -40,6 +40,7 @@ export const KUN_ADMIN_PAGE_ROUTE = [
   'user',
   'submissions',
   'moderation',
+  'topic',
   'friend-link',
   'website',
   'doc',
@@ -88,6 +89,13 @@ export const KUN_ADMIN_PAGE_ASIDE_NAV_ITEM: KunAdminPageAsideItem[] = [
     icon: 'lucide:shield-alert',
     router: 'moderation',
     permissions: ['trust.review']
+  },
+  {
+    name: 'topic',
+    label: '隐藏话题管理',
+    icon: 'lucide:eye-off',
+    router: 'topic',
+    permissions: ['topic.view_hidden']
   },
   {
     name: 'friend-link',
