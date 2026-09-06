@@ -52,6 +52,7 @@ Thumbs.db
 /*.jpg
 /*.jpeg
 /*.webp
+.playwright-mcp/
 
 # Temp / misc
 tmp

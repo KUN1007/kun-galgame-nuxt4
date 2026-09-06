@@ -45,7 +45,10 @@ const releaseLabel = (galgame: GalgameCard) => {
       <div class="z-10">
         <KunHeader name="Galgame 信息资料数据库">
           <template #endContent>
-            <GalgameLibraryNav />
+            <GalgameLibraryNav
+              :total="data.total"
+              :pending="status === 'pending'"
+            />
           </template>
 
           <template #description>

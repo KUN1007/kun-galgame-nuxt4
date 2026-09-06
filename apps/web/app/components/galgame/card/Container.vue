@@ -61,7 +61,11 @@ watch(
       <div class="z-10">
         <KunHeader name="Galgame 资源资料库">
           <template #endContent>
-            <GalgameCardNav :is-show-advanced="true" />
+            <GalgameCardNav
+              :is-show-advanced="true"
+              :total="data.total"
+              :pending="status === 'pending'"
+            />
           </template>
 
           <template #description>

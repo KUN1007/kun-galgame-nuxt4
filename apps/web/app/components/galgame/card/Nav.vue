@@ -20,8 +20,10 @@ import type {
 withDefaults(
   defineProps<{
     isShowAdvanced?: boolean
+    total?: number | null
+    pending?: boolean
   }>(),
-  { isShowAdvanced: false }
+  { isShowAdvanced: false, total: null, pending: false }
 )
 
 const {
@@ -41,7 +43,6 @@ const {
   minRating
 } = useGalgameFilters()
 
-const showFilters = ref(false)
 const showDisplay = ref(false)
 
 watch(
@@ -53,6 +54,7 @@ watch(
     sortField.value,
     sortOrder.value,
     releasedFrom.value,
+    releasedTo.value,
     releasedMonths.value,
     includeProviders.value,
     excludeOnlyProviders.value,
@@ -64,86 +66,17 @@ watch(
   }
 )
 
-const minCountOptions = [
-  { value: 0, label: '不限' },
-  { value: 5, label: '≥5' },
-  { value: 10, label: '≥10' },
-  { value: 20, label: '≥20' },
-  { value: 50, label: '≥50' }
-]
-const minRatingOptions = [
-  { value: 0, label: '不限' },
-  { value: 7, label: '7 分+' },
-  { value: 8, label: '8 分+' },
-  { value: 9, label: '9 分+' }
-]
-
-const csvToSet = (csv: string) => new Set(csv.split(',').filter(Boolean))
-const toggleCsv = (csv: string, key: string) => {
-  const set = csvToSet(csv)
-  if (set.has(key)) {
-    set.delete(key)
-  } else {
-    set.add(key)
-  }
-  return [...set].sort().join(',')
-}
-
-const KUN_RELEASE_EARLIEST_YEAR = 1980
-const yearOptions = [
-  { value: '', label: '不限' },
-  ...Array.from(
-    { length: new Date().getFullYear() - KUN_RELEASE_EARLIEST_YEAR + 1 },
-    (_, i) => {
-      const y = String(new Date().getFullYear() - i)
-      return { value: y, label: `${y}` }
-    }
-  )
-]
-const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-  value: i + 1,
-  label: `${i + 1} 月`
-}))
-
-const applyFromYear = (year: string) => {
-  releasedFrom.value = year
-  if (year && releasedTo.value && Number(releasedTo.value) < Number(year)) {
-    releasedTo.value = year
-  }
-}
-const applyToYear = (year: string) => {
-  releasedTo.value = year
-  if (year && releasedFrom.value && Number(releasedFrom.value) > Number(year)) {
-    releasedFrom.value = year
-  }
-}
-
-const selectedMonths = computed(() => csvToSet(releasedMonths.value))
-const isMonthSelected = (m: number) => selectedMonths.value.has(String(m))
-const toggleMonth = (m: number) => {
-  const set = csvToSet(releasedMonths.value)
-  const key = String(m)
-  if (set.has(key)) {
-    set.delete(key)
-  } else {
-    set.add(key)
-  }
-  releasedMonths.value = [...set]
-    .map(Number)
-    .sort((a, b) => a - b)
-    .join(',')
-}
-
-const includeSet = computed(() => csvToSet(includeProviders.value))
-const excludeSet = computed(() => csvToSet(excludeOnlyProviders.value))
-const toggleInclude = (key: string) => {
-  includeProviders.value = toggleCsv(includeProviders.value, key)
-}
-const toggleExclude = (key: string) => {
-  excludeOnlyProviders.value = toggleCsv(excludeOnlyProviders.value, key)
-}
+const csvToArray = (csv: string) => csv.split(',').filter(Boolean)
 
 const typeOptions = Object.entries(KUN_GALGAME_RESOURCE_TYPE_MAP)
+  .filter(([k]) => k !== 'name')
+  .map(([value, label]) => ({ value, label }))
+
+const langOptions = Object.entries(KUN_GALGAME_RESOURCE_LANGUAGE_MAP).map(
+  ([value, label]) => ({ value, label })
+)
+
+const platformOptions = Object.entries(KUN_GALGAME_RESOURCE_PLATFORM_MAP)
   .filter(([k]) => k !== 'name')
   .map(([value, label]) => ({ value, label }))
 
@@ -156,14 +89,6 @@ const gameTypeOptions = [
   { value: 'uncategorized', label: '未分类' }
 ]
 
-const langOptions = Object.entries(KUN_GALGAME_RESOURCE_LANGUAGE_MAP).map(
-  ([value, label]) => ({ value, label })
-)
-
-const platformOptions = Object.entries(KUN_GALGAME_RESOURCE_PLATFORM_MAP)
-  .filter(([k]) => k !== 'name')
-  .map(([value, label]) => ({ value, label }))
-
 const sortOptions = Object.entries(KUN_GALGAME_RESOURCE_SORT_FIELD_MAP).map(
   ([value, label]) => ({
     value: value === 'views' ? 'view' : value,
@@ -171,41 +96,159 @@ const sortOptions = Object.entries(KUN_GALGAME_RESOURCE_SORT_FIELD_MAP).map(
   })
 )
 
-const hasActiveFilter = computed(
-  () =>
-    type.value !== 'all' ||
-    language.value !== 'all' ||
-    platform.value !== 'all' ||
-    gameType.value !== 'all' ||
-    sortField.value !== 'time' ||
-    sortOrder.value !== 'desc' ||
-    !!releasedFrom.value ||
-    !!releasedTo.value ||
-    !!releasedMonths.value ||
-    !!includeProviders.value ||
-    !!excludeOnlyProviders.value ||
-    minRatingCount.value > 0 ||
-    minRating.value > 0
-)
+const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1} 月`
+}))
 
-const hasAdvancedFilter = computed(
-  () =>
-    !!includeProviders.value ||
-    !!excludeOnlyProviders.value ||
-    !!releasedFrom.value ||
-    !!releasedTo.value ||
-    !!releasedMonths.value ||
-    minRatingCount.value > 0 ||
-    minRating.value > 0
-)
+const providerOptions = PROVIDER_KEY_OPTIONS.map((key) => ({
+  value: key,
+  label: KUN_GALGAME_PROVIDER_LABEL_MAP[key as ProviderKey]
+}))
 
-const resetFilters = () => {
+// The pill's resting text is the selected option's own label, so a bare 不限
+// draws two identically-labelled pills side by side.
+const minCountOptions = [
+  { value: '0', label: '人数不限' },
+  { value: '5', label: '≥5 人', hint: '过滤小样本' },
+  { value: '10', label: '≥10 人' },
+  { value: '20', label: '≥20 人' },
+  { value: '50', label: '≥50 人' }
+]
+
+const minRatingOptions = [
+  { value: '0', label: '评分不限' },
+  { value: '7', label: '7 分+', hint: '贝叶斯平滑后' },
+  { value: '8', label: '8 分+' },
+  { value: '9', label: '9 分+' }
+]
+
+const months = computed(() => csvToArray(releasedMonths.value))
+const setMonths = (values: string[]) => {
+  releasedMonths.value = values
+    .map(Number)
+    .sort((a, b) => a - b)
+    .join(',')
+}
+
+const includes = computed(() => csvToArray(includeProviders.value))
+const excludes = computed(() => csvToArray(excludeOnlyProviders.value))
+const setCsv = (values: string[]) => [...values].sort().join(',')
+
+const yearRangeLabel = computed(() => {
+  if (releasedFrom.value && releasedTo.value) {
+    return releasedFrom.value === releasedTo.value
+      ? `${releasedFrom.value} 年`
+      : `${releasedFrom.value} - ${releasedTo.value}`
+  }
+  return releasedFrom.value
+    ? `${releasedFrom.value} 年至今`
+    : `${releasedTo.value} 年以前`
+})
+
+const setYears = (range: { from: string; to: string }) => {
+  releasedFrom.value = range.from
+  releasedTo.value = range.to
+}
+
+const labelOf = (options: FilterOption[], value: string) =>
+  options.find((option) => option.value === value)?.label ?? value
+
+const chips = computed<FilterChip[]>(() => {
+  const list: FilterChip[] = []
+  if (type.value !== 'all') {
+    list.push({
+      key: 'type',
+      prefix: '类型',
+      label: labelOf(typeOptions, type.value)
+    })
+  }
+  if (language.value !== 'all') {
+    list.push({
+      key: 'language',
+      prefix: '语言',
+      label: labelOf(langOptions, language.value)
+    })
+  }
+  if (platform.value !== 'all') {
+    list.push({
+      key: 'platform',
+      prefix: '平台',
+      label: labelOf(platformOptions, platform.value)
+    })
+  }
+  if (gameType.value !== 'all') {
+    list.push({
+      key: 'gameType',
+      label: labelOf(gameTypeOptions, gameType.value)
+    })
+  }
+  if (releasedFrom.value || releasedTo.value) {
+    list.push({ key: 'years', label: yearRangeLabel.value })
+  }
+  for (const month of months.value) {
+    list.push({ key: `month:${month}`, label: `${month} 月` })
+  }
+  for (const key of includes.value) {
+    list.push({
+      key: `include:${key}`,
+      prefix: '含',
+      label: KUN_GALGAME_PROVIDER_LABEL_MAP[key as ProviderKey] ?? key
+    })
+  }
+  for (const key of excludes.value) {
+    list.push({
+      key: `exclude:${key}`,
+      prefix: '排除仅',
+      label: KUN_GALGAME_PROVIDER_LABEL_MAP[key as ProviderKey] ?? key
+    })
+  }
+  if (minRatingCount.value > 0) {
+    list.push({
+      key: 'minRatingCount',
+      label: `≥${minRatingCount.value} 人评分`
+    })
+  }
+  if (minRating.value > 0) {
+    list.push({ key: 'minRating', label: `${minRating.value} 分+` })
+  }
+  return list
+})
+
+const removeChip = (key: string) => {
+  const [dimension, value] = key.split(':')
+  if (dimension === 'type') {
+    type.value = 'all'
+  } else if (dimension === 'language') {
+    language.value = 'all'
+  } else if (dimension === 'platform') {
+    platform.value = 'all'
+  } else if (dimension === 'gameType') {
+    gameType.value = 'all'
+  } else if (dimension === 'years') {
+    setYears({ from: '', to: '' })
+  } else if (dimension === 'month') {
+    setMonths(months.value.filter((month) => month !== value))
+  } else if (dimension === 'include') {
+    includeProviders.value = setCsv(
+      includes.value.filter((item) => item !== value)
+    )
+  } else if (dimension === 'exclude') {
+    excludeOnlyProviders.value = setCsv(
+      excludes.value.filter((item) => item !== value)
+    )
+  } else if (dimension === 'minRatingCount') {
+    minRatingCount.value = 0
+  } else if (dimension === 'minRating') {
+    minRating.value = 0
+  }
+}
+
+const clearFilters = () => {
   type.value = 'all'
   language.value = 'all'
   platform.value = 'all'
   gameType.value = 'all'
-  sortField.value = 'time'
-  sortOrder.value = 'desc'
   releasedFrom.value = ''
   releasedTo.value = ''
   releasedMonths.value = ''
@@ -217,310 +260,145 @@ const resetFilters = () => {
 </script>
 
 <template>
-  <div class="space-y-1">
-    <KunScrollShadow>
-      <button
-        v-for="opt in typeOptions"
-        :key="opt.value"
-        class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-        :class="
-          type === opt.value
-            ? 'bg-primary/15 text-primary font-medium'
-            : 'text-default-600 hover:bg-default-100'
-        "
-        @click="type = opt.value as KunGalgameResourceTypeOptions"
-      >
-        {{ opt.label }}
-      </button>
-    </KunScrollShadow>
-
-    <KunScrollShadow>
-      <button
-        v-for="opt in langOptions"
-        :key="opt.value"
-        class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-        :class="
-          language === opt.value
-            ? 'bg-primary/15 text-primary font-medium'
-            : 'text-default-600 hover:bg-default-100'
-        "
-        @click="language = opt.value as KunGalgameResourceLanguageOptions"
-      >
-        {{ opt.label }}
-      </button>
-    </KunScrollShadow>
-
-    <KunScrollShadow>
-      <button
-        v-for="opt in platformOptions"
-        :key="opt.value"
-        class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-        :class="
-          platform === opt.value
-            ? 'bg-primary/15 text-primary font-medium'
-            : 'text-default-600 hover:bg-default-100'
-        "
-        @click="platform = opt.value as KunGalgameResourcePlatformOptions"
-      >
-        {{ opt.label }}
-      </button>
-    </KunScrollShadow>
-
-    <KunScrollShadow>
-      <button
-        v-for="opt in gameTypeOptions"
-        :key="opt.value"
-        class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-        :class="
-          gameType === opt.value
-            ? 'bg-primary/15 text-primary font-medium'
-            : 'text-default-600 hover:bg-default-100'
-        "
-        @click="gameType = opt.value"
-      >
-        {{ opt.label }}
-      </button>
-    </KunScrollShadow>
-
-    <KunScrollShadow>
-      <button
-        v-for="opt in sortOptions"
-        :key="opt.value"
-        class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-        :class="
-          sortField === opt.value
-            ? 'bg-primary/15 text-primary font-medium'
-            : 'text-default-600 hover:bg-default-100'
-        "
-        @click="
-          sortField = opt.value as
-            | 'popularity'
-            | 'time'
-            | 'view'
-            | 'created'
-            | 'view_1d'
-            | 'view_7d'
-            | 'view_30d'
-            | 'release_date'
-            | 'rating'
-        "
-      >
-        {{ opt.label }}
-      </button>
-    </KunScrollShadow>
-
-    <div class="flex flex-wrap items-center gap-1.5">
-      <button
-        class="shrink-0 cursor-pointer rounded-md p-1 transition-colors"
-        :class="
-          sortOrder === 'desc'
-            ? 'bg-primary/15 text-primary'
-            : 'text-default-500 hover:bg-default-100'
-        "
-        @click="sortOrder = 'desc'"
-      >
-        <KunIcon name="lucide:arrow-down" />
-      </button>
-      <button
-        class="shrink-0 cursor-pointer rounded-md p-1 transition-colors"
-        :class="
-          sortOrder === 'asc'
-            ? 'bg-primary/15 text-primary'
-            : 'text-default-500 hover:bg-default-100'
-        "
-        @click="sortOrder = 'asc'"
-      >
-        <KunIcon name="lucide:arrow-up" />
-      </button>
-
-      <button
-        v-if="isShowAdvanced"
-        class="text-default-500 hover:text-primary flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors"
-        :class="hasAdvancedFilter && 'text-warning'"
-        @click="showFilters = !showFilters"
-      >
-        <KunIcon name="lucide:sliders-horizontal" class="text-inherit" />
-        <span>高级筛选</span>
-      </button>
-
-      <button
-        v-if="isShowAdvanced"
-        class="text-default-500 hover:text-primary flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors"
-        :class="showDisplay && 'text-primary'"
-        @click="showDisplay = !showDisplay"
-      >
-        <KunIcon name="lucide:layout-grid" class="text-inherit" />
-        <span>显示设置</span>
-      </button>
-
-      <button
-        v-if="hasActiveFilter"
-        class="text-default-500 hover:text-danger flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors"
-        @click="resetFilters"
-      >
-        <KunIcon name="lucide:rotate-ccw" class="text-inherit" />
-        <span>重置筛选</span>
-      </button>
-    </div>
-
-    <div
-      v-if="showFilters"
-      class="bg-default-50 space-y-4 rounded-lg border p-3"
+  <div class="space-y-2">
+    <FilterBar
+      :chips="chips"
+      :total="total"
+      :pending="pending"
+      @remove="removeChip"
+      @clear="clearFilters"
     >
-      <div class="text-primary border-b pb-1 text-sm font-semibold">评分</div>
+      <FilterMenu
+        icon="lucide:arrow-down-up"
+        label="排序"
+        :options="sortOptions"
+        :model-value="sortField"
+        empty-value="time"
+        @update:model-value="sortField = $event as typeof sortField"
+      />
 
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          最低评分人数
-          <span class="text-default-400 font-normal">(过滤小样本)</span>
-        </div>
-        <KunScrollShadow>
-          <button
-            v-for="opt in minCountOptions"
-            :key="`mc-${opt.value}`"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              minRatingCount === opt.value
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
+      <KunTooltip
+        :text="sortOrder === 'desc' ? '当前降序' : '当前升序'"
+        position="bottom"
+      >
+        <button
+          type="button"
+          aria-label="切换排序方向"
+          :class="filterPillSquareClass(false)"
+          @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'"
+        >
+          <KunIcon
+            :name="
+              sortOrder === 'desc' ? 'lucide:arrow-down' : 'lucide:arrow-up'
             "
-            @click="minRatingCount = opt.value"
-          >
-            {{ opt.label }}
-          </button>
-        </KunScrollShadow>
-      </div>
+            class="size-4 text-inherit"
+          />
+        </button>
+      </KunTooltip>
 
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          最低评分
-          <span class="text-default-400 font-normal">(贝叶斯平滑后)</span>
-        </div>
-        <KunScrollShadow>
-          <button
-            v-for="opt in minRatingOptions"
-            :key="`mr-${opt.value}`"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              minRating === opt.value
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
+      <span class="bg-default-200 h-6 w-px" aria-hidden="true" />
+
+      <FilterMenu
+        icon="lucide:package"
+        label="资源类型"
+        :options="typeOptions"
+        :model-value="type"
+        empty-value="all"
+        @update:model-value="type = $event as KunGalgameResourceTypeOptions"
+      />
+      <FilterMenu
+        icon="lucide:languages"
+        label="语言"
+        :options="langOptions"
+        :model-value="language"
+        empty-value="all"
+        @update:model-value="
+          language = $event as KunGalgameResourceLanguageOptions
+        "
+      />
+      <FilterMenu
+        icon="lucide:monitor-smartphone"
+        label="平台"
+        :options="platformOptions"
+        :model-value="platform"
+        empty-value="all"
+        @update:model-value="
+          platform = $event as KunGalgameResourcePlatformOptions
+        "
+      />
+      <FilterMenu
+        icon="lucide:gamepad-2"
+        label="游戏类型"
+        :options="gameTypeOptions"
+        :model-value="gameType"
+        empty-value="all"
+        @update:model-value="gameType = $event as string"
+      />
+
+      <template v-if="isShowAdvanced">
+        <FilterYears :from="releasedFrom" :to="releasedTo" @update="setYears" />
+        <FilterMenu
+          icon="lucide:calendar-days"
+          label="发售月份"
+          multiple
+          :columns="3"
+          :options="monthOptions"
+          :model-value="months"
+          @update:model-value="setMonths($event as string[])"
+        />
+
+        <KunTooltip text="只保留至少有一个所选网盘的作品" position="bottom">
+          <FilterMenu
+            icon="lucide:hard-drive-download"
+            label="含网盘"
+            multiple
+            :options="providerOptions"
+            :model-value="includes"
+            @update:model-value="includeProviders = setCsv($event as string[])"
+          />
+        </KunTooltip>
+        <KunTooltip text="丢掉只有这些网盘可选的作品" position="bottom">
+          <FilterMenu
+            icon="lucide:hard-drive-upload"
+            label="排除仅含"
+            multiple
+            :options="providerOptions"
+            :model-value="excludes"
+            @update:model-value="
+              excludeOnlyProviders = setCsv($event as string[])
             "
-            @click="minRating = opt.value"
-          >
-            {{ opt.label }}
-          </button>
-        </KunScrollShadow>
-      </div>
+          />
+        </KunTooltip>
 
-      <div class="text-primary border-b pb-1 text-sm font-semibold">
-        发售日期
-      </div>
+        <FilterMenu
+          icon="lucide:star"
+          label="最低评分"
+          :options="minRatingOptions"
+          :model-value="String(minRating)"
+          empty-value="0"
+          @update:model-value="minRating = Number($event)"
+        />
+        <FilterMenu
+          icon="lucide:users"
+          label="评分人数"
+          :options="minCountOptions"
+          :model-value="String(minRatingCount)"
+          empty-value="0"
+          @update:model-value="minRatingCount = Number($event)"
+        />
+      </template>
 
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">起始年份</div>
-        <KunScrollShadow>
-          <button
-            v-for="opt in yearOptions"
-            :key="opt.value || 'from-all'"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              releasedFrom === opt.value
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
-            "
-            @click="applyFromYear(opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </KunScrollShadow>
-      </div>
-
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">结束年份</div>
-        <KunScrollShadow>
-          <button
-            v-for="opt in yearOptions"
-            :key="opt.value || 'to-all'"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              releasedTo === opt.value
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
-            "
-            @click="applyToYear(opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </KunScrollShadow>
-      </div>
-
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          发售月份
-          <span class="text-default-400 font-normal">(可多选, 含历年)</span>
-        </div>
-        <KunScrollShadow>
-          <button
-            v-for="opt in monthOptions"
-            :key="opt.value"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              isMonthSelected(opt.value)
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
-            "
-            @click="toggleMonth(opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </KunScrollShadow>
-      </div>
-
-      <div class="text-primary border-b pb-1 text-sm font-semibold">网盘</div>
-
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          必须含有以下网盘
-        </div>
-        <KunScrollShadow>
-          <button
-            v-for="key in PROVIDER_KEY_OPTIONS"
-            :key="key"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              includeSet.has(key)
-                ? 'bg-primary/15 text-primary font-medium'
-                : 'text-default-600 hover:bg-default-100'
-            "
-            @click="toggleInclude(key)"
-          >
-            {{ KUN_GALGAME_PROVIDER_LABEL_MAP[key as ProviderKey] }}
-          </button>
-        </KunScrollShadow>
-      </div>
-
-      <div>
-        <div class="text-default-700 mb-1.5 text-xs font-medium">
-          排除仅含以下网盘
-        </div>
-        <KunScrollShadow>
-          <button
-            v-for="key in PROVIDER_KEY_OPTIONS"
-            :key="key + '-ex'"
-            class="cursor-pointer rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors"
-            :class="
-              excludeSet.has(key)
-                ? 'bg-danger/15 text-danger font-medium'
-                : 'text-default-600 hover:bg-default-100'
-            "
-            @click="toggleExclude(key)"
-          >
-            {{ KUN_GALGAME_PROVIDER_LABEL_MAP[key as ProviderKey] }}
-          </button>
-        </KunScrollShadow>
-      </div>
-    </div>
+      <template v-if="isShowAdvanced" #end>
+        <button
+          type="button"
+          :class="filterPillSquareClass(showDisplay)"
+          aria-label="显示设置"
+          @click="showDisplay = !showDisplay"
+        >
+          <KunIcon name="lucide:layout-grid" class="size-4 text-inherit" />
+        </button>
+      </template>
+    </FilterBar>
 
     <GalgameCardDisplaySettings v-if="showDisplay" />
   </div>
