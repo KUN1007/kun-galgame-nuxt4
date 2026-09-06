@@ -107,6 +107,7 @@ func (a *App) setupRoutes() {
 	api.Get("/search/quick", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.QuickSearch)
 	api.Get("/search/overview", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.Overview)
 	api.Get("/search/entity", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.SearchEntities)
+	api.Get("/search/entity/resolve", middleware.OptionalAuth(a.Redis, a.OAuthClient), a.SearchHandler.ResolveEntities)
 
 	api.Get("/rss/topic", a.RSSHandler.GetTopicRSS)
 	api.Get("/rss/galgame", a.RSSHandler.GetGalgameRSS)

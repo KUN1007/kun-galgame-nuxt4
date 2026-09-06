@@ -63,6 +63,21 @@ func (h *SearchHandler) SearchEntities(c fiber.Ctx) error {
 	return response.OK(c, res)
 }
 
+func (h *SearchHandler) ResolveEntities(c fiber.Ctx) error {
+	var req dto.EntityResolveRequest
+	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
+		return response.Error(c, appErr)
+	}
+
+	items, appErr := h.searchService.ResolveEntities(
+		c.Context(), req.Family, req.IDs, utils.IsSFW(c),
+	)
+	if appErr != nil {
+		return response.Error(c, appErr)
+	}
+	return response.OK(c, dto.EntityResolveResult{Items: items})
+}
+
 func (h *SearchHandler) Search(c fiber.Ctx) error {
 	var req dto.SearchRequest
 	if appErr := utils.ParseQueryAndValidate(c, &req); appErr != nil {
@@ -78,7 +93,7 @@ func (h *SearchHandler) Search(c fiber.Ctx) error {
 		return response.Paginated(c, res.Items, res.Total)
 	case "galgame":
 		res, appErr := h.searchService.SearchGalgames(
-			c.Context(), req.Keywords, req.Page, req.Limit, false,
+			c.Context(), req.Keywords, req.Page, req.Limit, false, req.GalgameFilter,
 		)
 		if appErr != nil {
 			return response.Error(c, appErr)

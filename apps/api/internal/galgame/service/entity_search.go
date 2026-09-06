@@ -193,3 +193,54 @@ func entityAlias(h client.CatalogEntityHit, name string) string {
 	}
 	return ""
 }
+
+// A filter chip keys on a catalog id, so a shared link arrives with ids and no
+// names. Only the two families the filter bar can pick are resolvable.
+var entityResolveType = map[string]string{
+	EntityFamilyCompany: "labels",
+	EntityFamilyTag:     "tags",
+}
+
+// Resolve names ids the reader already chose. The tag gate is the same one
+// searchFamily applies: a hidden-tier tag, or a sexual tag in front of an SFW
+// reader, is dropped rather than named — the chip then reads as its bare id,
+// which is the correct amount to tell a reader who is not allowed to see it.
+func (s *EntitySearchService) Resolve(
+	ctx context.Context,
+	family string,
+	ids []int,
+	isSFW bool,
+) ([]dto.EntitySearchItem, *errors.AppError) {
+	entity, ok := entityResolveType[family]
+	if !ok {
+		return nil, errors.ErrBadRequest("该实体类型不支持按 ID 解析")
+	}
+	if len(ids) == 0 {
+		return []dto.EntitySearchItem{}, nil
+	}
+
+	rows, appErr := s.galgameClient.CatalogTaxonomyByIDs(ctx, entity, ids)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	items := make([]dto.EntitySearchItem, 0, len(rows))
+	for _, row := range rows {
+		if family == EntityFamilyTag {
+			if row.Tier == client.TagTierHidden || (isSFW && row.Sexual) {
+				continue
+			}
+		}
+		name := row.Label(ctx)
+		if family == EntityFamilyTag {
+			name = row.VocabularyLabel()
+		}
+		items = append(items, dto.EntitySearchItem{
+			ID:        int(row.ID),
+			Family:    family,
+			Name:      name,
+			WorkCount: row.WorkCount,
+		})
+	}
+	return items, nil
+}

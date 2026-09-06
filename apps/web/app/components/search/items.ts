@@ -125,3 +125,17 @@ export const SEARCH_ENTITY_FAMILY_MAP = Object.fromEntries(
 
 export const searchEntityPath = (item: SearchEntityItem) =>
   `${SEARCH_ENTITY_FAMILY_MAP[item.family].path}/${item.id}`
+
+// Catalog answers 400 past ten tag ids.
+export const TAG_FILTER_MAX = 10
+
+// The works index's own sort vocabulary. 评分 is not in it — the index carries
+// no rating attribute, which is why the filter bar says so instead of offering
+// one that would be ignored.
+export const SEARCH_GALGAME_SORTS: FilterOption[] = [
+  { value: 'relevance', label: '相关度' },
+  { value: 'popularity', label: '热度' },
+  { value: 'released_desc', label: '最新发售' },
+  { value: 'released_asc', label: '最早发售' },
+  { value: 'updated', label: '资料更新' }
+]

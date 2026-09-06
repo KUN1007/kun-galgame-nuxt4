@@ -12,6 +12,22 @@ type SearchRequest struct {
 	Type     string `query:"type" validate:"required,oneof=topic galgame resource user reply comment"`
 	Page     int    `query:"page" validate:"min=1"`
 	Limit    int    `query:"limit" validate:"min=1,max=12"`
+	GalgameFilter
+}
+
+// GalgameFilter narrows the Galgame lane. Catalog keeps these attributes live
+// when q= switches /catalog/works/search to the search index, so a filtered
+// search is the same single request an unfiltered one is.
+//
+// 评分 is missing on purpose and the panel says so: the works index carries no
+// rating attribute and no rating sort, unlike /galgame, which ranks on the
+// forum's own bayesian column.
+type GalgameFilter struct {
+	CompanyID    string `query:"company_id" validate:"omitempty,number"`
+	TagIDs       string `query:"tag_ids" validate:"omitempty,max=107"`
+	ReleasedFrom string `query:"released_from" validate:"omitempty,max=7"`
+	ReleasedTo   string `query:"released_to" validate:"omitempty,max=7"`
+	Sort         string `query:"sort" validate:"omitempty,oneof=relevance popularity updated released_desc released_asc"`
 }
 
 type OverviewRequest struct {
@@ -23,6 +39,17 @@ type EntitySearchRequest struct {
 	Family   string `query:"family" validate:"omitempty,oneof=character company staff tag series engine"`
 	Page     int    `query:"page" validate:"omitempty,min=1"`
 	Limit    int    `query:"limit" validate:"min=1,max=60"`
+}
+
+// A filter chip keys on a catalog id, so a shared link arrives holding ids and
+// no names.
+type EntityResolveRequest struct {
+	Family string `query:"family" validate:"required,oneof=company tag"`
+	IDs    string `query:"ids" validate:"required,max=107"`
+}
+
+type EntityResolveResult struct {
+	Items []galgameDto.EntitySearchItem `json:"items"`
 }
 
 type UserBrief struct {

@@ -67,7 +67,7 @@ func (s *SearchService) Overview(
 	}
 	run("topic", func() { topics, _ = s.SearchTopics(ctx, raw, 1, overviewTopicLimit, authenticated) })
 	run("galgame", func() {
-		galgames, _ = s.SearchGalgames(ctx, raw, 1, overviewGalgameLimit, false)
+		galgames, _ = s.SearchGalgames(ctx, raw, 1, overviewGalgameLimit, false, dto.GalgameFilter{})
 	})
 	run("user", func() { users, _ = s.SearchUsers(ctx, raw, 1, overviewUserLimit, authenticated) })
 	run("reply", func() { replies, _ = s.SearchReplies(ctx, raw, 1, overviewReplyLimit, authenticated) })

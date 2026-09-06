@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 
 	"kun-galgame-api/pkg/errors"
@@ -317,4 +318,34 @@ func (c *GalgameClient) lookupLabelBySource(ctx context.Context, source string, 
 		return 0, false, nil
 	}
 	return parsed.Items[0].ID, true, nil
+}
+
+const catalogTaxonomyIDsCap = 20
+
+// CatalogTaxonomyByIDs resolves a handful of ids to their rows in one request —
+// what a filter chip needs when a shared link arrives carrying ids and no names.
+func (c *GalgameClient) CatalogTaxonomyByIDs(
+	ctx context.Context, entity string, ids []int,
+) ([]CatalogTaxonomyItem, *errors.AppError) {
+	if len(ids) == 0 {
+		return []CatalogTaxonomyItem{}, nil
+	}
+	if len(ids) > catalogTaxonomyIDsCap {
+		ids = ids[:catalogTaxonomyIDsCap]
+	}
+	raw := make([]string, len(ids))
+	for i, id := range ids {
+		raw[i] = strconv.Itoa(id)
+	}
+	q := url.Values{
+		"ids":   {strings.Join(raw, ",")},
+		"limit": {strconv.Itoa(len(ids))},
+	}
+	openPopulation(q)
+
+	page, appErr := c.CatalogTaxonomyList(ctx, entity, q)
+	if appErr != nil {
+		return nil, appErr
+	}
+	return page.Items, nil
 }

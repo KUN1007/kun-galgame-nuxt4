@@ -80,8 +80,23 @@ watch(
   { immediate: true }
 )
 
+// A lane filter belongs to one lane: 资料库's family and Galgame's own filters
+// are meaningless on any other tab, and carrying them across reads as a filter
+// the reader cannot see and cannot clear.
+const LANE_FILTER_KEYS = new Set<string>([
+  ...SEARCH_GALGAME_FILTER_KEYS,
+  'family',
+  'type'
+])
+
 const setType = (value: SearchType) => {
-  activeType.value = value
+  const query = Object.fromEntries(
+    Object.entries(route.query).filter(([key]) => !LANE_FILTER_KEYS.has(key))
+  )
+  if (value !== 'all') {
+    query.type = value
+  }
+  router.replace({ query })
 }
 </script>
 

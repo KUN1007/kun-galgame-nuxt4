@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
+import { useRouteQuery } from '@vueuse/router'
+import { TAG_FILTER_MAX } from '~/components/search/items'
 
 const pageData = reactive({
   page: 1,
@@ -21,40 +23,8 @@ const searchResult = ref<GalgameTaxonomySearchItem[]>([])
 const searchQuery = ref('')
 const isSearching = ref(false)
 
-const searchMode = ref<'single' | 'multi'>('single')
-const searchModeOptions = [
-  { label: '单标签搜索', value: 'single' },
-  { label: '多标签搜索', value: 'multi' }
-] as const
-
-const matchMode = ref<'exact' | 'contains'>('exact')
-const matchModeOptions = [
-  { label: '精确模式', value: 'exact' },
-  { label: '包含模式', value: 'contains' }
-] as const
-
-const displayTags = computed(() => {
-  if (searchMode.value === 'single') {
-    if (searchQuery.value.trim()) return searchResult.value
-    return data.value?.tags ?? []
-  }
-  return data.value?.tags ?? []
-})
-
-const isBrowsingList = computed(() =>
-  searchMode.value === 'single'
-    ? !searchQuery.value.trim()
-    : !selectedTags.value.length
-)
-
-const inputFocused = ref(false)
-const isDropdownOpen = computed(
-  () =>
-    searchMode.value === 'multi' &&
-    inputFocused.value &&
-    !!searchQuery.value.trim() &&
-    !isSearching.value &&
-    (!!searchResult.value.length || isSfwMode.value)
+const displayTags = computed(() =>
+  searchQuery.value.trim() ? searchResult.value : (data.value?.tags ?? [])
 )
 
 const handleSearch = async () => {
@@ -83,13 +53,37 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 }
 )
 
-const onInputBlur = () => {
-  setTimeout(() => {
-    inputFocused.value = false
-  }, 120)
+// The picked tags live in the URL: a multi-tag result is the one thing on this
+// page worth sharing, and before this it was a local ref — the link a reader
+// copied reopened on the unfiltered tag list.
+const tagIdsQuery = useRouteQuery<string>('tag_ids', '', { mode: 'replace' })
+const selectedIds = computed<number[]>({
+  get: () =>
+    tagIdsQuery.value
+      .split(',')
+      .map(Number)
+      .filter((id) => Number.isInteger(id) && id > 0),
+  set: (ids) => {
+    tagIdsQuery.value = ids.join(',')
+  }
+})
+
+const entityNames = useEntityNames()
+
+const toggleTag = (item: SearchEntityItem) => {
+  entityNames.remember(item)
+  selectedIds.value = selectedIds.value.includes(item.id)
+    ? selectedIds.value.filter((id) => id !== item.id)
+    : [...selectedIds.value, item.id].slice(0, TAG_FILTER_MAX)
 }
 
-const selectedTags = ref<GalgameTaxonomySearchItem[]>([])
+const chips = computed<FilterChip[]>(() =>
+  selectedIds.value.map((id) => ({
+    key: String(id),
+    label: entityNames.labelOf('tag', id)
+  }))
+)
+
 const resultGames = ref<GalgameCard[]>([])
 const totalGameCount = ref(0)
 const gamesPage = ref(1)
@@ -97,7 +91,7 @@ const gamesLimit = 24
 const loadingGames = ref(false)
 
 const fetchGames = async () => {
-  if (!selectedTags.value.length) {
+  if (!selectedIds.value.length) {
     resultGames.value = []
     totalGameCount.value = 0
     return
@@ -110,8 +104,7 @@ const fetchGames = async () => {
       query: {
         page: gamesPage.value,
         limit: gamesLimit,
-        mode: matchMode.value,
-        tag_ids: selectedTags.value.map((t) => t.id).join(',')
+        tag_ids: tagIdsQuery.value
       }
     }
   )
@@ -122,30 +115,21 @@ const fetchGames = async () => {
   }
 }
 
-const addTag = (tag: GalgameTaxonomySearchItem) => {
-  if (selectedTags.value.find((t) => t.id === tag.id)) return
-  selectedTags.value.push(tag)
-  gamesPage.value = 1
-  fetchGames()
-}
-
-const removeTag = (id: number) => {
-  selectedTags.value = selectedTags.value.filter((t) => t.id !== id)
-  gamesPage.value = 1
-  fetchGames()
-}
-
 watch(
-  () => gamesPage.value,
+  selectedIds,
   () => {
+    gamesPage.value = 1
+    entityNames.resolve({ tag: selectedIds.value })
     fetchGames()
-  }
+  },
+  { immediate: true }
 )
 
-watch(matchMode, () => {
-  gamesPage.value = 1
+watch(gamesPage, () => {
   fetchGames()
 })
+
+const isBrowsing = computed(() => !selectedIds.value.length)
 </script>
 
 <template>
@@ -162,141 +146,79 @@ watch(matchMode, () => {
             <KunLink to="/doc/contact"> 联系我们 </KunLink>。
           </p>
 
-          <div
-            v-if="searchMode === 'multi' && selectedTags.length"
-            class="flex flex-wrap gap-2"
-          >
-            <KunChip
-              v-for="t in selectedTags"
-              :key="t.id"
-              color="primary"
-              class="flex items-center gap-2"
-            >
-              {{ t.name }}
-              <KunButton
-                size="sm"
-                :is-icon-only="true"
-                variant="light"
-                @click.stop="removeTag(t.id)"
-              >
-                <KunIcon name="lucide:x" />
-              </KunButton>
-            </KunChip>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <KunSelect
-              v-model="searchMode"
-              :options="searchModeOptions"
-              aria-label="search-mode"
-              class-name="w-36"
-            />
-
-            <KunSelect
-              v-if="searchMode === 'multi'"
-              v-model="matchMode"
-              :options="matchModeOptions"
-              aria-label="match-mode"
-              class-name="w-36"
-            />
-
-            <div class="relative flex-1">
-              <KunInput
-                v-model="searchQuery"
-                type="text"
-                placeholder="输入将会自动搜索标签, 点击标签使用多标签筛选"
-                @focus="inputFocused = true"
-                @blur="onInputBlur"
-              />
-
-              <div
-                v-if="isDropdownOpen"
-                class="border-default-200 bg-content1 absolute top-full right-0 left-0 z-50 mt-2 rounded-lg border shadow-md"
-              >
-                <KunScrollShadow
-                  axis="vertical"
-                  shadow-size="3rem"
-                  class-name="max-h-96"
-                >
-                  <div
-                    v-for="tag in searchResult"
-                    :key="tag.id"
-                    class="hover:bg-default-100 flex cursor-pointer items-center justify-between px-3 py-2"
-                    @mousedown.prevent="
-                      () => {
-                        addTag(tag)
-                        searchQuery = ''
-                      }
-                    "
-                  >
-                    <div class="truncate">{{ tag.name }}</div>
-                  </div>
-
-                  <div
-                    v-if="!searchResult.length"
-                    class="text-default-400 px-3 py-2 text-sm"
-                  >
-                    没有匹配的标签, 成人标签需要打开 NSFW 开关才能搜到
-                  </div>
-                </KunScrollShadow>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="searchMode === 'single'"
-            class="text-default-600 mt-4 flex items-center gap-4 text-sm"
-          >
-            <span>{{ `共 ${data?.total || 0} 个标签` }}</span>
-          </div>
+          <KunInput
+            v-model="searchQuery"
+            type="text"
+            placeholder="输入以搜索标签, 点击卡片查看该标签下的 Galgame"
+          />
         </div>
       </template>
     </KunHeader>
 
-    <div
-      v-if="searchMode === 'single' || !selectedTags.length"
-      class="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4"
+    <FilterBar
+      :chips="chips"
+      :total="isBrowsing ? (data?.total ?? 0) : totalGameCount"
+      :unit="isBrowsing ? '个标签' : '个 Galgame'"
+      :pending="isBrowsing ? status === 'pending' : loadingGames"
+      @remove="selectedIds = selectedIds.filter((id) => id !== Number($event))"
+      @clear="selectedIds = []"
     >
-      <GalgameTagCard v-for="tag in displayTags" :key="tag.id" :tag="tag" />
-    </div>
+      <FilterEntityMenu
+        family="tag"
+        icon="lucide:tag"
+        label="多标签筛选"
+        placeholder="搜索标签, 例如 校园"
+        :selected-ids="selectedIds"
+        :selected-items="entityNames.itemsOf('tag', selectedIds)"
+        multiple
+        :max="TAG_FILTER_MAX"
+        @toggle="toggleTag"
+      />
 
-    <KunNull
-      v-if="
-        !isSearching &&
-        !displayTags.length &&
-        (searchMode === 'single' || !selectedTags.length)
-      "
-      :description="
-        isSfwMode
-          ? '没有匹配的标签。成人标签在 SFW 模式下搜不到, 请在设置面板打开 NSFW 开关'
-          : undefined
-      "
-    />
-    <KunLoading
-      v-if="isSearching && (searchMode === 'single' || !selectedTags.length)"
-    />
+      <span class="text-default-500 text-sm">
+        选中多个标签, 只看同时含有它们的 Galgame
+      </span>
+    </FilterBar>
 
-    <KunPagination
-      v-if="isBrowsingList && data && data.total > pageData.limit"
-      v-model:current-page="pageData.page"
-      :total-page="Math.ceil(data.total / pageData.limit)"
-      :is-loading="status === 'pending'"
-    />
+    <template v-if="isBrowsing">
+      <div
+        class="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        <GalgameTagCard v-for="tag in displayTags" :key="tag.id" :tag="tag" />
+      </div>
 
-    <div v-if="searchMode === 'multi' && selectedTags.length">
+      <KunLoading v-if="isSearching" />
+
+      <KunNull
+        v-else-if="!displayTags.length"
+        :description="
+          isSfwMode
+            ? '没有匹配的标签。成人标签在 SFW 模式下搜不到, 请在设置面板打开 NSFW 开关'
+            : undefined
+        "
+      />
+
+      <KunPagination
+        v-if="!searchQuery.trim() && data && data.total > pageData.limit"
+        v-model:current-page="pageData.page"
+        :total-page="Math.ceil(data.total / pageData.limit)"
+        :is-loading="status === 'pending'"
+      />
+    </template>
+
+    <template v-else>
       <KunLoading :loading="loadingGames">
         <GalgameCard v-if="resultGames.length" :galgames="resultGames" />
+        <KunNull v-else description="没有同时含有这些标签的 Galgame" />
       </KunLoading>
-      <KunNull
-        v-if="!loadingGames && !resultGames.length && selectedTags.length"
-      />
+
       <KunPagination
-        class="mt-3"
         v-if="totalGameCount > gamesLimit"
+        class="mt-3"
         v-model:current-page="gamesPage"
         :total-page="Math.ceil(totalGameCount / gamesLimit)"
         :is-loading="loadingGames"
       />
-    </div>
+    </template>
   </div>
 </template>

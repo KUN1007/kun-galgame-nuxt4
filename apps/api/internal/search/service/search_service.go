@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
@@ -211,6 +212,7 @@ func (s *SearchService) SearchGalgames(
 	raw string,
 	page, limit int,
 	isSFW bool,
+	filter dto.GalgameFilter,
 ) (*dto.PaginatedResult[galgameDto.GalgameCard], *errors.AppError) {
 	if _, appErr := tokenize(raw); appErr != nil {
 		return nil, appErr
@@ -224,7 +226,10 @@ func (s *SearchService) SearchGalgames(
 		"page":    {strconv.Itoa(page)},
 		"limit":   {strconv.Itoa(limit)},
 		"include": {galgameService.CatalogCardInclude},
-		"sort":    {"relevance"},
+		"sort":    {cmp.Or(filter.Sort, "relevance")},
+	}
+	if appErr := applyGalgameFilter(q, filter); appErr != nil {
+		return nil, appErr
 	}
 	client.ApplyWorksGate(q, isSFW)
 
@@ -319,7 +324,7 @@ func (s *SearchService) QuickSearch(
 	}
 	run(func() { topics, _ = s.SearchTopics(ctx, raw, 1, quickSearchLimit, authenticated) })
 	run(func() {
-		galgames, _ = s.SearchGalgames(ctx, raw, 1, quickSearchLimit, false)
+		galgames, _ = s.SearchGalgames(ctx, raw, 1, quickSearchLimit, false, dto.GalgameFilter{})
 	})
 	run(func() { users, _ = s.SearchUsers(ctx, raw, 1, quickSearchLimit, authenticated) })
 	wg.Wait()

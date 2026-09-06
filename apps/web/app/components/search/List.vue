@@ -23,6 +23,26 @@ const top = useTemplateRef<HTMLElement>('top')
 const meta = computed(() => SEARCH_CATEGORY_MAP[props.type])
 const totalPage = computed(() => Math.ceil(total.value / PAGE_SIZE))
 
+const isGalgame = computed(() => props.type === 'galgame')
+
+const route = useRoute()
+const galgameFilter = computed(() =>
+  isGalgame.value
+    ? Object.fromEntries(
+        SEARCH_GALGAME_FILTER_KEYS.map((key) => [key, route.query[key] ?? ''])
+      )
+    : {}
+)
+
+// The rail counts with the overview, which is never filtered, so a filtered
+// lane sits under a rail that still says 2261 while the page says 0. Naming the
+// filter in the empty state is what stops that reading as a broken count.
+const isFiltered = computed(() =>
+  SEARCH_GALGAME_FILTER_KEYS.some(
+    (key) => key !== 'sort' && !!galgameFilter.value[key]
+  )
+)
+
 let latest = 0
 
 const fetchPage = (target: number) =>
@@ -37,7 +57,8 @@ const fetchPage = (target: number) =>
           keywords: props.keywords,
           type: props.type,
           page: target,
-          limit: PAGE_SIZE
+          limit: PAGE_SIZE,
+          ...galgameFilter.value
         }
       })
 
@@ -78,11 +99,18 @@ watch(
   },
   { immediate: true }
 )
+
+watch(galgameFilter, () => {
+  page.value = 1
+  load()
+})
 </script>
 
 <template>
   <div ref="top" class="scroll-mt-40 space-y-6">
-    <p class="text-default-500 text-sm">
+    <SearchGalgameFilter v-if="isGalgame" :total="total" :pending="pending" />
+
+    <p v-else class="text-default-500 text-sm">
       <template v-if="pending && !results.length">正在搜索…</template>
       <template v-else-if="total">
         共 <span class="text-default-700 tabular-nums">{{ total }}</span>
@@ -101,7 +129,14 @@ watch(
 
     <KunNull v-else-if="failed" description="搜索没能完成, 请稍后重试" />
 
-    <KunNull v-else-if="keywords" description="杂鱼杂鱼杂鱼~什么也没有搜索到" />
+    <KunNull
+      v-else-if="keywords"
+      :description="
+        isFiltered
+          ? '这些筛选条件下没有 Galgame, 试着去掉一两个'
+          : '杂鱼杂鱼杂鱼~什么也没有搜索到'
+      "
+    />
 
     <KunPagination
       v-if="totalPage > 1"
